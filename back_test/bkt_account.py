@@ -126,7 +126,7 @@ class BktAccount(object):
             position[self.util.open_price] = open_price
             position[self.util.unit] = unit
             position[self.util.margin_capital] = margin_capital
-            position[self.util.flag_open] = True
+            position[self.util.flag_open] = False
             position[self.util.multiplier] = multiplier
             if long_short == self.util.long:
                 trade_type = '多平'
@@ -274,6 +274,8 @@ class BktAccount(object):
             self.close_position(dt,bktoption)
 
 
+    def calculate_max_drawdown(self):
+        df_account = self.df_account
 
 
 

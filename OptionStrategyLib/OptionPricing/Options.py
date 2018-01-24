@@ -1,5 +1,4 @@
 import QuantLib as ql
-from Utilities.svi_read_data import get_curve_treasury_bond
 
 class Option(object):
     def __init__(self,strike,maturitydt):

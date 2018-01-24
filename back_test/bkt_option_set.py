@@ -1,4 +1,3 @@
-import datetime
 import pandas as pd
 from back_test.bkt_option import BktOption
 from back_test.bkt_util import BktUtil

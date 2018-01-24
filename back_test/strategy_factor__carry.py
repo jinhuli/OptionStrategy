@@ -1,11 +1,6 @@
-from back_test.bkt_account import BktUtil,BktAccount
+from back_test.bkt_account import BktAccount
 from back_test.bkt_option_set import BktOptionSet
-import pandas as pd
 import QuantLib as ql
-import datetime
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from data_access.db_tables import DataBaseTables as dbt
 from back_test.bkt_util import BktUtil
 
 
@@ -136,3 +131,10 @@ class FactorStrategyBkt(object):
             bkt_optionset.next()
 
 
+    def return_analysis(self):
+
+        return None
+
+
+
+    # def pot_npv(self):
