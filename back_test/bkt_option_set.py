@@ -317,7 +317,7 @@ class BktOptionSet(object):
 
     def rank_by_carry(self,bktoption_list):
 
-        df = pd.DataFrame()
+        df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         if len(bktoption_list)==0 : return df
         bvs_call = self.get_volsurface_squre('call')
         bvs_put = self.get_volsurface_squre('put')
@@ -336,12 +336,12 @@ class BktOptionSet(object):
             option.vega = vega
             option.iv_roll_down = iv_roll_down
             df.loc[idx, self.util.col_carry] = carry
-            df.loc[idx,'bktoption'] = option
-            df = df.sort_values(by=self.util.col_carry,ascending=False)
-            try:
-                df = df.reset_index()
-            except:
-                pass
+            df.loc[idx,self.util.bktoption] = option
+        df = df.sort_values(by=self.util.col_carry,ascending=False)
+        try:
+            df = df.reset_index()
+        except:
+            pass
         return df
 
 

@@ -2,8 +2,8 @@ from back_test.bkt_account import BktAccount
 from back_test.bkt_option_set import BktOptionSet
 import QuantLib as ql
 from back_test.bkt_util import BktUtil
-
-
+import pandas as pd
+import datetime
 
 
 
@@ -60,9 +60,14 @@ class FactorStrategyBkt(object):
 
     def get_carry_tnb(self,option_list,n):
         df_ranked = self.bkt_optionset.rank_by_carry(option_list)
-        df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
-        df_buy = df_ranked.loc[0:n-1]
-        df_sell = df_ranked.loc[len(df_ranked)-n:]
+
+        if len(df_ranked)<=2*n:
+            df_buy = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
+            df_sell = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
+        else:
+            df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
+            df_buy = df_ranked.loc[0:n-1]
+            df_sell = df_ranked.loc[len(df_ranked)-n:]
         return df_buy,df_sell
 
     def run(self):
@@ -75,6 +80,8 @@ class FactorStrategyBkt(object):
                 continue
 
             evalDate = bkt_optionset.eval_date
+            if evalDate == datetime.date(2017,7,17):
+                print('')
             hp_enddate = self.util.to_dt_date(
                 self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
@@ -84,6 +91,8 @@ class FactorStrategyBkt(object):
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all possitions !!! ')
                 bkt.liquidate_all(evalDate)
+                bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
+                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
             """清仓到期期权头寸"""
@@ -98,6 +107,7 @@ class FactorStrategyBkt(object):
                 print('调仓 : ', evalDate)
                 option_list = self.get_candidate_set(evalDate)
                 df_buy, df_sell = self.get_carry_tnb(option_list, self.nbr_top_bottom)
+
                 """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
                 for bktoption in bkt.holdings:
                     if bktoption.maturitydt <= hp_enddate:
@@ -112,19 +122,21 @@ class FactorStrategyBkt(object):
                 fund_sell = bkt.cash * self.money_utl * self.sell_ratio
                 n1 = len(df_buy)
                 n2 = len(df_sell)
-                for (idx, row) in df_buy.iterrows():
-                    bktoption = row['bktoption']
-                    if bktoption in bkt.holdings and bktoption.trade_flag_open:
-                        bkt.rebalance_position(evalDate, bktoption, fund_buy/n1)
-                    else:
-                        bkt.open_long(evalDate, bktoption, fund_buy/n1)
+                if n1 != 0:
+                    for (idx, row) in df_buy.iterrows():
+                        bktoption = row['bktoption']
+                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
+                            bkt.rebalance_position(evalDate, bktoption, fund_buy/n1)
+                        else:
+                            bkt.open_long(evalDate, bktoption, fund_buy/n1)
+                if n2 != 0:
+                    for (idx, row) in df_sell.iterrows():
+                        bktoption = row['bktoption']
+                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
+                            bkt.rebalance_position(evalDate, bktoption, fund_sell/n2)
+                        else:
+                            bkt.open_short(evalDate, bktoption, fund_sell/n2)
 
-                for (idx, row) in df_sell.iterrows():
-                    bktoption = row['bktoption']
-                    if bktoption in bkt.holdings and bktoption.trade_flag_open:
-                        bkt.rebalance_position(evalDate, bktoption, fund_sell/n2)
-                    else:
-                        bkt.open_short(evalDate, bktoption, fund_sell/n2)
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
             print(evalDate,' , ' ,bkt.npv) # npv是组合净值，期初为1

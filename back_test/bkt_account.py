@@ -19,6 +19,7 @@ class BktAccount(object):
         self.fee = fee_rate
         # self.slippage = nbr_slippage
         self.cash = init_fund
+        self.total_asset = init_fund
         self.total_margin_capital = 0.0
         self.total_transaction_cost = 0.0
         self.npv = 1.0
@@ -58,18 +59,20 @@ class BktAccount(object):
         bktoption.trade_margin_capital = margin_capital
         bktoption.transaction_fee = fee
         bktoption.trade_flag_open = True
-
-        record = pd.DataFrame(data={self.util.id_instrument:[id_instrument],
-                                    self.util.dt_trade:[dt],
-                                    self.util.trading_type:[trade_type],
-                                    self.util.trade_price:[mkt_price],
-                                    self.util.trading_cost:[fee],
-                                    self.util.unit:[unit]})
-        self.df_trading_records = self.df_trading_records.append(record,ignore_index=True)
-        # self.df_holdings = self.df_holdings.append(position,ignore_index=True)
         self.holdings.append(bktoption)
         self.cash = self.cash-premium-margin_capital
         self.nbr_trade += 1
+        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                    self.util.dt_trade: [dt],
+                                    self.util.trading_type: [trade_type],
+                                    self.util.trade_price: [mkt_price],
+                                    self.util.trading_cost: [fee],
+                                    self.util.unit: [unit],
+                                    'premium paid':[premium],
+                                    'cash': [self.cash],
+                                    'margin capital': [self.total_margin_capital]
+                                    })
+        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
     def open_short(self,dt,bktoption,trade_fund):
         bktoption.trade_dt_open = dt
@@ -88,21 +91,22 @@ class BktAccount(object):
         bktoption.trade_margin_capital = margin_capital
         bktoption.transaction_fee = fee
         bktoption.trade_flag_open = True
-
-
-        record = pd.DataFrame(data={self.util.id_instrument:[id_instrument],
-                                    self.util.dt_trade:[dt],
-                                    self.util.trading_type:[trade_type],
-                                    self.util.trade_price:[mkt_price],
-                                    self.util.trading_cost:[fee],
-                                    self.util.unit:[unit]})
-        self.df_trading_records = self.df_trading_records.append(record,ignore_index=True)
-        # self.df_holdings = self.df_holdings.append(position,ignore_index=True)
         self.holdings.append(bktoption)
         self.cash = self.cash+premium-margin_capital
         self.total_margin_capital += margin_capital
         self.total_transaction_cost += fee
         self.nbr_trade += 1
+        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                    self.util.dt_trade: [dt],
+                                    self.util.trading_type: [trade_type],
+                                    self.util.trade_price: [mkt_price],
+                                    self.util.trading_cost: [fee],
+                                    self.util.unit: [unit],
+                                    'premium paid': [-premium],
+                                    'cash': [self.cash],
+                                    'margin capital': [self.total_margin_capital]
+                                    })
+        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
 
 
@@ -143,7 +147,11 @@ class BktAccount(object):
                                         self.util.trading_type: [trade_type],
                                         self.util.trade_price: [mkt_price],
                                         self.util.trading_cost: [fee],
-                                        self.util.unit: [unit]})
+                                        self.util.unit: [unit],
+                                        'premium paid': [-long_short*premium],
+                                        'cash': [self.cash],
+                                        'margin capital': [self.total_margin_capital]
+                                        })
             bktoption.liquidate()
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
@@ -161,40 +169,46 @@ class BktAccount(object):
         mkt_price = bktoption.option_price
         holding_unit = bktoption.trade_unit
         long_short = bktoption.trade_long_short
-        margin_capital = bktoption.trade_margin_capital
         open_price = bktoption.trade_open_price
         multiplier = bktoption.multiplier
         premium = bktoption.premium
         unit = bktoption.get_trade_unit(trade_fund)
+
         if unit != holding_unit:
+            premium_paid = 0
             if unit > holding_unit:# 加仓
                 margin_add = (unit-holding_unit)*bktoption.get_init_margin()
                 open_price = ((unit-holding_unit)*mkt_price+holding_unit*open_price)/unit #加权开仓价格
-                premium =  (unit-holding_unit)*mkt_price*multiplier
-                fee = premium*self.fee
+                premium_add =  (unit-holding_unit)*mkt_price*multiplier
+                fee = premium_add*self.fee
                 bktoption.transaction_fee += fee
                 bktoption.trade_margin_capital += margin_add
                 self.cash = self.cash-margin_add
                 self.total_margin_capital += margin_add
                 self.total_transaction_cost += fee
+                premium += premium_add
+                premium_paid = long_short*premium_add
 
             else: # 减仓
                 liquidated_unit = holding_unit - unit
                 margin_returned = liquidated_unit*bktoption.trade_margin_capital/bktoption.trade_unit
-                liquidated_premium = liquidated_unit*mkt_price*multiplier
-                fee = liquidated_premium*self.fee
+                premium_liquidated = liquidated_unit*mkt_price*multiplier
+                fee = premium_liquidated*self.fee
                 d_fee = bktoption.transaction_fee*liquidated_unit/holding_unit
                 realized_pnl = long_short*(liquidated_unit*multiplier*mkt_price
-                                           -liquidated_premium)-fee-d_fee
+                                           -premium_liquidated)-fee-d_fee
+                premium -= premium_liquidated
                 self.realized_pnl += realized_pnl
                 self.cash = self.cash+margin_returned+realized_pnl
                 self.total_margin_capital -= margin_returned
                 self.total_transaction_cost += fee
+                self.realized_pnl += realized_pnl
                 bktoption.transaction_fee -= d_fee
+                premium_paid = -long_short*premium_liquidated
             bktoption.trade_unit = unit
-            bktoption.premium += premium
+            bktoption.premium = premium
             bktoption.trade_open_price = open_price
-            bktoption.trade_margin_capital = margin_capital
+            # bktoption.trade_margin_capital = margin_capital
             if long_short == self.util.long:
                 if unit > holding_unit:
                     trade_type = '多开'
@@ -210,7 +224,11 @@ class BktAccount(object):
                                         self.util.trading_type: [trade_type],
                                         self.util.trade_price: [mkt_price],
                                         self.util.trading_cost: [fee],
-                                        self.util.unit: [unit]})
+                                        self.util.unit: [unit],
+                                        'premium paid': [premium_paid],
+                                        'cash': [self.cash],
+                                        'margin capital': [self.total_margin_capital]
+                                        })
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.nbr_trade += 1
 
@@ -227,6 +245,7 @@ class BktAccount(object):
         mtm_portfolio_value = 0
         mtm_long_positions = 0
         mtm_short_positions = 0
+        total_premium_paied = 0
         # TODO: 资金使用率监控
         holdings = []
         for bktoption in self.holdings:
@@ -243,6 +262,7 @@ class BktAccount(object):
             unrealized_pnl += long_short*(mkt_price*unit*multiplier-premium)
             if long_short == self.util.long:
                 mtm_long_positions += mkt_price*unit*multiplier
+                total_premium_paied += bktoption.premium
             else:
                 mtm_short_positions -= mkt_price*unit*multiplier
             mtm_portfolio_value += mtm_long_positions + mtm_short_positions
@@ -250,8 +270,11 @@ class BktAccount(object):
             self.cash -= margin_call
             self.total_margin_capital += margin_call
         money_utilization = self.total_margin_capital/(self.total_margin_capital+self.cash)
-        total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
-        self.npv = total_asset/self.init_fund
+        # total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
+        # total_asset = self.cash+self.total_margin_capital+total_premium_paied+unrealized_pnl
+        self.total_asset += self.realized_pnl
+        mtm_total_asset = self.total_asset + unrealized_pnl
+        self.npv = mtm_total_asset/self.init_fund
         self.holdings = holdings
         account = pd.DataFrame(data={self.util.dt_date:[dt],
                                      self.util.nbr_trade:[self.nbr_trade],
@@ -263,15 +286,17 @@ class BktAccount(object):
                                      self.util.cash:[self.cash],
                                      self.util.money_utilization:[money_utilization],
                                      self.util.npv:[self.npv],
-                                     self.util.total_asset:[total_asset]})
+                                     self.util.total_asset:[mtm_total_asset]})
         self.df_account = self.df_account.append(account,ignore_index=True)
         self.nbr_trade = 0
+        self.realized_pnl = 0
 
 
     def liquidate_all(self,dt):
         holdings = self.holdings.copy()
         for bktoption in holdings:
             self.close_position(dt,bktoption)
+
 
 
     def calculate_max_drawdown(self):
