@@ -1,5 +1,4 @@
 import pandas as pd
-import hashlib
 import datetime
 from back_test.bkt_util import BktUtil
 
@@ -11,13 +10,8 @@ class BktAccount(object):
                  contract_multiplier=10000,fee_rate=2.0/10000, nbr_slippage=0):
 
         self.util = BktUtil()
-        # self.leverage = leverage
-        # self.margin_rate = margin_rate
         self.init_fund = init_fund
-        # self.multiplier = contract_multiplier
-        # self.tick = tick_size
         self.fee = fee_rate
-        # self.slippage = nbr_slippage
         self.cash = init_fund
         self.total_asset = init_fund
         self.total_margin_capital = 0.0
@@ -28,17 +22,9 @@ class BktAccount(object):
         self.nbr_trade = 0
         self.realized_pnl = 0.0
         self.df_trading_book = pd.DataFrame()  # 持仓信息
-        # self.df_holdings = pd.DataFrame(columns=self.util.tb_columns)  # 持仓信息
         self.df_account = pd.DataFrame()  # 交易账户
         self.df_trading_records = pd.DataFrame()  # 交易记录
-        self.holdings = []
-    def get_sha(self):
-
-        sha = hashlib.sha256()
-        now = str(datetime.datetime.now()).encode('utf-8')
-        sha.update(now)
-        id_position = sha.hexdigest()
-        return id_position
+        self.holdings = [] # 当前持仓
 
 
 
@@ -73,6 +59,7 @@ class BktAccount(object):
                                     'margin capital': [self.total_margin_capital]
                                     })
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+
 
     def open_short(self,dt,bktoption,trade_fund):
         bktoption.trade_dt_open = dt
@@ -143,16 +130,13 @@ class BktAccount(object):
             position[self.util.days_holding] = (dt - dt_open).days
             position[self.util.close_price] = mkt_price
             position[self.util.realized_pnl] = realized_pnl
-
             bktoption.liquidate()
-
             self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
             self.cash = self.cash+margin_capital+realized_pnl+premium_to_cash
             self.total_margin_capital -= margin_capital
             self.total_transaction_cost += fee
             self.nbr_trade += 1
             self.realized_pnl += realized_pnl
-            # self.holdings.remove(bktoption)
             record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
                                         self.util.dt_trade: [dt],
                                         self.util.trading_type: [trade_type],
@@ -206,11 +190,9 @@ class BktAccount(object):
                 self.cash = self.cash + margin_returned + realized_pnl
                 self.total_margin_capital -= margin_returned
                 self.total_transaction_cost += fee
-                # self.realized_pnl += realized_pnl
             bktoption.trade_unit = unit
             bktoption.premium = premium
             bktoption.trade_open_price = open_price
-            # bktoption.trade_margin_capital = margin_capital
             if long_short == self.util.long:
                 if unit > holding_unit:
                     trade_type = '多开'
@@ -250,6 +232,7 @@ class BktAccount(object):
         total_premium_paied = 0
         # TODO: 资金使用率监控
         holdings = []
+
         for bktoption in self.holdings:
             if not bktoption.trade_flag_open: continue
             holdings.append(bktoption)
@@ -271,14 +254,10 @@ class BktAccount(object):
             bktoption.trade_margin_capital = maintain_margin
             self.cash -= margin_call
             self.total_margin_capital += margin_call
+
         money_utilization = self.total_margin_capital/(self.total_margin_capital+self.cash)
-        # total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
-        # total_asset = self.cash+self.total_margin_capital+total_premium_paied+unrealized_pnl
-        self.total_asset += self.realized_pnl
-        total_asset1 = self.total_asset + unrealized_pnl
-        mtm_total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
-        print(dt,total_asset1,mtm_total_asset)
-        self.npv = mtm_total_asset/self.init_fund
+        self.total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
+        self.npv = self.total_asset/self.init_fund
         self.holdings = holdings
         account = pd.DataFrame(data={self.util.dt_date:[dt],
                                      self.util.nbr_trade:[self.nbr_trade],
@@ -290,7 +269,7 @@ class BktAccount(object):
                                      self.util.cash:[self.cash],
                                      self.util.money_utilization:[money_utilization],
                                      self.util.npv:[self.npv],
-                                     self.util.total_asset:[mtm_total_asset]})
+                                     self.util.total_asset:[self.total_asset]})
         self.df_account = self.df_account.append(account,ignore_index=True)
         self.nbr_trade = 0
         self.realized_pnl = 0
@@ -303,16 +282,38 @@ class BktAccount(object):
 
 
 
+    def calculate_drawdown(self):
+        hist_max = 1.0
+        for (idx,row) in self.df_account.iterrows():
+            if idx == 0: drawdown = 0.0
+            else:
+                npv = row[self.util.npv]
+                hist_max = max(npv,hist_max)
+                drawdown = (hist_max-npv)/hist_max
+            self.df_account.loc[idx, 'drawdown'] = drawdown
+
+
+
+
+
     def calculate_max_drawdown(self):
-        df_account = self.df_account
-
-    def return_analysis(self):
-
-        return None
-
+        self.calculate_drawdown()
+        max_drawdown = None
+        try:
+            drawdown_list = self.df_account['drawdown']
+            max_drawdown = max(drawdown_list)
+        except Exception as e:
+            print(e)
+            pass
+        return max_drawdown
 
     def calculate_annulized_return(self):
-        return None
+        dt_start = self.df_account.loc[0,self.util.dt_date]
+        dt_end = self.df_account.loc[len(self.df_account)-1,self.util.dt_date]
+        invest_days = (dt_end-dt_start).days
+        annulized_return = (self.total_asset/self.init_fund)**(365/invest_days)-1
+        return annulized_return
+
 
 
 

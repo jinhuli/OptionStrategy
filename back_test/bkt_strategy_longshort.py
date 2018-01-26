@@ -8,7 +8,7 @@ import datetime
 
 
 
-class FactorStrategyBkt(object):
+class BktStrategyLongShort(object):
 
     def __init__(self,df_option_metrics,hp,money_utilization=0.2,init_fund=1000000.0,tick_size=0.0001,fee_rate=2.0/10000,
                  nbr_slippage=0,max_money_utilization=0.5,buy_ratio=0.5,sell_ratio=0.5,nbr_top_bottom=5
@@ -24,18 +24,54 @@ class FactorStrategyBkt(object):
         self.option_type = None
         self.min_ttm = None
         self.max_ttm = None
+        self.trade_type = None
         self.calendar = ql.China()
         self.bkt_account = BktAccount(fee_rate=fee_rate,init_fund=init_fund)
         self.bkt_optionset = BktOptionSet('daily', df_option_metrics, hp)
 
+
     def set_min_ttm(self,min_ttm):
         self.min_ttm = min_ttm
+
 
     def set_max_ttm(self,max_ttm):
         self.max_ttm = max_ttm
 
+
     def set_option_type(self,option_type):
         self.option_type = option_type
+
+
+    def set_trade_type(self,trade_type):
+        self.trade_type = trade_type
+
+
+    def get_long_short(self,option_list):
+        df_top, df_bottom = self.get_top_bottom(option_list)
+        if self.trade_type==self.util.long_top or self.trade_type==None:
+            df_long = df_top
+            df_short = df_bottom
+        else:
+            df_long = df_bottom
+            df_short = df_top
+        return df_long, df_short
+
+
+    def get_top_bottom(self,option_list):
+        df_ranked = self.get_ranked(option_list)
+        n = self.nbr_top_bottom
+        if len(df_ranked)<=2*n:
+            df_top = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
+            df_bottom = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
+        else:
+            df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
+            df_top = df_ranked.loc[0:n-1]
+            df_bottom = df_ranked.loc[len(df_ranked)-n:]
+        return df_top,df_bottom
+
+
+    def get_ranked(self,option_list):
+        return self.bkt_optionset.rank_by_carry(option_list) # Ranked Descending
 
 
     def get_candidate_set(self,eval_date):
@@ -57,20 +93,32 @@ class FactorStrategyBkt(object):
             option_list = list
         return option_list
 
+    """ 1 : Equal Long/Short Market Value """
+    def get_fund_long_short_1(self,invest_fund,df_buy,df_sell):
+        vl = 0.0
+        vs = 0.0
+        ml = 0.0
+        ms = 0.0
+        for (idx, row) in df_buy.iterrows():
+            bktoption = row['bktoption']
+            value_per_share = bktoption.option_price*bktoption.multiplier
+            money_use_per_share = value_per_share
+            vl += value_per_share
+            ml += money_use_per_share
+        for (idx,row) in df_sell.iterrows():
+            bktoption = row['bktoption']
+            value_per_share = bktoption.option_price * bktoption.multiplier
+            money_use_per_share = bktoption.get_init_margin()
+            vs += value_per_share
+            ms += money_use_per_share
+        """ vl*Xl = vs*Xs """
+        """ ml*Xl + ms*Xs = invest_fund """
+        Xs = invest_fund*vl/(ml*vs+ms*vl) # unit of long
+        Xl = vs*Xs/vl # unit of short
+        fund_long = Xl*vl
+        fund_short = Xs*vs
+        return fund_long,fund_short
 
-    def get_carry_tnb(self,option_list,n):
-        df_ranked = self.bkt_optionset.rank_by_carry(option_list)
-
-        if len(df_ranked)<=2*n:
-            df_buy = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-            df_sell = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-        else:
-            df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
-            df_sell = df_ranked.loc[0:n-1]
-            df_buy = df_ranked.loc[len(df_ranked)-n:]
-            # df_buy = df_ranked.loc[0:n - 1]
-            # df_sell = df_ranked.loc[len(df_ranked) - n:]
-        return df_buy,df_sell
 
     def run(self):
         bkt_optionset = self.bkt_optionset
@@ -89,7 +137,7 @@ class FactorStrategyBkt(object):
 
             """回测期最后一天全部清仓"""
             if evalDate == bkt_optionset.end_date:
-                print(' Liquidate all possitions !!! ')
+                print(' Liquidate all positions !!! ')
                 bkt.liquidate_all(evalDate)
                 bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
                 print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
@@ -106,7 +154,7 @@ class FactorStrategyBkt(object):
             if (bkt_optionset.index-1)%self.holding_period == 0:
                 print('调仓 : ', evalDate)
                 option_list = self.get_candidate_set(evalDate)
-                df_buy, df_sell = self.get_carry_tnb(option_list, self.nbr_top_bottom)
+                df_buy, df_sell = self.get_long_short(option_list)
 
                 """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
                 for bktoption in bkt.holdings:
@@ -143,10 +191,13 @@ class FactorStrategyBkt(object):
             bkt_optionset.next()
 
 
-
-
-
-
+    def return_analysis(self):
+        ar = 100*self.bkt_account.calculate_annulized_return()
+        mdd = 100*self.bkt_account.calculate_max_drawdown()
+        print('='*50)
+        print("%20s %20s" %('annulized_return(%)','max_drawdown(%)'))
+        print("%20s %20s"%(round(ar,4),round(mdd,4)))
+        print('-'*50)
 
 
 

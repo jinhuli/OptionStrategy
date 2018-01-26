@@ -5,7 +5,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
 from back_test.bkt_util import BktUtil
-from back_test.strategy_factor__carry import FactorStrategyBkt
+from back_test.bkt_strategy_longshort import BktStrategyLongShort
 
 
 
@@ -14,7 +14,6 @@ start_date = datetime.date(2015, 12, 31)
 # start_date = datetime.date(2017, 1, 1)
 # end_date = datetime.date(2017, 12, 1)
 end_date = datetime.date(2017, 12, 31)
-# evalDate = datetime.date(2017, 6, 21)
 hp = 20
 
 
@@ -42,8 +41,7 @@ query_mkt = sess.query(Option_mkt.dt_date,Option_mkt.id_instrument,Option_mkt.co
                         Option_mkt.amt_close,Option_mkt.amt_settlement,Option_mkt.amt_last_settlement,
                         Option_mkt.amt_trading_volume
                           ) \
-    .filter(Option_mkt.dt_date >= start_date) \
-    .filter(Option_mkt.dt_date <= end_date) \
+    .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
     .filter(Option_mkt.datasource == 'wind')
 
 query_option = sess.query(options.id_instrument,options.cd_option_type,options.amt_strike,
@@ -51,8 +49,7 @@ query_option = sess.query(options.id_instrument,options.cd_option_type,options.a
     .filter(and_(options.dt_listed <= end_date,options.dt_maturity >= start_date))
 
 query_etf = sess.query(Index_mkt.dt_date,Index_mkt.amt_close) \
-    .filter(Index_mkt.dt_date >= start_date) \
-    .filter(Index_mkt.dt_date <= end_date) \
+    .filter(Index_mkt.dt_date >= start_date).filter(Index_mkt.dt_date <= end_date) \
     .filter(Index_mkt.id_instrument == 'index_50etf')
 
 df_mkt = pd.read_sql(query_mkt.statement, query_mkt.session.bind)
@@ -65,16 +62,16 @@ df_option_metrics = df_option.join(df_50etf.set_index('dt_date'),how='left',on='
 
 """Run Backtest"""
 
-bkt = FactorStrategyBkt(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
+bkt = BktStrategyLongShort(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
                         nbr_top_bottom = 5)
-bkt.set_option_type('call')
-bkt.set_min_ttm(30)
-bkt.set_max_ttm(90)
+bkt.set_option_type('put')
+bkt.set_trade_type(util.long_top)
+bkt.set_min_ttm(20)
+bkt.set_max_ttm(60)
+
 bkt.run()
 
-print(bkt.bkt_account.df_account)
-print(bkt.bkt_account.df_trading_book)
-
+bkt.return_analysis()
 
 bkt.bkt_account.df_account.to_csv('../save_results/df_account.csv')
 bkt.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')

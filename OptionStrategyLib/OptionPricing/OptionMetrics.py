@@ -25,7 +25,6 @@ class OptionMetrics:
         try:
             implied_vol = option.impliedVolatility(option_price, process, 1.0e-3, 300, 0.05, 1.0)
         except RuntimeError as e:
-            print('calculate iv failed : ', e)
             implied_vol = 0.0
         option = None
         engine = None

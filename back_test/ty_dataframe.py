@@ -27,4 +27,9 @@ df1 = df.loc[len(df)-5:]
 # print(l)
 
 df2 = pd.DataFrame(columns=['bktoption'])
-print(df2)
+print(df.loc[len(df)-1,'a'])
+
+list1 = [1,2,34,66,3,45,]
+print(max(list1))
+
+print("%20s %20s" %('annulized_return','max_drawdown'))
