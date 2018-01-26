@@ -177,7 +177,6 @@ class BktAccount(object):
         unit = bktoption.get_trade_unit(trade_fund)
 
         if unit != holding_unit:
-            premium_paid = 0
             if unit > holding_unit:# 加仓
                 margin_add = (unit-holding_unit)*bktoption.get_init_margin()
                 open_price = ((unit-holding_unit)*mkt_price+holding_unit*open_price)/unit #加权开仓价格
@@ -275,8 +274,10 @@ class BktAccount(object):
         # total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
         # total_asset = self.cash+self.total_margin_capital+total_premium_paied+unrealized_pnl
         self.total_asset += self.realized_pnl
-        mtm_total_asset = self.total_asset + unrealized_pnl
-        self.npv = mtm_total_asset/self.init_fund
+        total_asset1 = self.total_asset + unrealized_pnl
+        total_asset_mtm = self.cash + self.total_margin_capital+ mtm_long_positions
+        print(dt,total_asset1,total_asset_mtm)
+        self.npv = total_asset_mtm/self.init_fund
         self.holdings = holdings
         account = pd.DataFrame(data={self.util.dt_date:[dt],
                                      self.util.nbr_trade:[self.nbr_trade],

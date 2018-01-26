@@ -80,8 +80,6 @@ class FactorStrategyBkt(object):
                 continue
 
             evalDate = bkt_optionset.eval_date
-            if evalDate == datetime.date(2017,7,17):
-                print('')
             hp_enddate = self.util.to_dt_date(
                 self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
@@ -92,7 +90,7 @@ class FactorStrategyBkt(object):
                 print(' Liquidate all possitions !!! ')
                 bkt.liquidate_all(evalDate)
                 bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
-                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+                # print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
             """清仓到期期权头寸"""
@@ -139,7 +137,7 @@ class FactorStrategyBkt(object):
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
-            print(evalDate,' , ' ,bkt.npv) # npv是组合净值，期初为1
+            # print(evalDate,' , ' ,bkt.npv) # npv是组合净值，期初为1
             bkt_optionset.next()
 
 

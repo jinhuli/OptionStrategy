@@ -10,10 +10,10 @@ from back_test.strategy_factor__carry import FactorStrategyBkt
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 3, 31)
-# start_date = datetime.date(2017, 1, 1)
-# end_date = datetime.date(2017, 12, 1)
-end_date = datetime.date(2017, 12, 31)
+# start_date = datetime.date(2015, 3, 31)
+start_date = datetime.date(2017, 1, 1)
+end_date = datetime.date(2017, 12, 1)
+# end_date = datetime.date(2017, 12, 31)
 # evalDate = datetime.date(2017, 6, 21)
 hp = 20
 
