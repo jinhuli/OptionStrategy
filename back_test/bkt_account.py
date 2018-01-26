@@ -27,10 +27,10 @@ class BktAccount(object):
         self.realized_value = 0.0
         self.nbr_trade = 0
         self.realized_pnl = 0.0
-        self.df_trading_book = pd.DataFrame(columns=self.util.tb_columns)  # 持仓信息
+        self.df_trading_book = pd.DataFrame()  # 持仓信息
         # self.df_holdings = pd.DataFrame(columns=self.util.tb_columns)  # 持仓信息
-        self.df_account = pd.DataFrame(columns=self.util.account_columns)  # 交易账户
-        self.df_trading_records = pd.DataFrame(columns=self.util.record_columns)  # 交易记录
+        self.df_account = pd.DataFrame()  # 交易账户
+        self.df_trading_records = pd.DataFrame()  # 交易记录
         self.holdings = []
     def get_sha(self):
 
@@ -142,6 +142,16 @@ class BktAccount(object):
             position[self.util.days_holding] = (dt - dt_open).days
             position[self.util.close_price] = mkt_price
             position[self.util.realized_pnl] = pnl_amt
+
+            bktoption.liquidate()
+
+            self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
+            self.cash = self.cash+margin_capital+pnl_amt
+            self.total_margin_capital -= margin_capital
+            self.total_transaction_cost += fee
+            self.nbr_trade += 1
+            self.realized_pnl += pnl_amt
+            # self.holdings.remove(bktoption)
             record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
                                         self.util.dt_trade: [dt],
                                         self.util.trading_type: [trade_type],
@@ -152,15 +162,7 @@ class BktAccount(object):
                                         'cash': [self.cash],
                                         'margin capital': [self.total_margin_capital]
                                         })
-            bktoption.liquidate()
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
-            self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
-            self.cash = self.cash+margin_capital+pnl_amt
-            self.total_margin_capital -= margin_capital
-            self.total_transaction_cost += fee
-            self.nbr_trade += 1
-            self.realized_pnl += pnl_amt
-            # self.holdings.remove(bktoption)
 
 
     def rebalance_position(self,dt,bktoption,trade_fund):
