@@ -25,3 +25,6 @@ df1 = df.loc[len(df)-5:]
 # print(l)
 # l.remove('c')
 # print(l)
+
+df2 = pd.DataFrame(columns=['bktoption'])
+print(df2)

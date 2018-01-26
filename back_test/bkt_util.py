@@ -139,6 +139,7 @@ class BktUtil():
         self.trading_type='trading_type'
         self.trade_price='trade_price'
         self.trading_cost='trading_cost'
+        self.bktoption = 'bktoption'
 
 
         self.tb_columns = [
