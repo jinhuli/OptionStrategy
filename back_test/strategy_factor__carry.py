@@ -66,8 +66,10 @@ class FactorStrategyBkt(object):
             df_sell = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         else:
             df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
-            df_buy = df_ranked.loc[0:n-1]
-            df_sell = df_ranked.loc[len(df_ranked)-n:]
+            df_sell = df_ranked.loc[0:n-1]
+            df_buy = df_ranked.loc[len(df_ranked)-n:]
+            # df_buy = df_ranked.loc[0:n - 1]
+            # df_sell = df_ranked.loc[len(df_ranked) - n:]
         return df_buy,df_sell
 
     def run(self):
@@ -90,10 +92,10 @@ class FactorStrategyBkt(object):
                 print(' Liquidate all possitions !!! ')
                 bkt.liquidate_all(evalDate)
                 bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
-                # print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
-            """清仓到期期权头寸"""
+            """清仓到期头寸"""
             for bktoption in bkt.holdings:
                 if bktoption.maturitydt == evalDate:
                     print('Liquidate position at maturity : ', evalDate, ' , ', bktoption.maturitydt)
@@ -137,14 +139,39 @@ class FactorStrategyBkt(object):
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
-            # print(evalDate,' , ' ,bkt.npv) # npv是组合净值，期初为1
+            print(evalDate,' , ' ,bkt.npv) # npv是组合净值，期初为1
             bkt_optionset.next()
 
 
-    def return_analysis(self):
-
-        return None
 
 
 
-    # def pot_npv(self):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
