@@ -29,7 +29,7 @@ optionmkt_table = dbt.OptionMkt
 options_table = dbt.Options
 
 # Eval Settings
-evalDate = datetime.date(2018, 1, 19).strftime("%Y-%m-%d")  # Set as Friday
+evalDate = datetime.date(2018, 1, 26).strftime("%Y-%m-%d")  # Set as Friday
 start_date = w.tdaysoffset(-1, evalDate, "Period=M").Data[0][0].strftime("%Y-%m-%d")
 hist_date = w.tdaysoffset(-2, evalDate, "Period=Y").Data[0][0].strftime("%Y-%m-%d")
 # hist_date = w.tdaysoffset(-60, start_date, "").Data[0][0].strftime("%Y-%m-%d")
@@ -43,7 +43,7 @@ plt.rcParams['font.sans-serif'] = ['STKaiti']
 plt.rcParams.update({'font.size': 13})
 flagNight = 0
 nameCode = 'sr'
-contracts = ['1803', '1805', '1807', '1809']
+contracts = ['1805', '1807', '1809','1901']
 
 # print(optionivs_df['date'].unique())
 
@@ -103,6 +103,7 @@ for d in dates:
     cont += 1
 ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
            ncol=3, mode="expand", borderaxespad=0.,frameon=False)
+ax1.set_xticklabels(contracts)
 f1.savefig('../save_figure/implied_vols_' + str(evalDate) + '.png', dpi=300, format='png')
 
 #################### Futures and Realised Vol
