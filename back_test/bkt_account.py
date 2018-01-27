@@ -1,6 +1,9 @@
 import pandas as pd
 import datetime
 from back_test.bkt_util import BktUtil
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import host_subplot
+from Utilities.PlotUtil import PlotUtil
 
 
 
@@ -25,6 +28,7 @@ class BktAccount(object):
         self.df_account = pd.DataFrame()  # 交易账户
         self.df_trading_records = pd.DataFrame()  # 交易记录
         self.holdings = [] # 当前持仓
+        self.pu = PlotUtil()
 
 
 
@@ -286,11 +290,8 @@ class BktAccount(object):
             else:
                 npv = row[self.util.npv]
                 hist_max = max(npv,hist_max)
-                drawdown = (hist_max-npv)/hist_max
+                drawdown = -(hist_max-npv)/hist_max
             self.df_account.loc[idx, 'drawdown'] = drawdown
-
-
-
 
 
     def calculate_max_drawdown(self):
@@ -298,7 +299,7 @@ class BktAccount(object):
         max_drawdown = None
         try:
             drawdown_list = self.df_account['drawdown']
-            max_drawdown = max(drawdown_list)
+            max_drawdown = min(drawdown_list)
         except Exception as e:
             print(e)
             pass
@@ -312,8 +313,23 @@ class BktAccount(object):
         return annulized_return
 
 
-
-
+    def plot_npv(self):
+        fig = plt.figure()
+        host = host_subplot(111)
+        par = host.twinx()
+        host.set_xlabel("日期")
+        x = self.df_account[self.util.dt_date].tolist()
+        npv = self.df_account[self.util.npv].tolist()
+        dd = self.df_account['drawdown'].tolist()
+        host.plot(x, npv,label='npv', color=self.pu.colors[0], linestyle=self.pu.lines[0], linewidth=2)
+        par.fill_between(x, [0]*len(dd),dd,label='drawdown',  color=self.pu.colors[1])
+        host.set_ylabel('Net Value')
+        par.set_ylabel('Drawdown')
+        # host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+        #             ncol=3, mode="expand", borderaxespad=0.)
+        # fig1.set_size_inches((8, 6))
+        fig.savefig('../save_figure/npv.png', dpi=300,format='png')
+        plt.show()
 
 
 

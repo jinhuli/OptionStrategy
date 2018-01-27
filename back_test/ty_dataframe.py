@@ -29,3 +29,9 @@ print(df.loc[len(df)-2:])
 print('-'*10)
 print(df[len(df)-2:])
 
+a = [1,2,3,4,5]
+i = [0]*len(a)
+
+print(a)
+print(i)
+

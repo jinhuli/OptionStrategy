@@ -153,10 +153,6 @@ class BktUtil():
         id_position = sha.hexdigest()
         return id_position
 
-    def plot_npv(self):
-        return None
-
-
 
 
 
