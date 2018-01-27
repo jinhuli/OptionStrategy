@@ -25,6 +25,7 @@ class BktStrategyLongShort(object):
         self.min_ttm = None
         self.max_ttm = None
         self.trade_type = None
+        self.flag_trade = False
         self.calendar = ql.China()
         self.bkt_account = BktAccount(fee_rate=fee_rate,init_fund=init_fund)
         self.bkt_optionset = BktOptionSet('daily', df_option_metrics, hp)
@@ -59,14 +60,14 @@ class BktStrategyLongShort(object):
 
     def get_top_bottom(self,option_list):
         df_ranked = self.get_ranked(option_list)
+        df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
         n = self.nbr_top_bottom
         if len(df_ranked)<=2*n:
             df_top = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
             df_bottom = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         else:
-            df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
-            df_top = df_ranked.loc[0:n-1]
-            df_bottom = df_ranked.loc[len(df_ranked)-n:]
+            df_top = df_ranked[0:n]
+            df_bottom = df_ranked[-n:]
         return df_top,df_bottom
 
 
@@ -83,41 +84,50 @@ class BktStrategyLongShort(object):
             else:
                 option_list = self.bkt_optionset.bktoption_list_put
 
-        if self.min_ttm != None and self.max_ttm != None:
+        if self.min_ttm != None :
             list = []
             for option in option_list:
                 min_maturity = self.util.to_dt_date(self.calendar.advance(self.util.to_ql_date(eval_date),ql.Period(self.min_ttm,ql.Days)))
+                if option.maturitydt>=min_maturity:
+                    list.append(option)
+            option_list = list
+        if self.max_ttm != None:
+            list = []
+            for option in option_list:
                 max_maturity = self.util.to_dt_date(self.calendar.advance(self.util.to_ql_date(eval_date),ql.Period(self.max_ttm,ql.Days)))
-                if option.maturitydt>=min_maturity and option.maturitydt<=max_maturity:
+                if  option.maturitydt<=max_maturity:
                     list.append(option)
             option_list = list
         return option_list
 
     """ 1 : Equal Long/Short Market Value """
     def get_fund_long_short_1(self,invest_fund,df_buy,df_sell):
-        vl = 0.0
-        vs = 0.0
-        ml = 0.0
-        ms = 0.0
+        m_v_long = 0.0
+        m_v_short = 0.0
         for (idx, row) in df_buy.iterrows():
             bktoption = row['bktoption']
-            value_per_share = bktoption.option_price*bktoption.multiplier
-            money_use_per_share = value_per_share
-            vl += value_per_share
-            ml += money_use_per_share
+            premium = bktoption.option_price*bktoption.multiplier
+            money = premium
+            m_v = money/premium
+            m_v_long += m_v
         for (idx,row) in df_sell.iterrows():
             bktoption = row['bktoption']
-            value_per_share = bktoption.option_price * bktoption.multiplier
-            money_use_per_share = bktoption.get_init_margin()
-            vs += value_per_share
-            ms += money_use_per_share
-        """ vl*Xl = vs*Xs """
-        """ ml*Xl + ms*Xs = invest_fund """
-        Xs = invest_fund*vl/(ml*vs+ms*vl) # unit of long
-        Xl = vs*Xs/vl # unit of short
-        fund_long = Xl*vl
-        fund_short = Xs*vs
-        return fund_long,fund_short
+            premium = bktoption.option_price * bktoption.multiplier
+            money = bktoption.get_init_margin()-premium
+            m_v = money/premium
+            m_v_short += m_v
+        mtm = invest_fund/(m_v_long+m_v_short)
+        for (idx,row) in df_buy.iterrows():
+            bktoption = row['bktoption']
+            unit = bktoption.get_unit_by_mtmv(mtm)
+            df_buy.loc[idx,'unit'] = unit
+            df_buy.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
+        for (idx,row) in df_sell.iterrows():
+            bktoption = row['bktoption']
+            unit = bktoption.get_unit_by_mtmv(mtm)
+            df_sell.loc[idx,'unit'] = unit
+            df_sell.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
+        return df_buy,df_sell
 
 
     def run(self):
@@ -151,7 +161,7 @@ class BktStrategyLongShort(object):
 
 
             """持有期holding_period满，进行调仓 """
-            if (bkt_optionset.index-1)%self.holding_period == 0:
+            if (bkt_optionset.index-1)%self.holding_period==0 or not self.flag_trade:
                 print('调仓 : ', evalDate)
                 option_list = self.get_candidate_set(evalDate)
                 df_buy, df_sell = self.get_long_short(option_list)
@@ -166,24 +176,26 @@ class BktStrategyLongShort(object):
                         bkt.close_position(evalDate, bktoption)
 
                 """开仓：等金额做多df_buy，等金额做空df_sell"""
-                fund_buy = bkt.cash * self.money_utl * self.buy_ratio
-                fund_sell = bkt.cash * self.money_utl * self.sell_ratio
-                n1 = len(df_buy)
-                n2 = len(df_sell)
-                if n1 != 0:
+                if len(df_buy)+len(df_sell) == 0:
+                    self.flag_trade = False
+                else:
+                    invest_fund = bkt.cash * self.money_utl
+                    df_buy, df_sell = self.get_fund_long_short_1(invest_fund, df_buy, df_sell)
                     for (idx, row) in df_buy.iterrows():
                         bktoption = row['bktoption']
+                        unit = row['unit']
                         if bktoption in bkt.holdings and bktoption.trade_flag_open:
-                            bkt.rebalance_position(evalDate, bktoption, fund_buy/n1)
+                            bkt.rebalance_position(evalDate, bktoption, unit)
                         else:
-                            bkt.open_long(evalDate, bktoption, fund_buy/n1)
-                if n2 != 0:
+                            bkt.open_long(evalDate, bktoption, unit)
                     for (idx, row) in df_sell.iterrows():
                         bktoption = row['bktoption']
+                        unit = row['unit']
                         if bktoption in bkt.holdings and bktoption.trade_flag_open:
-                            bkt.rebalance_position(evalDate, bktoption, fund_sell/n2)
+                            bkt.rebalance_position(evalDate, bktoption, unit)
                         else:
-                            bkt.open_short(evalDate, bktoption, fund_sell/n2)
+                            bkt.open_short(evalDate, bktoption,unit)
+                    self.flag_trade = True
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)

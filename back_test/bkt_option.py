@@ -34,6 +34,7 @@ class BktOption(object):
         self.engine_type = engine_type
         self.implied_vol = None
         self.trade_unit = 0
+        self.trade_long_short = None
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
         self.start()
@@ -411,11 +412,9 @@ class BktOption(object):
         # 认沽期权最大跌幅＝合约标的前收盘价×10％
         return None
 
-    def get_trade_unit(self,fund):
-        if self.trade_long_short == self.util.long:
-            unit = np.floor(fund/(self.option_price*self.multiplier))
-        else:
-            unit = np.floor(fund/self.get_init_margin())
+    def get_unit_by_mtmv(self,mtm_value):
+        unit = np.floor(mtm_value/(self.option_price*self.multiplier))
+        # unit = mtm_value/(self.option_price*self.multiplier)
         return unit
 
     def liquidate(self):

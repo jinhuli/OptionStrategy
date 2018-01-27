@@ -28,14 +28,14 @@ class BktAccount(object):
 
 
 
-    def open_long(self,dt,bktoption,trade_fund):# 多开
+    def open_long(self,dt,bktoption,unit):# 多开
         bktoption.trade_dt_open = dt
         bktoption.trade_long_short = self.util.long
         id_instrument = bktoption.id_instrument
         mkt_price = bktoption.option_price
         multiplier = bktoption.multiplier
         trade_type = '多开'
-        unit = bktoption.get_trade_unit(trade_fund)
+        # unit = bktoption.get_trade_unit(trade_fund)
         fee = unit*mkt_price*self.fee*multiplier
         premium = unit*mkt_price*multiplier
         margin_capital = 0.0
@@ -61,14 +61,13 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
 
-    def open_short(self,dt,bktoption,trade_fund):
+    def open_short(self,dt,bktoption,unit):
         bktoption.trade_dt_open = dt
         bktoption.trade_long_short = self.util.short
         id_instrument = bktoption.id_instrument
         mkt_price = bktoption.option_price
         multiplier = bktoption.multiplier
         trade_type = '空开'
-        unit = bktoption.get_trade_unit(trade_fund)
         fee = unit*mkt_price*self.fee*multiplier
         premium = unit*mkt_price*multiplier
         margin_capital = unit*bktoption.get_init_margin()
@@ -150,7 +149,7 @@ class BktAccount(object):
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
 
-    def rebalance_position(self,dt,bktoption,trade_fund):
+    def rebalance_position(self,dt,bktoption,unit):
 
         id_instrument = bktoption.id_instrument
         mkt_price = bktoption.option_price
@@ -159,8 +158,7 @@ class BktAccount(object):
         open_price = bktoption.trade_open_price
         multiplier = bktoption.multiplier
         premium = bktoption.premium
-        unit = bktoption.get_trade_unit(trade_fund)
-
+        # unit = bktoption.get_trade_unit(trade_fund)
         if unit != holding_unit:
             if unit > holding_unit:# 加仓
                 margin_add = (unit-holding_unit)*bktoption.get_init_margin()
@@ -254,7 +252,6 @@ class BktAccount(object):
             bktoption.trade_margin_capital = maintain_margin
             self.cash -= margin_call
             self.total_margin_capital += margin_call
-
         money_utilization = self.total_margin_capital/(self.total_margin_capital+self.cash)
         self.total_asset = self.cash+self.total_margin_capital+mtm_long_positions+mtm_short_positions
         self.npv = self.total_asset/self.init_fund

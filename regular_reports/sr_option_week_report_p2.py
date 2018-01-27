@@ -1,12 +1,7 @@
 from sqlalchemy import *
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from mpl_toolkits.axes_grid1 import host_subplot
 from matplotlib.dates import date2num
-import matplotlib.dates as mdates
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib as mpl
-from matplotlib import cm as plt_cm
 import datetime
 import pandas as pd
 import numpy as np
@@ -14,7 +9,6 @@ from WindPy import w
 from data_access.db_tables import DataBaseTables as dbt
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
-import QuantLib as ql
 
 w.start()
 pu = PlotUtil()

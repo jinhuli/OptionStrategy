@@ -1,7 +1,7 @@
 import datetime
 import QuantLib as ql
 import hashlib
-
+import numpy as np
 
 class BktUtil():
 
@@ -141,6 +141,9 @@ class BktUtil():
 
     def to_dt_date(self,ql_date):
         return datetime.date(ql_date.year(),ql_date.month(),ql_date.dayOfMonth())
+
+
+
 
     def get_sha(self):
 

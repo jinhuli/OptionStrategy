@@ -1,5 +1,4 @@
 from sqlalchemy import *
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
@@ -32,8 +31,6 @@ options_table = dbt.Options
 evalDate = datetime.date(2018, 1, 26).strftime("%Y-%m-%d")  # Set as Friday
 start_date = w.tdaysoffset(-1, evalDate, "Period=M").Data[0][0].strftime("%Y-%m-%d")
 hist_date = w.tdaysoffset(-2, evalDate, "Period=Y").Data[0][0].strftime("%Y-%m-%d")
-# hist_date = w.tdaysoffset(-60, start_date, "").Data[0][0].strftime("%Y-%m-%d")
-# hist_date = datetime.date(2017, 1, 1).strftime("%Y-%m-%d")
 evalDate_1week = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 evalDate_2week = w.tdaysoffset(-2, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 evalDate_3week = w.tdaysoffset(-3, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
@@ -43,9 +40,7 @@ plt.rcParams['font.sans-serif'] = ['STKaiti']
 plt.rcParams.update({'font.size': 13})
 flagNight = 0
 nameCode = 'sr'
-contracts = ['1805', '1807', '1809','1901']
-
-# print(optionivs_df['date'].unique())
+contracts = ['1805', '1809','1901','1905']
 
 ################ # ATM Implied Vols
 
@@ -96,14 +91,19 @@ print('atm_implied_vols')
 print(optiondata_atm_df)
 f1, ax1 = plt.subplots()
 cont = 0
+contracts = []
 for d in dates:
     c2 = optiondata_atm_df['date'].map(lambda a: a == d)
     df = optiondata_atm_df[c2]
-    pu.plot_line(ax1, cont, df['contract_month'], df['implied_vol'], d, '合约月份', '波动率(%)')
+    print(df)
+    pu.plot_line(ax1, cont, range(len(df)), df['implied_vol'], d, '合约月份', '波动率(%)')
+    if len(contracts)==0 :contracts = df['contract_month'].tolist()
     cont += 1
 ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
            ncol=3, mode="expand", borderaxespad=0.,frameon=False)
+ax1.set_xticks(range(len(contracts)))
 ax1.set_xticklabels(contracts)
+
 f1.savefig('../save_figure/implied_vols_' + str(evalDate) + '.png', dpi=300, format='png')
 
 #################### Futures and Realised Vol
@@ -239,43 +239,20 @@ for dt in dates_week:
         daycounter)
     black_var_surfaces.append(black_var_surface)
 
-fig1 = plt.figure()
-ax_ivs = fig1.gca(projection='3d')
 X, Y = np.meshgrid(plot_strikes, plot_years)
 Z = np.array([black_var_surfaces[0].blackVol(y, x)
               for xr, yr in zip(X, Y)
               for x, y in zip(xr, yr)]
              ).reshape(len(X), len(X[0]))
-Z5 = np.array([black_var_surfaces[1].blackVol(y, x)
-              for xr, yr in zip(X, Y)
-              for x, y in zip(xr, yr)]
-             ).reshape(len(X), len(X[0]))
-Z_hist = np.array([current_vols[-1]
-               for xr, yr in zip(X, Y)
-               for x, y in zip(xr, yr)]
-              ).reshape(len(X), len(X[0]))
-surf = ax_ivs.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=plt_cm.coolwarm, linewidth=0.1)
-ax_ivs.plot_surface(X, Y, Z_hist, rstride=1, cstride=1, cmap=plt_cm.coolwarm, linewidth=0.1)
-
-fake2Dline = mpl.lines.Line2D([0], [0], linestyle="none", c='r', marker='s')
-fake2Dline2 = mpl.lines.Line2D([0], [0], linestyle="none", c='b', marker='s')
-ax_ivs.legend([fake2Dline, fake2Dline2], ['隐含波动率', '已实现波动率'], numpoints=1)
-ax_ivs.set_xlabel('行权价')
-ax_ivs.set_ylabel('期限')
-ax_ivs.set_zlabel('波动率（%）')
-fig1.colorbar(surf, shrink=0.5, aspect=5)
 
 fig2 = plt.figure()
 ax_ivs2 = fig2.gca(projection='3d')
 surf2 = ax_ivs2.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=plt_cm.coolwarm, linewidth=0.1)
-# ax_ivs2.plot_surface(X, Y, Z5, rstride=1, cstride=1, color='b', linewidth=0.1)
-# ax_ivs2.legend([fake2Dline, fake2Dline2], ['当前隐含波动率', '上周隐含波动率'], numpoints=1)
 ax_ivs2.set_xlabel('行权价')
 ax_ivs2.set_ylabel('期限')
 ax_ivs2.set_zlabel('波动率（%）')
 fig2.colorbar(surf2, shrink=0.5, aspect=5)
 
 
-fig1.savefig('../save_figure/iv_surface_' + str(evalDate) + '.png', dpi=300, format='png')
 fig2.savefig('../save_figure/iv_surface_2_' + str(evalDate) + '.png', dpi=300, format='png')
 plt.show()
