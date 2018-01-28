@@ -62,11 +62,11 @@ hp = 20
 
 bkt = BktStrategyLongShort(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
                         nbr_top_bottom = 5)
-bkt.set_option_type('all')
+bkt.set_option_type('put')
 # bkt.set_trade_type(util.long_top)
 bkt.set_trade_type(util.long_bottom)
 bkt.set_min_ttm(hp+1)
-bkt.set_max_ttm(90)
+# bkt.set_max_ttm(60)
 bkt.set_min_trading_volume(200)
 bkt.run()
 

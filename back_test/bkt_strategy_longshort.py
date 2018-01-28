@@ -3,9 +3,6 @@ from back_test.bkt_option_set import BktOptionSet
 import QuantLib as ql
 from back_test.bkt_util import BktUtil
 import pandas as pd
-import datetime
-
-
 
 
 class BktStrategyLongShort(object):
@@ -91,8 +88,11 @@ class BktStrategyLongShort(object):
         else:
             if self.option_type == self.util.type_call:
                 option_list = self.bkt_optionset.bktoption_list_call
-            else:
+            elif self.option_type == self.util.type_put:
                 option_list = self.bkt_optionset.bktoption_list_put
+            else:
+                print('option type not set')
+                return
             option_list  =self.get_candidate_set(eval_date,option_list)
             df_ranked = self.get_ranked(option_list)
             df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
@@ -174,14 +174,9 @@ class BktStrategyLongShort(object):
                 continue
 
             evalDate = bkt_optionset.eval_date
-            # if evalDate == datetime.date(2017,1,12):
-            #     print('e')
-            # print('eval date : ',evalDate)
-            # if evalDate >= datetime.date(2016,11,28):
-            #     print(evalDate)
-            for option in bkt_optionset.bktoption_list_call:
-                if option.dt_date != evalDate:
-                    print(option.id_instrument, ' , ', option.dt_date)
+            # for option in bkt_optionset.bktoption_list_call:
+            #     if option.dt_date != evalDate:
+            #         print(option.id_instrument, ' , ', option.dt_date)
             hp_enddate = self.util.to_dt_date(
                 self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
@@ -205,7 +200,6 @@ class BktStrategyLongShort(object):
             """持有期holding_period满，进行调仓 """
             if (bkt_optionset.index-1)%self.holding_period==0 or not self.flag_trade:
                 print('调仓 : ', evalDate)
-                # option_list = self.get_candidate_set(evalDate)
                 df_buy, df_sell = self.get_long_short(evalDate)
 
                 """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
@@ -217,7 +211,7 @@ class BktStrategyLongShort(object):
                         if bktoption.trade_long_short == -1 and bktoption in df_sell['bktoption']: continue
                         bkt.close_position(evalDate, bktoption)
 
-                """开仓：等金额做多df_buy，等金额做空df_sell"""
+                """开仓：做多df_buy，做空df_sell"""
                 if len(df_buy)+len(df_sell) == 0:
                     self.flag_trade = False
                 else:

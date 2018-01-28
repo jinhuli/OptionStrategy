@@ -37,11 +37,6 @@ class BktOptionSet(object):
         self.update_multiplier_adjustment()
         self.start()
 
-        # if self.frequency in self.bktutil.cd_frequency_intraday:
-        #     self.datetime_list = sorted(self.df_metrics[col_datetime].unique())
-        #     self.eval_datetime = self.datetime_list[0]
-        #     self.add_dtdate_column(col_date,col_datetime)
-
 
     def start(self):
         self.dt_list = sorted(self.df_metrics[self.util.col_date].unique())
@@ -50,8 +45,6 @@ class BktOptionSet(object):
         self.eval_date = self.start_date
         self.update_current_daily_state()
         self.update_eligible_maturities()
-        # if self.frequency in self.bktutil.cd_frequency_intraday:
-        #     self.update_current_datetime_state()
         self.update_bktoption()
 
 
@@ -60,13 +53,6 @@ class BktOptionSet(object):
             self.update_eval_date()
             self.update_current_daily_state()
             self.update_eligible_maturities()
-        # else:
-        #     self.update_eval_datetime()
-        #     self.update_current_datetime_state()
-        #     if self.eval_datetime.date() != self.eval_date:
-        #         self.eval_date = self.eval_datetime.date()
-        #         self.update_current_daily_state()
-        #         self.update_eligible_maturities()
         self.update_bktoption()
 
 
@@ -78,12 +64,9 @@ class BktOptionSet(object):
             bktoption_list_call = []
             bktoption_list_put = []
             df_current = self.df_daily_state
-            # df_current = self.get_duplicate_strikes_dropped(df_current)
             option_ids = df_current[self.util.col_id_instrument].unique()
             for bktoption in self.bktoption_list:
-                # if bktoption.id_instrument in option_ids and bktoption.maturitydt in self.eligible_maturities:
                 if bktoption.id_instrument in option_ids :
-                    # go to next state
                     bktoption.next()
                     bktoption_list.append(bktoption)
                     if bktoption.option_type == 'call' : bktoption_list_call.append(bktoption)
@@ -92,7 +75,6 @@ class BktOptionSet(object):
             for optionid in option_ids:
                 if optionid in bkt_ids: continue
                 df_option = self.df_metrics[self.df_metrics[self.util.col_id_instrument] == optionid].reset_index()
-                # if df_option[self.util.col_maturitydt].values[0] not in self.eligible_maturities: continue
                 bktoption = BktOption(self.frequency, df_option,id_instrument=optionid)
                 bktoption_list.append(bktoption)
                 if bktoption.option_type == 'call':
@@ -103,37 +85,22 @@ class BktOptionSet(object):
             self.bktoption_list = bktoption_list
             self.bktoption_list_call = bktoption_list_call
             self.bktoption_list_put = bktoption_list_put
-            # else:
-            #     df_current = self.df_datetime_state
 
 
     def update_eval_date(self):
         self.index += 1
-        # self.eval_date = self.dt_list[min(self.dt_list.index(self.eval_date)+1,len(self.dt_list)-1)]
         self.eval_date = self.dt_list[self.dt_list.index(self.eval_date)+1]
-
-
-    # def update_eval_datetime(self):
-    #     self.index += 1
-    #     self.eval_datetime = self.datetime_list[min(self.datetime_list.index(self.eval_datetime)+1,
-    #                                            len(self.datetime_list)-1)]
 
 
     def update_current_daily_state(self):
         self.df_daily_state = self.df_metrics[self.df_metrics[self.util.col_date]==self.eval_date].reset_index()
 
 
-    # def update_current_datetime_state(self,col_datetime='dt_datetime'):
-    #     self.df_datetime_state = self.df_metrics[self.df_metrics[col_datetime]==self.eval_datetime].reset_index()
-
-
     def update_eligible_maturities(self): # n: 要求合约剩余期限大于n（天）
 
         maturity_dates = self.df_daily_state[self.util.col_maturitydt].unique()
         maturity_dates2 = []
-        # hp_enddate = w.tdaysoffset(self.hp, self.eval_date).Data[0][0].date()
         for mdt in maturity_dates:
-            # if mdt > hp_enddate: maturity_dates2.append(mdt)
             ttm = (mdt-self.eval_date).days
             if ttm > self.min_ttm : maturity_dates2.append(mdt)
         self.eligible_maturities = maturity_dates2
@@ -200,7 +167,6 @@ class BktOptionSet(object):
         for (idx,row) in self.df_metrics.iterrows():
             self.df_metrics.loc[idx,self.util.col_adj_strike] = \
                 round(row[self.util.col_strike]*row[self.util.col_multiplier]/10000,2)
-            # self.df_metrics.loc[idx,'adj_underlying_price'] = round(row[col_underlying_price]*row[col_multiplier]/10000,2)
             self.df_metrics.loc[idx,self.util.col_adj_option_price] = \
                 round(row[self.util.col_close]*row[self.util.col_multiplier]/10000,2)
 
@@ -215,8 +181,6 @@ class BktOptionSet(object):
         for idx,option in enumerate(bktoption_list):
             if self.frequency in self.util.cd_frequency_low:
                 df.loc[idx, self.util.col_date] = self.eval_date
-            # else:
-            #     df.loc[idx, 'dt_datetime'] = self.eval_datetime
             df.loc[idx, self.util.col_id_instrument] = option.id_instrument
             df.loc[idx, self.util.col_adj_strike] = option.adj_strike
             df.loc[idx, self.util.col_option_type] = option.option_type
@@ -231,8 +195,6 @@ class BktOptionSet(object):
         for idx,option in enumerate(bktoption_list):
             if self.frequency in self.util.cd_frequency_low:
                 df.loc[idx, self.util.col_date] = self.eval_date
-            # else:
-            #     df.loc[idx, 'dt_datetime'] = self.eval_datetime
             df.loc[idx, self.util.col_id_instrument] = option.id_instrument
             df.loc[idx, self.util.col_adj_strike] = option.adj_strike
             df.loc[idx, self.util.col_option_type] = option.option_type
@@ -246,8 +208,6 @@ class BktOptionSet(object):
         for idx,option in enumerate(bktoption_list):
             if self.frequency in self.util.cd_frequency_low:
                 df.loc[idx, self.util.col_date] = self.eval_date
-            # else:
-            #     df.loc[idx, 'dt_datetime'] = self.eval_datetime
             df.loc[idx, self.util.col_id_instrument] = option.id_instrument
             df.loc[idx, self.util.col_adj_strike] = option.adj_strike
             df.loc[idx, self.util.col_option_type] = option.option_type
@@ -262,8 +222,6 @@ class BktOptionSet(object):
         for idx,option in enumerate(bktoption_list):
             if self.frequency in self.util.cd_frequency_low:
                 df.loc[idx, self.util.col_date] = self.eval_date
-            # else:
-            #     df.loc[idx, 'dt_datetime'] = self.eval_datetime
             df.loc[idx, self.util.col_id_instrument] = option.id_instrument
             df.loc[idx, self.util.col_adj_strike] = option.adj_strike
             df.loc[idx, self.util.col_option_type] = option.option_type
@@ -287,8 +245,6 @@ class BktOptionSet(object):
             if np.isnan(iv_roll_down): iv_roll_down = -999.0
             if self.frequency in self.util.cd_frequency_low:
                 df.loc[idx, self.util.col_date] = self.eval_date
-            # else:
-            #     df.loc[idx, 'dt_datetime'] = self.eval_datetime
             df.loc[idx, self.util.col_id_instrument] = option.id_instrument
             df.loc[idx, self.util.col_code_instrument] = option.code_instrument
             df.loc[idx, self.util.col_adj_strike] = option.adj_strike
@@ -329,8 +285,6 @@ class BktOptionSet(object):
             if iv_roll_down == None or  np.isnan(iv_roll_down): iv_roll_down = -999.0
             if self.frequency in self.util.cd_frequency_low:
                 df.loc[idx, self.util.col_date] = self.eval_date
-            # else:
-            #     df.loc[idx, 'dt_datetime'] = self.eval_datetime
             option.carry = carry
             option.theta = theta
             option.vega = vega
