@@ -326,7 +326,7 @@ class BktAccount(object):
         host.set_ylabel('Net Value')
         par.set_ylabel('Drawdown')
         host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-                    ncol=3, mode="expand", borderaxespad=0.)
+                    ncol=3, mode="expand", borderaxespad=0.,frameon=False)
         fig.savefig('../save_figure/npv.png', dpi=300,format='png')
         plt.show()
 

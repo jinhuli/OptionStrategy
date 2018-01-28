@@ -78,7 +78,7 @@ class BktOptionSet(object):
             bktoption_list_call = []
             bktoption_list_put = []
             df_current = self.df_daily_state
-            df_current = self.get_duplicate_strikes_dropped(df_current)
+            # df_current = self.get_duplicate_strikes_dropped(df_current)
             option_ids = df_current[self.util.col_id_instrument].unique()
             for bktoption in self.bktoption_list:
                 # if bktoption.id_instrument in option_ids and bktoption.maturitydt in self.eligible_maturities:
@@ -337,7 +337,12 @@ class BktOptionSet(object):
             option.iv_roll_down = iv_roll_down
             df.loc[idx, self.util.col_carry] = carry
             df.loc[idx,self.util.bktoption] = option
+            df.loc[idx,self.util.col_adj_strike] = option.adj_strike
+            df.loc[idx,self.util.col_maturitydt] = option.maturitydt
+            df.loc[idx,self.util.col_option_type] = option.option_type
+            df.loc[idx,self.util.col_trading_volume] = option.get_trading_volume()
         df = df.sort_values(by=self.util.col_carry,ascending=False)
+        df = self.get_duplicate_strikes_dropped(df)
         try:
             df = df.reset_index()
         except:

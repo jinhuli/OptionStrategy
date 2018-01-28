@@ -174,6 +174,14 @@ class BktStrategyLongShort(object):
                 continue
 
             evalDate = bkt_optionset.eval_date
+            # if evalDate == datetime.date(2017,1,12):
+            #     print('e')
+            # print('eval date : ',evalDate)
+            # if evalDate >= datetime.date(2016,11,28):
+            #     print(evalDate)
+            for option in bkt_optionset.bktoption_list_call:
+                if option.dt_date != evalDate:
+                    print(option.id_instrument, ' , ', option.dt_date)
             hp_enddate = self.util.to_dt_date(
                 self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
