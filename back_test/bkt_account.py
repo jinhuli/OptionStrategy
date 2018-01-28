@@ -114,7 +114,7 @@ class BktAccount(object):
 
             position = pd.Series()
             position[self.util.id_instrument] = id_instrument
-            position[self.util.dt_open] = dt
+            position[self.util.dt_open] = dt_open
             position[self.util.long_short] = long_short
             position[self.util.premium] = premium
             position[self.util.open_price] = open_price
@@ -325,9 +325,8 @@ class BktAccount(object):
         par.fill_between(x, [0]*len(dd),dd,label='drawdown',  color=self.pu.colors[1])
         host.set_ylabel('Net Value')
         par.set_ylabel('Drawdown')
-        # host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-        #             ncol=3, mode="expand", borderaxespad=0.)
-        # fig1.set_size_inches((8, 6))
+        host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+                    ncol=3, mode="expand", borderaxespad=0.)
         fig.savefig('../save_figure/npv.png', dpi=300,format='png')
         plt.show()
 

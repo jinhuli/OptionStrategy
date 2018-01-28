@@ -17,6 +17,7 @@ class BktStrategyLongShort(object):
         self.init_fund = init_fund
         self.money_utl = money_utilization
         self.holding_period = hp
+
         self.df_option_metrics = df_option_metrics
         self.buy_ratio = buy_ratio
         self.sell_ratio = sell_ratio

@@ -45,7 +45,7 @@ for indexid in index_ids:
 
     query1 = sess1.query(EquityIndexIntraday.id_instrument,
                          EquityIndexIntraday.dt_datetime,
-                         EquityIndexIntraday.amt_price) \
+                         EquityIndexIntraday.amt_close) \
         .filter(EquityIndexIntraday.dt_datetime >= startDate) \
         .filter(EquityIndexIntraday.dt_datetime <= evalDate) \
         .filter(EquityIndexIntraday.id_instrument == indexid) \
@@ -81,7 +81,7 @@ for indexid in index_ids:
         yields = []
         for i in range(len(df)):
             if i == 0: continue
-            r = np.log(float(df.loc[i, 'amt_price']) / float(df.loc[i - 1, 'amt_price']))
+            r = np.log(float(df.loc[i, 'amt_close']) / float(df.loc[i - 1, 'amt_close']))
             yields.append(r)
         RV = 0.0
         for i in range(len(yields) - 1):

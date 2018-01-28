@@ -169,19 +169,19 @@ fig1 = plt.figure()
 host = host_subplot(111)
 par = host.twinx()
 ldgs = [ '持仓量P/C', '成交量P/C','期货价格（左）']
-
-p1, = par.plot(df_pcr['dt_date'].tolist(), df_pcr['pcr_holding'].tolist(),
+x = range(len(df_pcr['dt_date'].tolist()))
+p1, = par.plot(x, df_pcr['pcr_holding'].tolist(),
         color = pu.colors[0], linestyle = pu.lines[0], linewidth = 2)
-p2, = par.plot(df_pcr['dt_date'].tolist(), df_pcr['pcr_trading'].tolist(),
+p2, = par.plot(x, df_pcr['pcr_trading'].tolist(),
         color=pu.colors[1], linestyle=pu.lines[1], linewidth=2)
-p3, = host.plot(df_pcr['dt_date'].tolist(), df_pcr['future_close'].tolist(),
+p3, = host.plot(x, df_pcr['future_close'].tolist(),
         color=pu.colors[2], linestyle=pu.lines[2], linewidth=2)
 host.legend([p1,p2,p3],ldgs,bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
             ncol=3, mode="expand", borderaxespad=0.,frameon=False)
 host.spines['top'].set_visible(False)
 host.yaxis.set_ticks_position('left')
 host.xaxis.set_ticks_position('bottom')
-plt.setp(host,xticks = xticks,xticklabels=dates)
+plt.setp(host,xticks = x,xticklabels=dates)
 # host.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m/%Y"))
 for label in host.get_xmajorticklabels():
     label.set_rotation(270)

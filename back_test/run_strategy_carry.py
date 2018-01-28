@@ -10,7 +10,7 @@ from back_test.bkt_strategy_longshort import BktStrategyLongShort
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 3, 31)
+start_date = datetime.date(2016, 3, 21)
 # start_date = datetime.date(2016, 6, 1)
 # end_date = datetime.date(2017, 12, 1)
 end_date = datetime.date(2017, 12, 31)
@@ -60,24 +60,24 @@ df_option_metrics = df_option.join(df_50etf.set_index('dt_date'),how='left',on='
 
 
 """Run Backtest"""
-hp = 5
+hp = 20
 
 bkt = BktStrategyLongShort(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
                         nbr_top_bottom = 5)
-bkt.set_option_type('all')
-# bkt.set_trade_type(util.long_top)
-bkt.set_trade_type(util.long_bottom)
+bkt.set_option_type('put')
+bkt.set_trade_type(util.long_top)
+# bkt.set_trade_type(util.long_bottom)
 bkt.set_min_ttm(hp+1)
 bkt.set_max_ttm(90)
-bkt.set_min_trading_volume(100)
+bkt.set_min_trading_volume(200)
 bkt.run()
 
-bkt.return_analysis()
 
 bkt.bkt_account.df_account.to_csv('../save_results/df_account.csv')
 bkt.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')
 bkt.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
 
+bkt.return_analysis()
 
 
 
