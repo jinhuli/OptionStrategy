@@ -10,7 +10,7 @@ from back_test.bkt_strategy_longshort import BktStrategyLongShort
 
 
 """Back Test Settings"""
-start_date = datetime.date(2016, 3, 21)
+start_date = datetime.date(2015, 12, 21)
 end_date = datetime.date(2017, 12, 31)
 
 
@@ -62,7 +62,7 @@ hp = 20
 
 bkt = BktStrategyLongShort(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
                         nbr_top_bottom = 5)
-bkt.set_option_type('put')
+bkt.set_option_type('call')
 # bkt.set_trade_type(util.long_top)
 bkt.set_trade_type(util.long_bottom)
 bkt.set_min_ttm(hp+1)

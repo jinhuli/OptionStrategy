@@ -23,15 +23,23 @@ df = df.reset_index()
 print('='*10)
 print(df.loc[0:2])
 print('-'*10)
-print(df[0:2])
-print('='*10)
-print(df.loc[len(df)-2:])
-print('-'*10)
-print(df[len(df)-2:])
+print(df[0:1])
+# print('='*10)
+# print(df.loc[len(df)-2:])
+# print('-'*10)
+# print(df[len(df)-2:])
 
-a = [1,2,3,4,5]
-i = [0]*len(a)
+# a = [1,2,3,4,5]
+# i = [0]*len(a)
 
-print(a)
-print(i)
+# print(a)
+# print(i)
 
+a = 'sr_1801'
+print(int(a[-2:]))
+print(int('20'+a[-4:-2]))
+
+d1 = datetime.date(2017,1,1)
+d2 = datetime.date(2017,6,1)
+d3 = d2-d1
+print(d3.days)
