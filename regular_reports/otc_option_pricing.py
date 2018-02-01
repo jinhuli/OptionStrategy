@@ -42,18 +42,18 @@ ql.Settings.instance().evaluationDate = ql_evalDate
 ##################################################################################################
 ql_mdt = calendar.advance(ql_evalDate,ql.Period(3,ql.Months))
 
-spot_300 = 4030.49
-spot_50 = 2879.64
-spot_500 = 6199.36
+spot_300 = 4302.0181
+spot_50 = 3120.6951
+spot_500 = 6309.8836
 strike_300 = spot_300
 strike_50 = spot_50
 strike_500 = spot_500
-option_300_call = spot_300*3.97/100.0
-option_300_put = spot_300*3.5/100.0
-option_50_call = spot_50*4.1/100.0
-option_50_put = spot_50*3.16/100.0
-option_500_call = spot_500*3.8/100.0
-option_500_put = spot_500*4.76/100.0
+option_300_call = spot_300*4.07/100.0
+option_300_put = spot_300*3.4/100.0
+option_50_call = spot_50*4.08/100.0
+option_50_put = spot_50*3.33/100.0
+option_500_call = spot_500*4.09/100.0
+option_500_put = spot_500*4.59/100.0
 iv_300_call = calculate_implied_vol(ql.Option.Call,ql_mdt,strike_300,spot_300,option_300_call)
 iv_300_put = calculate_implied_vol(ql.Option.Put,ql_mdt,strike_300,spot_300,option_300_put)
 iv_50_call = calculate_implied_vol(ql.Option.Call,ql_mdt,strike_50,spot_50,option_50_call)

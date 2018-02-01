@@ -31,8 +31,8 @@ EquityIndexIntraday = dbt.EquityIndexIntraday
 IndexMkt = dbt.IndexMkt
 ############################################################################################
 # Eval Settings
-evalDate = datetime.date(2017, 12, 28)
-startDate = datetime.date(2016, 1, 1)
+evalDate = datetime.date(2018, 1, 30)
+startDate = datetime.date(2017, 1, 1)
 # startDate = datetime.date(2017, 12, 1)
 hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
 index_ids = ['index_300sh','index_50sh','index_500sh']
@@ -41,6 +41,13 @@ index_ids = ['index_300sh','index_50sh','index_500sh']
 histvols_3M = []
 realizedvols = []
 dates = []
+mergedvix_df = pd.DataFrame()
+query2_1 = sess2.query(IndexMkt.id_instrument, IndexMkt.dt_date, IndexMkt.amt_close) \
+        .filter(IndexMkt.dt_date >= startDate) \
+        .filter(IndexMkt.dt_date <= evalDate) \
+        .filter(IndexMkt.id_instrument == 'index_cvix')
+cvix_df = pd.read_sql(query2_1.statement, query2_1.session.bind)
+
 for indexid in index_ids:
 
     query1 = sess1.query(EquityIndexIntraday.id_instrument,
@@ -56,19 +63,15 @@ for indexid in index_ids:
         .filter(IndexMkt.dt_date <= evalDate) \
         .filter(IndexMkt.id_instrument == indexid)
 
-    query2_1 = sess2.query(IndexMkt.id_instrument, IndexMkt.dt_date, IndexMkt.amt_close) \
-        .filter(IndexMkt.dt_date >= startDate) \
-        .filter(IndexMkt.dt_date <= evalDate) \
-        .filter(IndexMkt.id_instrument == 'index_cvix')
+
 
     intraday_df = pd.read_sql(query1.statement, query1.session.bind)
     index_df = pd.read_sql(query2.statement, query2.session.bind)
-    cvix_df = pd.read_sql(query2_1.statement, query2_1.session.bind)
 
     for i in range(len(intraday_df)):
         intraday_df.loc[i, 'dt_date'] = intraday_df.loc[i, 'dt_datetime'].date()
 
-    print(intraday_df)
+    # print(intraday_df)
 
     rv_dict = []
     date_range = w.tdays(startDate, evalDate, "").Data[0]
@@ -89,7 +92,7 @@ for indexid in index_ids:
         sigma = np.sqrt(RV * 252) * 100
         rv_dict.append({'dt_date': date, 'intraday_vol': sigma})
     rv_df = pd.DataFrame(rv_dict)
-    print(rv_df)
+    # print(rv_df)
 
     for (idx, row) in index_df.iterrows():
         if idx == 0:
@@ -106,22 +109,25 @@ for indexid in index_ids:
         if idx_v >= 20:
             index_df.loc[idx_v, 'histvol_20'] = np.std(index_df['yield'][idx_v - 20:idx_v]) * np.sqrt(252) * 100
 
-    print(index_df)
+    # print(index_df)
     merged_df = rv_df.join(index_df.set_index('dt_date'), on='dt_date')
     mergedvix_df = rv_df.join(cvix_df.set_index('dt_date'), on='dt_date')
 
-    print(merged_df)
+    # print(merged_df)
 
     dates = merged_df['dt_date'].tolist()
-    vol_set = [merged_df['intraday_vol'].tolist(),
+    vol_set = [
                merged_df['histvol_120'].tolist(),
                merged_df['histvol_60'].tolist(),
                merged_df['histvol_20'].tolist(),
                mergedvix_df['amt_close'].tolist()
                ]
-    print(indexid,' histvol_60 : ',merged_df['histvol_60'].tolist()[-1])
+    print(dates[-1],indexid,' intraday_vol : ',merged_df['intraday_vol'].tolist()[-1])
+    print(dates[-1],indexid,' histvol_120 : ',merged_df['histvol_120'].tolist()[-1])
+    print(dates[-1],indexid,' histvol_60 : ',merged_df['histvol_60'].tolist()[-1])
+    print(dates[-1],indexid,' histvol_20 : ',merged_df['histvol_20'].tolist()[-1])
     f2, ax2 = plt.subplots()
-    ldgs = ['已实现波动率RV', '历史波动率6M', '历史波动率3M', '历史波动率1M', '中国波指IVIX']
+    ldgs = ['历史波动率6M', '历史波动率3M', '历史波动率1M', '中国波指IVIX']
     for cont2, y in enumerate(vol_set):
         pu.plot_line(ax2, cont2, dates, y, ldgs[cont2], '日期', '波动率（%）')
     ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
@@ -144,8 +150,9 @@ f3.set_size_inches((12,5))
 f3.savefig('../save_figure/otc_histvol_3M_' + str(startDate) + ' - ' + str(evalDate) + '.png',
             dpi=300, format='png')
 
+realizedvols.append(mergedvix_df['amt_close'].tolist())
 f4, ax4 = plt.subplots()
-ldgs = ['沪深300指数日内已实现波动率','上证50指数日内已实现波动率','中证500指数日内已实现波动率']
+ldgs = ['沪深300指数日内已实现波动率','上证50指数日内已实现波动率','中证500指数日内已实现波动率','中国波指IVIX']
 for cont2, y in enumerate(realizedvols):
     pu.plot_line(ax4, cont2, dates, y, ldgs[cont2], '日期', '波动率（%）')
 ax4.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
@@ -153,6 +160,4 @@ ax4.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
 f4.set_size_inches((12,5))
 f4.savefig('../save_figure/otc_realizedvols_' + str(startDate) + ' - ' + str(evalDate) + '.png',
             dpi=300, format='png')
-print(realizedvols)
-print(histvols_3M)
 plt.show()

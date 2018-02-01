@@ -31,7 +31,7 @@ index_daily = Table('indexes_mktdata', metadata, autoload=True)
 dc = DataCollection()
 #####################################################################################
 beg_date = datetime.date(2018, 1, 19)
-end_date = datetime.date(2018, 1, 19)
+end_date = datetime.date(2018, 1, 29)
 
 date_range = w.tdays(beg_date, end_date, "").Data[0]
 for dt in date_range:

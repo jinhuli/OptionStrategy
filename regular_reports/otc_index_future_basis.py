@@ -36,7 +36,7 @@ index_names = ['沪深300指数','上证50指数','中证500指数']
 # futurescode = 'IF'
 ############################################################################################
 # Eval Settings
-eval_date = datetime.date(2017, 12, 22)
+eval_date = datetime.date(2018, 1, 29)
 evalDate = eval_date.strftime("%Y-%m-%d")
 
 hist_date = datetime.date(2016, 1, 1)
@@ -44,7 +44,7 @@ hist_date = datetime.date(2016, 1, 1)
 #############################################################################################
 for idx_index,indexid in enumerate(index_ids):
     futurescode = future_codes[idx_index]
-    data = w.wsd(futurescode+'.CFE', "trade_hiscode", hist_date.strftime('%Y-%m-%d'), evalDate.strftime('%Y-%m-%d'), "")
+    data = w.wsd(futurescode+'.CFE', "trade_hiscode", hist_date.strftime('%Y-%m-%d'), evalDate, "")
     id_cores = []
     for idx,dt in enumerate(data.Times):
         name = data.Data[0][idx]

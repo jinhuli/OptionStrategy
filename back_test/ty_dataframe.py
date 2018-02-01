@@ -12,18 +12,22 @@ df = pd.DataFrame({
 })
 df = df.sort_values('d')
 for (idx,row) in df.iterrows():
-    print(idx)
     df.loc[idx,'add'] = row['d']-row['c']
+
+print(df)
+print('-'*10)
+
+print(df['a'][0:2].tolist())
 
 # print(df)
 # print('-'*10)
 # print(df[0:2])
 # print('-'*10)
-df = df.reset_index()
-print('='*10)
-print(df.loc[0:2])
-print('-'*10)
-print(df[0:1])
+# df = df.reset_index()
+# print('='*10)
+# print(df.loc[0:2])
+# print('-'*10)
+# print(df[0:1])
 # print('='*10)
 # print(df.loc[len(df)-2:])
 # print('-'*10)
@@ -34,12 +38,3 @@ print(df[0:1])
 
 # print(a)
 # print(i)
-
-a = 'sr_1801'
-print(int(a[-2:]))
-print(int('20'+a[-4:-2]))
-
-d1 = datetime.date(2017,1,1)
-d2 = datetime.date(2017,6,1)
-d3 = d2-d1
-print(d3.days)

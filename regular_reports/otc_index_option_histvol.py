@@ -29,7 +29,7 @@ indexmkt_table = dbt.IndexMkt
 index_ids = ['index_300sh','index_50sh','index_500sh']
 ############################################################################################
 # Eval Settings
-eval_date = datetime.date(2017, 12, 28)
+eval_date = datetime.date(2018, 1, 29)
 evalDate = eval_date.strftime("%Y-%m-%d")
 
 hist_date = datetime.date(2016, 1, 1).strftime("%Y-%m-%d")
