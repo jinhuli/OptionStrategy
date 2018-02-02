@@ -17,7 +17,7 @@ import QuantLib as ql
 w.start()
 pu = PlotUtil()
 plt.rcParams['font.sans-serif'] = ['STKaiti']
-plt.rcParams.update({'font.size': 11})
+plt.rcParams.update({'font.size': 15})
 engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
                        echo=False)
 conn = engine.connect()
@@ -29,7 +29,7 @@ indexmkt_table = dbt.IndexMkt
 index_ids = ['index_300sh','index_50sh','index_500sh']
 ############################################################################################
 # Eval Settings
-eval_date = datetime.date(2018, 1, 29)
+eval_date = datetime.date(2018, 1, 30)
 evalDate = eval_date.strftime("%Y-%m-%d")
 
 hist_date = datetime.date(2016, 1, 1).strftime("%Y-%m-%d")
@@ -96,10 +96,10 @@ for indexid in index_ids:
     for cont2, y in enumerate(histvolcone):
         pu.plot_line(ax2, cont2, x, y, ldgs[cont2], '时间窗口', '波动率（%）')
     ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-               ncol=4, mode="expand", borderaxespad=0.)
+               ncol=6, mode="expand", borderaxespad=0.,frameon=False)
     ax2.set_xticks([5,10,20,60,120])
     ax2.set_xticklabels(x_labels)
-    f2.set_size_inches((8, 6))
+    f2.set_size_inches((12, 6))
     f2.savefig('../save_figure/otc_histvols_'+indexid+'_' + str(hist_date)+' - '+ str(evalDate) + '.png', dpi=300, format='png')
 
 

@@ -108,7 +108,10 @@ for indexid in index_ids:
             index_df.loc[idx_v, 'histvol_60'] = np.std(index_df['yield'][idx_v - 60:idx_v]) * np.sqrt(252) * 100
         if idx_v >= 20:
             index_df.loc[idx_v, 'histvol_20'] = np.std(index_df['yield'][idx_v - 20:idx_v]) * np.sqrt(252) * 100
-
+        if idx_v >= 5:
+            index_df.loc[idx_v, 'histvol_5'] = np.std(index_df['yield'][idx_v - 5:idx_v]) * np.sqrt(252) * 100
+        if idx_v >= 10:
+            index_df.loc[idx_v, 'histvol_10'] = np.std(index_df['yield'][idx_v - 10:idx_v]) * np.sqrt(252) * 100
     # print(index_df)
     merged_df = rv_df.join(index_df.set_index('dt_date'), on='dt_date')
     mergedvix_df = rv_df.join(cvix_df.set_index('dt_date'), on='dt_date')
@@ -132,23 +135,15 @@ for indexid in index_ids:
         pu.plot_line(ax2, cont2, dates, y, ldgs[cont2], '日期', '波动率（%）')
     ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
                ncol=5, mode="expand", borderaxespad=0.)
-    f2.set_size_inches((12, 5))
-
+    for tick in ax2.get_xticklabels():
+        tick.set_rotation(90)
+    f2.set_size_inches((12, 6))
     f2.savefig('../save_figure/otc_realizedvol_' + indexid + '_' + str(startDate) + ' - ' + str(evalDate) + '.png',
                dpi=300, format='png')
     histvols_3M.append(merged_df['histvol_60'].tolist())
     realizedvols.append(merged_df['intraday_vol'].tolist())
     merged_df.to_csv('../save_figure/index_vols'+indexid+'.csv')
 
-f3, ax3 = plt.subplots()
-ldgs = ['沪深300指数历史波动率3M','上证50指数历史波动率3M','中证500指数历史波动率3M']
-for cont2, y in enumerate(histvols_3M):
-    pu.plot_line(ax3, cont2, dates, y, ldgs[cont2], '日期', '波动率（%）')
-ax3.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-           ncol=3, mode="expand", borderaxespad=0.)
-f3.set_size_inches((12,5))
-f3.savefig('../save_figure/otc_histvol_3M_' + str(startDate) + ' - ' + str(evalDate) + '.png',
-            dpi=300, format='png')
 
 realizedvols.append(mergedvix_df['amt_close'].tolist())
 f4, ax4 = plt.subplots()
@@ -157,7 +152,14 @@ for cont2, y in enumerate(realizedvols):
     pu.plot_line(ax4, cont2, dates, y, ldgs[cont2], '日期', '波动率（%）')
 ax4.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=3, mode="expand", borderaxespad=0.)
-f4.set_size_inches((12,5))
+for tick in ax4.get_xticklabels():
+    tick.set_rotation(90)
+f4.set_size_inches((12,6))
 f4.savefig('../save_figure/otc_realizedvols_' + str(startDate) + ' - ' + str(evalDate) + '.png',
             dpi=300, format='png')
 plt.show()
+
+
+
+
+
