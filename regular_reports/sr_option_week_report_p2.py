@@ -26,16 +26,16 @@ OptionMkt = dbt.OptionMkt
 Options = dbt.Options
 
 # Eval Settings
-dt_date = datetime.date(2018, 1, 26)  # Set as Friday
-dt_last_week = datetime.date(2018, 1, 19)
+dt_date = datetime.date(2018, 2, 2)  # Set as Friday
+dt_last_week = datetime.date(2018, 1, 26)
 evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
-start_date = w.tdaysoffset(-1, evalDate, "Period=M").Data[0][0].strftime("%Y-%m-%d")
+start_date = w.tdaysoffset(-3, evalDate, "Period=M").Data[0][0].strftime("%Y-%m-%d")
 hist_date = datetime.date(2017, 1, 1).strftime("%Y-%m-%d")
 evalDate_1week = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 evalDate_2week = w.tdaysoffset(-2, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 evalDate_3week = w.tdaysoffset(-3, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 plt.rcParams['font.sans-serif'] = ['STKaiti']
-plt.rcParams.update({'font.size': 11})
+plt.rcParams.update({'font.size': 15})
 flagNight = 0
 nameCode = 'sr'
 contracts = ['1803', '1805', '1807', '1809']
@@ -118,11 +118,13 @@ p3, = ax3.plot(strikes, trading_call, color=pu.colors[2], linestyle=pu.lines[2],
 p4, = ax3.plot(strikes, trading_put, color=pu.colors[3], linestyle=pu.lines[3], linewidth=2)
 
 ax3.legend([p1,p2,p3,p4],ldgs,bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-           ncol=2, mode="expand", borderaxespad=0.,frameon=False)
+           ncol=4, mode="expand", borderaxespad=0.,frameon=False)
 ax3.spines['top'].set_visible(False)
 ax3.spines['right'].set_visible(False)
 ax3.yaxis.set_ticks_position('left')
 ax3.xaxis.set_ticks_position('bottom')
+f3.set_size_inches((12,6))
+
 f3.savefig('../save_figure/sr_holdings_' + evalDate + '.png', dpi=300,
              format='png',bbox_inches='tight')
 
@@ -169,7 +171,8 @@ fig1 = plt.figure()
 host = host_subplot(111)
 par = host.twinx()
 ldgs = [ '持仓量P/C', '成交量P/C','期货价格（左）']
-x = range(len(df_pcr['dt_date'].tolist()))
+# x = range(len(df_pcr['dt_date'].tolist()))
+x = df_pcr['dt_date'].tolist()
 p1, = par.plot(x, df_pcr['pcr_holding'].tolist(),
         color = pu.colors[0], linestyle = pu.lines[0], linewidth = 2)
 p2, = par.plot(x, df_pcr['pcr_trading'].tolist(),
@@ -181,11 +184,14 @@ host.legend([p1,p2,p3],ldgs,bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
 host.spines['top'].set_visible(False)
 host.yaxis.set_ticks_position('left')
 host.xaxis.set_ticks_position('bottom')
-plt.setp(host,xticks = x,xticklabels=dates)
+# plt.setp(host,xticks = x,xticklabels=dates)
 # host.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m/%Y"))
 for label in host.get_xmajorticklabels():
-    label.set_rotation(270)
+    label.set_rotation(90)
     label.set_horizontalalignment("right")
+fig1.set_size_inches((12,6))
+
 fig1.savefig('../save_figure/sr_holdings_pcr_' + evalDate + '.png', dpi=300,
              format='png',bbox_inches='tight')
+
 plt.show()

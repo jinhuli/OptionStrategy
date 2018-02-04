@@ -17,8 +17,8 @@ import QuantLib as ql
 # Eval Settings
 w.start()
 current_core_underlying = 'sr_1805'
+endDate = datetime.date(2018, 2, 2)
 startDate = datetime.date(2017, 4, 19)
-endDate = datetime.date(2018, 1, 26)
 hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
 bd_1m = 21
 bd_2m = 2 * bd_1m

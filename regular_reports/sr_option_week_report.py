@@ -28,7 +28,7 @@ optionmkt_table = dbt.OptionMkt
 options_table = dbt.Options
 
 # Eval Settings
-evalDate = datetime.date(2018, 1, 26).strftime("%Y-%m-%d")  # Set as Friday
+evalDate = datetime.date(2018, 2, 2).strftime("%Y-%m-%d")  # Set as Friday
 start_date = w.tdaysoffset(-1, evalDate, "Period=M").Data[0][0].strftime("%Y-%m-%d")
 hist_date = w.tdaysoffset(-2, evalDate, "Period=Y").Data[0][0].strftime("%Y-%m-%d")
 evalDate_1week = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
@@ -37,7 +37,7 @@ evalDate_3week = w.tdaysoffset(-3, evalDate, "Period=W").Data[0][0].strftime("%Y
 evalDate_4week = w.tdaysoffset(-4, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 evalDate_5week = w.tdaysoffset(-5, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
 plt.rcParams['font.sans-serif'] = ['STKaiti']
-plt.rcParams.update({'font.size': 13})
+plt.rcParams.update({'font.size': 15})
 flagNight = 0
 nameCode = 'sr'
 contracts = ['1805', '1809','1901','1905']
@@ -100,9 +100,10 @@ for d in dates:
     if len(contracts)==0 :contracts = df['contract_month'].tolist()
     cont += 1
 ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-           ncol=3, mode="expand", borderaxespad=0.,frameon=False)
+           ncol=6, mode="expand", borderaxespad=0.,frameon=False)
 ax1.set_xticks(range(len(contracts)))
 ax1.set_xticklabels(contracts)
+f1.set_size_inches((12,6))
 
 f1.savefig('../save_figure/implied_vols_' + str(evalDate) + '.png', dpi=300, format='png')
 
@@ -180,7 +181,9 @@ ldgs = ['当前水平', '最大值', '最小值', '中位数', '75分位数', '2
 for cont2, y in enumerate(histvolcone):
     pu.plot_line(ax2, cont2, x, y, ldgs[cont2], '时间：月', '波动率（%）')
 ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-           ncol=4, mode="expand", borderaxespad=0.,frameon=False)
+           ncol=6, mode="expand", borderaxespad=0.,frameon=False)
+f2.set_size_inches((12,6))
+
 f2.savefig('../save_figure/hist_vols_' + str(evalDate) + '.png', dpi=300, format='png')
 
 ################ #Implied Vol Surface
@@ -252,7 +255,6 @@ ax_ivs2.set_xlabel('行权价')
 ax_ivs2.set_ylabel('期限')
 ax_ivs2.set_zlabel('波动率（%）')
 fig2.colorbar(surf2, shrink=0.5, aspect=5)
-
 
 fig2.savefig('../save_figure/iv_surface_2_' + str(evalDate) + '.png', dpi=300, format='png')
 plt.show()
