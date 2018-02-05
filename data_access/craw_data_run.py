@@ -14,7 +14,7 @@ from data_access.db_data_collection import DataCollection
 w.start()
 
 # date = datetime.datetime.today().date()
-date = datetime.date(2018, 2, 2)
+date = datetime.date(2018, 2, 5)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -428,31 +428,31 @@ else:
     print('option intraday -- already exists')
 
 ########################################### TICK #################################################
-# equity index futures
-res = future_tick_data.select(future_tick_data.c.dt_datetime == dt_date + " 09:30:00").execute()
-if res.rowcount == 0:
-    df = dc.table_future_contracts().get_future_contract_ids(dt_date)
-    for (idx_oc, row) in df.iterrows():
-        db_data = dc.table_future_tick().wind_index_future_tick(dt_date, row['id_instrument'], row['windcode'])
-        try:
-            conn_intraday.execute(future_tick_data.insert(), db_data)
-            # print(row)
-            print(idx_oc,'future_tick_data -- inserted into data base succefully')
-        except Exception as e:
-            print(e)
-else:
-    print('future_tick_data -- already exists')
-
-##option_tick_data
-res = option_tick_data.select(option_tick_data.c.dt_datetime == dt_date + " 09:30:00").execute()
-if res.rowcount == 0:
-    df = dc.table_options().get_option_contracts(dt_date)
-    for (idx_oc, row) in df.iterrows():
-        db_data = dc.table_option_tick().wind_50etf_option_tick(dt_date, row)
-        try:
-            conn_intraday.execute(option_tick_data.insert(), db_data)
-            print(idx_oc,'option_tick_data -- inserted into data base succefully')
-        except Exception as e:
-            print(e)
-else:
-    print('option_tick_data -- already exists')
+# # equity index futures
+# res = future_tick_data.select(future_tick_data.c.dt_datetime == dt_date + " 09:30:00").execute()
+# if res.rowcount == 0:
+#     df = dc.table_future_contracts().get_future_contract_ids(dt_date)
+#     for (idx_oc, row) in df.iterrows():
+#         db_data = dc.table_future_tick().wind_index_future_tick(dt_date, row['id_instrument'], row['windcode'])
+#         try:
+#             conn_intraday.execute(future_tick_data.insert(), db_data)
+#             # print(row)
+#             print(idx_oc,'future_tick_data -- inserted into data base succefully')
+#         except Exception as e:
+#             print(e)
+# else:
+#     print('future_tick_data -- already exists')
+#
+# ##option_tick_data
+# res = option_tick_data.select(option_tick_data.c.dt_datetime == dt_date + " 09:30:00").execute()
+# if res.rowcount == 0:
+#     df = dc.table_options().get_option_contracts(dt_date)
+#     for (idx_oc, row) in df.iterrows():
+#         db_data = dc.table_option_tick().wind_50etf_option_tick(dt_date, row)
+#         try:
+#             conn_intraday.execute(option_tick_data.insert(), db_data)
+#             print(idx_oc,'option_tick_data -- inserted into data base succefully')
+#         except Exception as e:
+#             print(e)
+# else:
+#     print('option_tick_data -- already exists')
