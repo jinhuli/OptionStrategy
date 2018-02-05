@@ -162,6 +162,38 @@ class BktStrategyLongShort(object):
             df_sell.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
         return df_buy,df_sell
 
+    """ 2 : Ranked Weighted Market Value """
+    def get_rank_weighted_ls(self,invest_fund,df_buy,df_sell):
+        m_v_long = 0.0
+        m_v_short = 0.0
+        df_buy = self.get_rank(df_buy,self.util.col_carry)
+        df_sell = self.get_rank(df_sell,self.util.col_carry)
+        for (idx, row) in df_buy.iterrows():
+            bktoption = row['bktoption']
+            value = bktoption.option_price*bktoption.multiplier
+            weight =
+            money_use = value
+            m_v = money_use/value
+            m_v_long += m_v
+        for (idx,row) in df_sell.iterrows():
+            bktoption = row['bktoption']
+            premium = bktoption.option_price * bktoption.multiplier
+            money = bktoption.get_init_margin()-premium
+            m_v = money/premium
+            m_v_short += m_v
+        mtm = invest_fund/(m_v_long+m_v_short)
+        for (idx,row) in df_buy.iterrows():
+            bktoption = row['bktoption']
+            unit = bktoption.get_unit_by_mtmv(mtm)
+            df_buy.loc[idx,'unit'] = unit
+            df_buy.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
+        for (idx,row) in df_sell.iterrows():
+            bktoption = row['bktoption']
+            unit = bktoption.get_unit_by_mtmv(mtm)
+            df_sell.loc[idx,'unit'] = unit
+            df_sell.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
+        return df_buy,df_sell
+
     def get_rank(self,df,col_name):
         df = df.loc[:, df.columns != col_name].join(df[[col_name]].rank(method='dense', ascending=False))
         return df
@@ -176,6 +208,9 @@ class BktStrategyLongShort(object):
                 continue
 
             evalDate = bkt_optionset.eval_date
+            # for option in bkt_optionset.bktoption_list_call:
+            #     if option.dt_date != evalDate:
+            #         print(option.id_instrument, ' , ', option.dt_date)
             hp_enddate = self.util.to_dt_date(
                 self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
@@ -199,7 +234,6 @@ class BktStrategyLongShort(object):
             """持有期holding_period满，进行调仓 """
             if (bkt_optionset.index-1)%self.holding_period==0 or not self.flag_trade:
                 print('调仓 : ', evalDate)
-                invest_fund = bkt.cash * self.money_utl
                 df_buy, df_sell = self.get_long_short(evalDate)
 
                 """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
@@ -215,6 +249,7 @@ class BktStrategyLongShort(object):
                 if len(df_buy)+len(df_sell) == 0:
                     self.flag_trade = False
                 else:
+                    invest_fund = bkt.cash * self.money_utl
                     df_buy, df_sell = self.get_equal_weighted_ls(invest_fund, df_buy, df_sell)
                     for (idx, row) in df_buy.iterrows():
                         bktoption = row['bktoption']

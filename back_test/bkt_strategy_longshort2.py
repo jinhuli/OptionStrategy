@@ -46,69 +46,6 @@ class BktStrategyLongShort(object):
     def set_trade_type(self,trade_type):
         self.trade_type = trade_type
 
-
-    def get_long_short(self,eval_date):
-        df_top, df_bottom = self.get_top_bottom(eval_date)
-        if self.trade_type==self.util.long_top or self.trade_type==None:
-            df_long = df_top
-            df_short = df_bottom
-        else:
-            df_long = df_bottom
-            df_short = df_top
-        return df_long, df_short
-
-
-    def get_top_bottom(self,eval_date):
-        if self.option_type == None or self.option_type == 'all':
-            option_call = self.bkt_optionset.bktoption_list_call
-            option_put = self.bkt_optionset.bktoption_list_put
-            option_call  =self.get_candidate_set(eval_date,option_call)
-            option_put  =self.get_candidate_set(eval_date,option_put)
-            df_ranked_call = self.get_ranked_by_carry(option_call)
-            df_ranked_put = self.get_ranked_by_carry(option_put)
-            df_ranked_call = df_ranked_call[df_ranked_call[self.util.col_carry] != -999.0]
-            df_ranked_put = df_ranked_put[df_ranked_put[self.util.col_carry] != -999.0]
-            n = self.nbr_top_bottom
-            if len(df_ranked_call)<=2*n:
-                df_top_call = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-                df_bottom_call = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-            else:
-                df_top_call = df_ranked_call[0:n]
-                df_bottom_call = df_ranked_call[-n:]
-            if len(df_ranked_put)<=2*n:
-                df_top_put = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-                df_bottom_put = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-            else:
-                df_top_put = df_ranked_put[0:n]
-                df_bottom_put = df_ranked_put[-n:]
-            df_top = df_top_call.append(df_top_put,ignore_index=True)
-            df_bottom = df_bottom_call.append(df_bottom_put,ignore_index=True)
-            return df_top,df_bottom
-        else:
-            if self.option_type == self.util.type_call:
-                option_list = self.bkt_optionset.bktoption_list_call
-            elif self.option_type == self.util.type_put:
-                option_list = self.bkt_optionset.bktoption_list_put
-            else:
-                print('option type not set')
-                return
-            option_list  =self.get_candidate_set(eval_date,option_list)
-            df_ranked = self.get_ranked_by_carry(option_list)
-            df_ranked = df_ranked[df_ranked[self.util.col_carry] != -999.0]
-            n = self.nbr_top_bottom
-            if len(df_ranked)<=2*n:
-                df_top = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-                df_bottom = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
-            else:
-                df_top = df_ranked[0:n]
-                df_bottom = df_ranked[-n:]
-            return df_top,df_bottom
-
-
-    def get_ranked_by_carry(self,option_list):
-        return self.bkt_optionset.rank_by_carry(option_list) # Ranked Descending
-
-
     def get_candidate_set(self,eval_date,option_list):
 
         if self.min_ttm != None :
@@ -133,34 +70,41 @@ class BktStrategyLongShort(object):
             option_list = list
         return option_list
 
-    """ 1 : Equal Long/Short Market Value """
-    def get_equal_weighted_ls(self,invest_fund,df_buy,df_sell):
-        m_v_long = 0.0
-        m_v_short = 0.0
-        for (idx, row) in df_buy.iterrows():
+    def get_option_carries(self,eval_date):
+        if self.option_type == None or self.option_type == 'all':
+            option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoption_list)
+        elif self.option_type == self.util.type_call:
+            option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoption_list_call)
+        elif self.option_type == self.util.type_put:
+            option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoption_list_put)
+        else:
+            print('option type not set')
+            return
+        df_carry = self.bkt_optionset.rank_by_carry(option_list)
+        return df_carry
+
+    """ 2 : Ranked Weighted Market Value """
+    def get_rank_weighted_ls(self,invest_fund,df_options):
+        m_v_total = 0.0
+        df = self.get_rank(df_options,self.util.col_carry)
+        df = df.loc[:, df.columns != self.util.col_carry].join(df[[self.util.col_carry]].rank(method='dense'))
+        n = len(df)
+        df['weight'] = df[self.util.col_carry] - (n + 1) / 2
+        c = sum(df[df['weight'] > 0]['weight'])
+        df['weight'] = df['weight'] / c
+        for (idx, row) in df.iterrows():
             bktoption = row['bktoption']
-            premium = bktoption.option_price*bktoption.multiplier
-            money = premium
-            m_v = money/premium
-            m_v_long += m_v
-        for (idx,row) in df_sell.iterrows():
-            bktoption = row['bktoption']
-            premium = bktoption.option_price * bktoption.multiplier
-            money = bktoption.get_init_margin()-premium
-            m_v = money/premium
-            m_v_short += m_v
-        mtm = invest_fund/(m_v_long+m_v_short)
-        for (idx,row) in df_buy.iterrows():
+            value = bktoption.option_price*bktoption.multiplier*abs(row['weight'])
+            money_use = value
+            m_v = money_use/value
+            m_v_total += m_v
+        mtm = invest_fund/m_v_total
+        for (idx,row) in df.iterrows():
             bktoption = row['bktoption']
             unit = bktoption.get_unit_by_mtmv(mtm)
-            df_buy.loc[idx,'unit'] = unit
-            df_buy.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
-        for (idx,row) in df_sell.iterrows():
-            bktoption = row['bktoption']
-            unit = bktoption.get_unit_by_mtmv(mtm)
-            df_sell.loc[idx,'unit'] = unit
-            df_sell.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
-        return df_buy,df_sell
+            df.loc[idx,'unit'] = unit
+            df.loc[idx,'mtm'] = unit*bktoption.option_price*bktoption.multiplier
+        return df
 
     def get_rank(self,df,col_name):
         df = df.loc[:, df.columns != col_name].join(df[[col_name]].rank(method='dense', ascending=False))
@@ -200,8 +144,10 @@ class BktStrategyLongShort(object):
             if (bkt_optionset.index-1)%self.holding_period==0 or not self.flag_trade:
                 print('调仓 : ', evalDate)
                 invest_fund = bkt.cash * self.money_utl
-                df_buy, df_sell = self.get_long_short(evalDate)
-
+                df_option = self.get_option_carries(evalDate)
+                df_option = self.get_rank_weighted_ls(invest_fund, df_option)
+                df_buy = df_option[df_option['weight'] > 0]
+                df_sell = df_option[df_option['weight'] < 0]
                 """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
                 for bktoption in bkt.holdings:
                     if bktoption.maturitydt <= hp_enddate:
@@ -215,21 +161,17 @@ class BktStrategyLongShort(object):
                 if len(df_buy)+len(df_sell) == 0:
                     self.flag_trade = False
                 else:
-                    df_buy, df_sell = self.get_equal_weighted_ls(invest_fund, df_buy, df_sell)
-                    for (idx, row) in df_buy.iterrows():
+                    for (idx, row) in df_option.iterrows():
                         bktoption = row['bktoption']
                         unit = row['unit']
+                        weight = row['weight']
                         if bktoption in bkt.holdings and bktoption.trade_flag_open:
                             bkt.rebalance_position(evalDate, bktoption, unit)
                         else:
-                            bkt.open_long(evalDate, bktoption, unit)
-                    for (idx, row) in df_sell.iterrows():
-                        bktoption = row['bktoption']
-                        unit = row['unit']
-                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
-                            bkt.rebalance_position(evalDate, bktoption, unit)
-                        else:
-                            bkt.open_short(evalDate, bktoption,unit)
+                            if weight > 0:
+                                bkt.open_long(evalDate, bktoption, unit)
+                            else:
+                                bkt.open_short(evalDate, bktoption, unit)
                     self.flag_trade = True
 
             """按当日价格调整保证金，计算投资组合盯市价值"""

@@ -3,6 +3,7 @@ import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from scipy.stats import norm
 
 df = pd.DataFrame({
     'a': [1,2,3,4,5,6],
@@ -10,14 +11,22 @@ df = pd.DataFrame({
     'c': [1,2,3,4,5,6],
      'd': [7,6,4,8,5,6]
 })
-df = df.sort_values('d')
-for (idx,row) in df.iterrows():
-    df.loc[idx,'add'] = row['d']-row['c']
-
+# df = df.sort_values('d')
+# for (idx,row) in df.iterrows():
+#     df.loc[idx,'add'] = row['d']-row['c']
 print(df)
-print('-'*10)
-
-print(df['a'][0:2].tolist())
+df = df.loc[:, df.columns != 'b'].join(df[['b']].rank(method='dense'))
+n = len(df)
+df['weight'] = df['b']-(n+1)/2
+print(df)
+c = sum(df[df['weight']>0]['weight'])
+df['weight'] = df['weight']/c
+print(df)
+print(sum(df[df['weight']>0]['weight']))
+# print(df)
+# print('-'*10)
+#
+# print(df['a'][0:2].tolist())
 
 # print(df)
 # print('-'*10)
