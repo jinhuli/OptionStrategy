@@ -32,7 +32,11 @@ class BktOptionSet(object):
         self.bktoption_list = []
         self.bktoption_list_call = []
         self.bktoption_list_put = []
+        self.bktoption_list_atm = []
+        self.bktoption_list_otm = []
         self.eligible_maturities = []
+        self.atm_delta_min = 0.4
+        self.atm_delta_max = 0.6
         self.index = 0
         self.update_multiplier_adjustment()
         self.start()
@@ -63,6 +67,9 @@ class BktOptionSet(object):
             bktoption_list = []
             bktoption_list_call = []
             bktoption_list_put = []
+            bktoption_list_atm = []
+            bktoption_list_otm = []
+            # TODO: option_list_ATM/OTM
             df_current = self.df_daily_state
             option_ids = df_current[self.util.col_id_instrument].unique()
             for bktoption in self.bktoption_list:
@@ -71,6 +78,11 @@ class BktOptionSet(object):
                     bktoption_list.append(bktoption)
                     if bktoption.option_type == 'call' : bktoption_list_call.append(bktoption)
                     else : bktoption_list_put.append(bktoption)
+                    delta = bktoption.get_delta()
+                    if abs(delta) < self.atm_delta_max and abs(delta) > self.atm_delta_min:
+                        bktoption_list_atm.append(bktoption)
+                    else:
+                        bktoption_list_otm.append(bktoption)
                     bkt_ids.append(bktoption.id_instrument)
             for optionid in option_ids:
                 if optionid in bkt_ids: continue
@@ -81,10 +93,17 @@ class BktOptionSet(object):
                     bktoption_list_call.append(bktoption)
                 else:
                     bktoption_list_put.append(bktoption)
+                delta = bktoption.get_delta()
+                if abs(delta) < self.atm_delta_max and abs(delta) > self.atm_delta_min:
+                    bktoption_list_atm.append(bktoption)
+                else:
+                    bktoption_list_otm.append(bktoption)
                 bkt_ids.append(optionid)
             self.bktoption_list = bktoption_list
             self.bktoption_list_call = bktoption_list_call
             self.bktoption_list_put = bktoption_list_put
+            self.bktoption_list_atm = bktoption_list_atm
+            self.bktoption_list_otm = bktoption_list_otm
 
 
     def update_eval_date(self):
@@ -105,7 +124,7 @@ class BktOptionSet(object):
             if ttm > self.min_ttm : maturity_dates2.append(mdt)
         self.eligible_maturities = maturity_dates2
 
-
+    """ Get Call/Put volatility surface separately"""
     def get_volsurface_squre(self,option_type):
         ql_maturities = []
         option_list = []
@@ -113,7 +132,7 @@ class BktOptionSet(object):
             mdt = option.maturitydt
             ttm = (mdt-self.eval_date).days
             cd_type = option.option_type
-            if cd_type == option_type and ttm > self.min_ttm:
+            if cd_type == option_type:
                 option_list.append(option)
         df = self.get_duplicate_strikes_dropped(self.collect_implied_vol(option_list))
         df_mdt_list = []
@@ -121,8 +140,8 @@ class BktOptionSet(object):
         maturity_list = []
         for idx,mdt in enumerate(self.eligible_maturities):
             iv_rename = 'implied_vol_'+str(idx)
-            df_mkt = df[(df[self.util.col_maturitydt]==mdt)&(df[self.util.col_option_type]==option_type)] \
-            .rename(columns={self.util.col_implied_vol: iv_rename}).set_index(self.util.col_adj_strike)
+            df_mkt = df[(df[self.util.col_maturitydt]==mdt)] \
+                .rename(columns={self.util.col_implied_vol: iv_rename}).set_index(self.util.col_adj_strike)
             if len(df_mkt) == 0: continue
             df_mdt_list.append(df_mkt)
             iv_name_list.append(iv_rename)
@@ -143,6 +162,58 @@ class BktOptionSet(object):
         ql_evalDate = self.util.to_ql_date(self.eval_date)
         black_var_surface = ql.BlackVarianceSurface(
             ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+        return black_var_surface
+
+    """ Get Integrate Volatility Surface by call/put mid vols"""
+    def get_mid_volsurface_squre(self):
+        ql_maturities = []
+        call_list = []
+        put_list = []
+        df_mdt_list = []
+        iv_name_list = []
+        maturity_list = []
+        for option in self.bktoption_list:
+            if option.option_type == self.util.type_call:
+                call_list.append(option)
+            else:
+                put_list.append(option)
+        df_call = self.get_duplicate_strikes_dropped(self.collect_implied_vol(call_list))
+        df_put = self.get_duplicate_strikes_dropped(self.collect_implied_vol(put_list))
+        df_call['maturity_call'] = df_call[self.util.col_maturitydt]
+        df_call['adj_strike_call'] = df_call[self.util.col_adj_strike]
+        df_call = df_call.set_index([self.util.col_maturitydt,self.util.col_adj_strike])\
+                .rename(columns={self.util.col_implied_vol: 'iv_call'})
+        df_put = df_put.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
+                .rename(columns={self.util.col_implied_vol: 'iv_put'})
+        df = df_call[['adj_strike_call','maturity_call','iv_call']]\
+            .join(df_put[['iv_put']])
+        df['mid_vol'] = (df['iv_call']+df['iv_put'])/2
+        maturities = sorted(df['maturity_call'].unique())
+        for idx,mdt in enumerate(maturities):
+            if mdt <= self.eval_date: continue
+            iv_rename = 'implied_vol_'+str(idx)
+            df_mkt = df[(df['maturity_call']==mdt)] \
+                .rename(columns={'mid_vol': iv_rename}).sort_values(by='adj_strike_call').set_index('adj_strike_call')
+            if len(df_mkt) == 0: continue
+            df_mdt_list.append(df_mkt)
+            iv_name_list.append(iv_rename)
+            maturity_list.append(mdt)
+        df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
+        strikes = []
+        for k in df_vol.index:
+            strikes.append(float(k))
+        volset = []
+        for name in iv_name_list:
+            volset.append(df_vol[name].tolist())
+        for mdate in maturity_list:
+            ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
+        vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
+        for i in range(vol_matrix.rows()):
+            for j in range(vol_matrix.columns()):
+                vol_matrix[i][j] = volset[j][i]
+        ql_evalDate = self.util.to_ql_date(self.eval_date)
+        black_var_surface = ql.BlackVarianceSurface(
+                ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
         return black_var_surface
 
 
@@ -237,8 +308,12 @@ class BktOptionSet(object):
         bvs_put = self.get_volsurface_squre('put')
         res = []
         for idx,option in enumerate(bktoption_list):
+            if option.maturitydt not in self.eligible_maturities: continue
             iv = option.get_implied_vol()
-            carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, bvs_put, self.hp)
+            if option.option_type == self.util.type_call:
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, self.hp)
+            else:
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, self.hp)
             if np.isnan(carry): carry = -999.0
             if np.isnan(theta): theta = -999.0
             if np.isnan(vega): vega = -999.0
@@ -271,14 +346,19 @@ class BktOptionSet(object):
             res.append(db_row)
         return df,res
 
-    def rank_by_carry(self,bktoption_list):
+    """Separate Call/Put Vol Surface"""
+    def rank_by_carry1(self,bktoption_list):
 
         df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         if len(bktoption_list)==0 : return df
         bvs_call = self.get_volsurface_squre('call')
         bvs_put = self.get_volsurface_squre('put')
         for idx,option in enumerate(bktoption_list):
-            carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, bvs_put, self.hp)
+            if option.maturitydt not in self.eligible_maturities: continue
+            if option.option_type == self.util.type_call:
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, self.hp)
+            else:
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, self.hp)
             if carry == None or np.isnan(carry): carry = -999.0
             if theta == None or  np.isnan(theta): theta = -999.0
             if vega == None or  np.isnan(vega): vega = -999.0
@@ -295,14 +375,41 @@ class BktOptionSet(object):
             df.loc[idx,self.util.col_maturitydt] = option.maturitydt
             df.loc[idx,self.util.col_option_type] = option.option_type
             df.loc[idx,self.util.col_trading_volume] = option.get_trading_volume()
-        df = df.sort_values(by=self.util.col_carry,ascending=False)
         df = self.get_duplicate_strikes_dropped(df)
-        try:
-            df = df.reset_index()
-        except:
-            pass
+        df = df[df[self.util.col_carry] != -999.0]
+        df = df.sort_values(by=self.util.col_carry,ascending=False)
         return df
 
+    """Use Mid Call/Put Integrated Vol Surface"""
+    def rank_by_carry2(self,bktoption_list):
+        df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
+        if len(bktoption_list)==0 : return df
+        bvs = self.get_mid_volsurface_squre()
+        for idx,option in enumerate(bktoption_list):
+            if option.maturitydt not in self.eligible_maturities: continue
+            carry, theta, vega, iv_roll_down = option.get_carry(bvs, self.hp)
+            if carry == None or np.isnan(carry): carry = -999.0
+            if theta == None or  np.isnan(theta): theta = -999.0
+            if vega == None or  np.isnan(vega): vega = -999.0
+            if iv_roll_down == None or  np.isnan(iv_roll_down): iv_roll_down = -999.0
+            if self.frequency in self.util.cd_frequency_low:
+                df.loc[idx, self.util.col_date] = self.eval_date
+            option.carry = carry
+            option.theta = theta
+            option.vega = vega
+            option.iv_roll_down = iv_roll_down
+            delta = option.get_delta
+            df.loc[idx, self.util.col_carry] = carry
+            df.loc[idx, self.util.col_delta] = delta
+            df.loc[idx,self.util.bktoption] = option
+            df.loc[idx,self.util.col_adj_strike] = option.adj_strike
+            df.loc[idx,self.util.col_maturitydt] = option.maturitydt
+            df.loc[idx,self.util.col_option_type] = option.option_type
+            df.loc[idx,self.util.col_trading_volume] = option.get_trading_volume()
+        df = self.get_duplicate_strikes_dropped(df)
+        df = df[df[self.util.col_carry] != -999.0]
+        df = df.sort_values(by=self.util.col_carry,ascending=False)
+        return df
 
 
 

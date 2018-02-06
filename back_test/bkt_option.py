@@ -350,15 +350,12 @@ class BktOption(object):
         return iv_roll_down
 
 
-    def get_carry(self,bvs_call,bvs_put,hp):
+    def get_carry(self,bvs,hp):
         dt = hp/250.0
         ttm = (self.maturitydt-self.dt_date).days/365.0
         if ttm-dt <= 0:
             return None,None,None,None
-        if self.option_type == 'call':
-            iv_roll_down = self.get_iv_roll_down(bvs_call,dt)
-        else:
-            iv_roll_down = self.get_iv_roll_down(bvs_put,dt)
+        iv_roll_down = self.get_iv_roll_down(bvs,dt)
         if np.isnan(iv_roll_down): iv_roll_down =0.0
         vega = self.get_vega()
         theta = self.get_theta()
