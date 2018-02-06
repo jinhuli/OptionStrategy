@@ -10,7 +10,7 @@ from back_test.bkt_strategy_longshort2 import BktStrategyLongShort
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 3, 31)
+start_date = datetime.date(2016, 1, 1)
 # start_date = datetime.date(2017, 1, 1)
 end_date = datetime.date(2017, 12, 31)
 

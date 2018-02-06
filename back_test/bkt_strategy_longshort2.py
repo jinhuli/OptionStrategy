@@ -99,7 +99,14 @@ class BktStrategyLongShort(object):
         else:
             print('option type not set')
             return
-        df_carry = self.bkt_optionset.rank_by_carry2(option_list)
+        n = self.nbr_top_bottom
+        if len(option_list)<2*n:
+            df_carry = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption,'weight'])
+        else:
+            df_ranked = self.bkt_optionset.rank_by_carry2(option_list)
+            df_top = df_ranked[0:n]
+            df_bottom = df_ranked[-n:]
+            df_carry = df_top.append(df_bottom,ignore_index=True)
         return df_carry
 
     """ Ranked Weighted Market Value """
@@ -112,7 +119,7 @@ class BktStrategyLongShort(object):
             W = row['weight'] # weight
             V = bktoption.option_price*bktoption.multiplier # value or say premium
             if W > 0:
-                M = V # money usage equals premiun
+                M = V # money usage equals premium
             else:
                 M = bktoption.get_init_margin()-V # money usage equals margin - premium earned
             sum_1 += abs(W)*M
@@ -180,7 +187,9 @@ class BktStrategyLongShort(object):
                 print('调仓 : ', evalDate)
                 invest_fund = bkt.cash * self.money_utl
                 df_option = self.get_ranked_carries(evalDate)
-                if len(df_option)==0:continue
+                # if len(df_option)==0:
+                #     bkt_optionset.next()
+                #     continue
                 df_option = self.get_weighted_ls(invest_fund,df_option)
                 df_buy = df_option[df_option['weight'] > 0]
                 df_sell = df_option[df_option['weight'] < 0]
