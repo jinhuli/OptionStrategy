@@ -23,12 +23,19 @@ a = [1,2,3,4]
 b = [3,4,5,6]
 a_ = set(a)
 b_ = set(b)
-c = a_.intersection(b_)
-d = []
-for i in c:
-    d.append(i)
-print(type(d),d)
+a_ = a_.intersection(b_)
+print(a_)
 
+for i,e in enumerate(a_):
+    print(i,e)
+
+print(a_)
+t = set()
+t.add('s')
+t.add(1)
+print(t)
+t.remove(1)
+print(t)
 # df = df.sort_values('d')
 # for (idx,row) in df.iterrows():
 #     df.loc[idx,'add'] = row['d']-row['c']

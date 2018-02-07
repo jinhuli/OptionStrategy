@@ -89,7 +89,7 @@ class BktStrategyLongShort(object):
             option_list = list
         return option_list
 
-    def get_ranked_carries(self,eval_date):
+    def get_ranked_options(self,eval_date):
         if self.option_type == None or self.option_type == 'all':
             option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoption_list)
         elif self.option_type == self.util.type_call:
@@ -101,13 +101,13 @@ class BktStrategyLongShort(object):
             return
         n = self.nbr_top_bottom
         if len(option_list)<2*n:
-            df_carry = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption,'weight'])
+            df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption,'weight'])
         else:
             df_ranked = self.bkt_optionset.rank_by_carry2(option_list)
             df_top = df_ranked[0:n]
             df_bottom = df_ranked[-n:]
-            df_carry = df_top.append(df_bottom,ignore_index=True)
-        return df_carry
+            df = df_top.append(df_bottom,ignore_index=True)
+        return df
 
     """ Ranked Weighted Market Value """
     def get_weighted_ls(self,invest_fund,df):

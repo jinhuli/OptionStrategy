@@ -5,13 +5,13 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
 from back_test.bkt_util import BktUtil
-from back_test.bkt_strategy_longshort2 import BktStrategyLongShort
+from back_test.bkt_strategy_longshort import CarryLongShort_RW as strategy
 
 
 
 """Back Test Settings"""
-start_date = datetime.date(2016, 1, 1)
-# start_date = datetime.date(2017, 1, 1)
+# start_date = datetime.date(2016, 1, 1)
+start_date = datetime.date(2017, 1, 1)
 end_date = datetime.date(2017, 12, 31)
 
 
@@ -61,15 +61,15 @@ df_option_metrics = df_option.join(df_50etf.set_index('dt_date'),how='left',on='
 """Run Backtest"""
 hp = 20
 
-bkt = BktStrategyLongShort(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
-                        nbr_top_bottom = 5)
+bkt = strategy(df_option_metrics,hp,money_utilization=0.2,buy_ratio = 0.5,sell_ratio = 0.5,
+                        nbr_top_bottom = 2)
 bkt.set_option_type('put')
 bkt.set_trade_type(util.long_top)
 # bkt.set_trade_type(util.long_bottom)
 bkt.set_min_ttm(hp+1)
-# bkt.set_max_ttm(60)
+bkt.set_max_ttm(40)
 bkt.set_min_trading_volume(200)
-bkt.set_moneyness_type('atm')
+# bkt.set_moneyness_type('atm')
 bkt.run()
 
 

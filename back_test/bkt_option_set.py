@@ -29,11 +29,11 @@ class BktOptionSet(object):
         self.min_ttm = min_ttm
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
-        self.bktoption_list = []
-        self.bktoption_list_call = []
-        self.bktoption_list_put = []
-        self.bktoption_list_atm = []
-        self.bktoption_list_otm = []
+        self.bktoptionset = set()
+        self.bktoptionset_call = []
+        self.bktoptionset_put = []
+        self.bktoptionset_atm = []
+        self.bktoptionset_otm = []
         self.eligible_maturities = []
         self.atm_delta_min = 0.4
         self.atm_delta_max = 0.6
@@ -69,10 +69,10 @@ class BktOptionSet(object):
             bktoption_list_put = []
             bktoption_list_atm = []
             bktoption_list_otm = []
-            # TODO: option_list_ATM/OTM
+            bktoption_list_mdt1 = []
             df_current = self.df_daily_state
             option_ids = df_current[self.util.col_id_instrument].unique()
-            for bktoption in self.bktoption_list:
+            for bktoption in self.bktoptionset:
                 if bktoption.id_instrument in option_ids :
                     bktoption.next()
                     bktoption_list.append(bktoption)
@@ -99,11 +99,11 @@ class BktOptionSet(object):
                 else:
                     bktoption_list_otm.append(bktoption)
                 bkt_ids.append(optionid)
-            self.bktoption_list = bktoption_list
-            self.bktoption_list_call = bktoption_list_call
-            self.bktoption_list_put = bktoption_list_put
-            self.bktoption_list_atm = bktoption_list_atm
-            self.bktoption_list_otm = bktoption_list_otm
+            self.bktoptionset = set(bktoption_list)
+            self.bktoptionset_call = set(bktoption_list_call)
+            self.bktoptionset_put = set(bktoption_list_put)
+            self.bktoptionset_atm = set(bktoption_list_atm)
+            self.bktoptionset_otm = set(bktoption_list_otm)
 
 
     def update_eval_date(self):
@@ -116,7 +116,6 @@ class BktOptionSet(object):
 
 
     def update_eligible_maturities(self): # n: 要求合约剩余期限大于n（天）
-
         maturity_dates = self.df_daily_state[self.util.col_maturitydt].unique()
         maturity_dates2 = []
         for mdt in maturity_dates:
@@ -128,7 +127,7 @@ class BktOptionSet(object):
     def get_volsurface_squre(self,option_type):
         ql_maturities = []
         option_list = []
-        for option in self.bktoption_list:
+        for option in self.bktoptionset:
             mdt = option.maturitydt
             ttm = (mdt-self.eval_date).days
             cd_type = option.option_type
@@ -172,7 +171,7 @@ class BktOptionSet(object):
         df_mdt_list = []
         iv_name_list = []
         maturity_list = []
-        for option in self.bktoption_list:
+        for option in self.bktoptionset:
             if option.option_type == self.util.type_call:
                 call_list.append(option)
             else:
@@ -398,7 +397,7 @@ class BktOptionSet(object):
             option.theta = theta
             option.vega = vega
             option.iv_roll_down = iv_roll_down
-            delta = option.get_delta
+            delta = option.get_delta()
             df.loc[idx, self.util.col_carry] = carry
             df.loc[idx, self.util.col_delta] = delta
             df.loc[idx,self.util.bktoption] = option
