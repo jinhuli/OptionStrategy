@@ -14,7 +14,7 @@ from data_access.db_data_collection import DataCollection
 w.start()
 
 # date = datetime.datetime.today().date()
-date = datetime.date(2018, 2, 5)
+date = datetime.date(2018, 2, 9)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -30,8 +30,6 @@ conn_intraday = engine_intraday.connect()
 metadata_intraday = MetaData(engine_intraday)
 equity_index_intraday = Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
 option_mktdata_intraday = Table('option_mktdata_intraday', metadata_intraday, autoload=True)
-option_tick_data = Table('option_tick_data', metadata_intraday, autoload=True)
-future_tick_data = Table('future_tick_data', metadata_intraday, autoload=True)
 index_daily = Table('indexes_mktdata', metadata, autoload=True)
 option_contracts = Table('option_contracts', metadata, autoload=True)
 future_contracts = Table('future_contracts', metadata, autoload=True)
