@@ -28,7 +28,7 @@ optionmkt_table = dbt.OptionMkt
 options_table = dbt.Options
 
 # Eval Settings
-evalDate = datetime.date(2018, 2, 2).strftime("%Y-%m-%d")  # Set as Friday
+evalDate = datetime.date(2018, 2, 9).strftime("%Y-%m-%d")  # Set as Friday
 start_date = w.tdaysoffset(-1, evalDate, "Period=M").Data[0][0].strftime("%Y-%m-%d")
 hist_date = w.tdaysoffset(-2, evalDate, "Period=Y").Data[0][0].strftime("%Y-%m-%d")
 evalDate_1week = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
@@ -105,7 +105,7 @@ ax1.set_xticks(range(len(contracts)))
 ax1.set_xticklabels(contracts)
 f1.set_size_inches((12,6))
 
-f1.savefig('../save_figure/implied_vols_' + str(evalDate) + '.png', dpi=300, format='png')
+f1.savefig('../save_figure/sr_implied_vols_' + str(evalDate) + '.png', dpi=300, format='png')
 
 #################### Futures and Realised Vol
 # Get core contract mktdata
@@ -184,7 +184,7 @@ ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
            ncol=6, mode="expand", borderaxespad=0.,frameon=False)
 f2.set_size_inches((12,6))
 
-f2.savefig('../save_figure/hist_vols_' + str(evalDate) + '.png', dpi=300, format='png')
+f2.savefig('../save_figure/sr_hist_vols_' + str(evalDate) + '.png', dpi=300, format='png')
 
 ################ #Implied Vol Surface
 # dates_week = w.tdays(w.tdaysoffset(-5, evalDate, "").Data[0][0].strftime("%Y-%m-%d"),evalDate, "").Data[0]
@@ -256,5 +256,5 @@ ax_ivs2.set_ylabel('期限')
 ax_ivs2.set_zlabel('波动率（%）')
 fig2.colorbar(surf2, shrink=0.5, aspect=5)
 
-fig2.savefig('../save_figure/iv_surface_2_' + str(evalDate) + '.png', dpi=300, format='png')
+fig2.savefig('../save_figure/sr_iv_surface_' + str(evalDate) + '.png', dpi=300, format='png')
 plt.show()

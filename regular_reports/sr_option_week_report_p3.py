@@ -105,8 +105,8 @@ print(df_iv_results)
 
 core_ivs = df_iv_results['contract-1'].tolist()
 current_iv = core_ivs[0]
-p_75 = np.percentile(core_ivs,75)*0.01
-p_25 = np.percentile(core_ivs,25)*0.01
+p_75 = np.percentile(core_ivs,75)
+p_25 = np.percentile(core_ivs,25)
 
 current_iv_pct = 0
 diff_min = 10000.0
@@ -120,15 +120,15 @@ print(current_iv_pct)
 f1, ax1 = plt.subplots()
 
 pu.plot_line(ax1, 0, df_iv_results['dt_date'], core_ivs, '隐含波动率', '日期', '(%)')
-pu.plot_line(ax1, 1, df_iv_results['dt_date'], p_75*range(len(core_ivs)), '75分位数', '日期', '(%)')
-pu.plot_line(ax1, 2, df_iv_results['dt_date'], p_25*range(len(core_ivs)), '25分位数', '日期', '(%)')
+pu.plot_line(ax1, 1, df_iv_results['dt_date'], [p_75]*len(core_ivs), '75分位数', '日期', '(%)')
+pu.plot_line(ax1, 2, df_iv_results['dt_date'], [p_25]*len(core_ivs), '25分位数', '日期', '(%)')
 
 ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-           ncol=1, mode="expand", borderaxespad=0.,frameon=False)
+           ncol=3, mode="expand", borderaxespad=0.,frameon=False)
 f1.set_size_inches((12,6))
 
 f1.savefig('../save_figure/sr_atm_implied_vols_' + str(evalDate) + '.png', dpi=300, format='png')
-
+plt.show()
 
 
 
