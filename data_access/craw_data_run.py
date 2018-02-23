@@ -2,19 +2,17 @@
 
 from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
-import pandas as pd
 from WindPy import w
-import os
-from data_access import db_utilities as du
 from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
+from back_test.data_option import get_50option_mktdata
+from back_test.bkt_option_set import BktOptionSet
 
 w.start()
 
-# date = datetime.datetime.today().date()
-date = datetime.date(2018, 2, 22)
+date = datetime.date(2018, 2, 23)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -24,16 +22,23 @@ metadata = MetaData(engine)
 options_mktdata_daily = Table('options_mktdata', metadata, autoload=True)
 futures_mktdata_daily = Table('futures_mktdata', metadata, autoload=True)
 futures_institution_positions = Table('futures_institution_positions', metadata, autoload=True)
+index_daily = Table('indexes_mktdata', metadata, autoload=True)
+option_contracts = Table('option_contracts', metadata, autoload=True)
+future_contracts = Table('future_contracts', metadata, autoload=True)
 
 engine_intraday = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata_intraday', echo=False)
 conn_intraday = engine_intraday.connect()
 metadata_intraday = MetaData(engine_intraday)
 equity_index_intraday = Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
 option_mktdata_intraday = Table('option_mktdata_intraday', metadata_intraday, autoload=True)
-index_daily = Table('indexes_mktdata', metadata, autoload=True)
-option_contracts = Table('option_contracts', metadata, autoload=True)
-future_contracts = Table('future_contracts', metadata, autoload=True)
+
+engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
+conn_metrics = engine_metrics.connect()
+metadata_metrics = MetaData(engine_metrics)
+optionMetrics = Table('option_metrics', metadata_metrics, autoload=True)
+
 dc = DataCollection()
+
 
 #####################CONTRACT INFO#########################################
 ## option_contracts
@@ -454,3 +459,22 @@ else:
 #             print(e)
 # else:
 #     print('option_tick_data -- already exists')
+
+#####################CALCULATE OPTION METRICS#########################################
+# 50 ETF OPTION
+df_option_metrics = get_50option_mktdata(date,date)
+
+bkt_optionset = BktOptionSet('daily', df_option_metrics, 20)
+
+option_metrics = bkt_optionset.collect_option_metrics()
+try:
+    for r in option_metrics:
+        res = optionMetrics.select((optionMetrics.c.id_instrument == r['id_instrument'])
+                                   & (optionMetrics.c.dt_date == r['dt_date'])).execute()
+        if res.rowcount > 0:
+            optionMetrics.delete((optionMetrics.c.id_instrument == r['id_instrument'])
+                                 & (optionMetrics.c.dt_date == r['dt_date'])).execute()
+        conn_metrics.execute(optionMetrics.insert(), r)
+    print('option metrics -- inserted into data base succefully')
+except Exception as e:
+    print(e)

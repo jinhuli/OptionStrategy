@@ -25,6 +25,7 @@ class BktUtil():
 
         self.col_code_instrument = 'code_instrument'
         self.col_id_instrument = 'id_instrument'
+        self.col_id_underlying = 'id_underlying'
         self.col_option_type = 'cd_option_type'
 
         self.col_strike = 'amt_strike'

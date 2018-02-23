@@ -26,7 +26,7 @@ optionmkt_table = dbt.OptionMkt
 options_table = dbt.Options
 
 # Eval Settings
-evalDate = datetime.date(2018, 2, 2).strftime("%Y-%m-%d")  # Set as Friday
+evalDate = datetime.date(2018, 2, 23).strftime("%Y-%m-%d")  # Set as Friday
 startDate = datetime.date(2017, 4, 19).strftime("%Y-%m-%d")
 
 plt.rcParams['font.sans-serif'] = ['STKaiti']

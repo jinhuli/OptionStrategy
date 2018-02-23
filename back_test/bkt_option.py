@@ -16,11 +16,12 @@ class BktOption(object):
 
     """
 
-    def __init__(self,cd_frequency,df_daily_metrics,df_intraday_metrics=None,id_instrument='',
+    def __init__(self,cd_frequency,df_daily_metrics,flag_calculate_iv,df_intraday_metrics=None,id_instrument='',
                  pricing_type = 'OptionPlainEuropean',engine_type = 'AnalyticEuropeanEngine'):
         self.util = BktUtil()
         self.frequency = cd_frequency
         self.id_instrument = id_instrument
+        self.flag_calculate_iv = flag_calculate_iv
         self.df_daily_metrics = df_daily_metrics # Sorted ascending by date/datetime
         if self.frequency in self.util.cd_frequency_low:
             self.df_metrics = df_daily_metrics
@@ -178,8 +179,6 @@ class BktOption(object):
         self.adj_option_price = adj_option_price
 
 
-
-
     def update_underlying_price(self):
         try:
             underlying_price = self.current_state[self.util.col_underlying_price]
@@ -201,8 +200,11 @@ class BktOption(object):
             self.update_rf()
             self.update_underlying_price()
             self.update_option_price()
-            implied_vol = self.pricing_metrics.implied_vol(self.evaluation,self.rf,
-                                    self.underlying_price, self.option_price,self.engine_type)
+            if self.flag_calculate_iv:
+                implied_vol = self.pricing_metrics.implied_vol(self.evaluation,self.rf,
+                                        self.underlying_price, self.option_price,self.engine_type)
+            else:
+                implied_vol = self.get_implied_vol_given()/100.0
         except Exception as e:
             print(e)
             implied_vol = None
@@ -389,7 +391,10 @@ class BktOption(object):
         if np.isnan(iv_roll_down): iv_roll_down =0.0
         vega = self.get_vega()
         theta = self.get_theta()
-        option_carry = (vega*iv_roll_down-theta*dt)/self.option_price-self.rf
+        try:
+            option_carry = (vega*iv_roll_down-theta*dt)/self.option_price-self.rf
+        except:
+            option_carry= None
         return option_carry,theta,vega,iv_roll_down
 
 
