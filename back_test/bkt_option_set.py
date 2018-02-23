@@ -412,6 +412,51 @@ class BktOptionSet(object):
 
 
 
+    def collect_option_metrics(self):
+        res = []
+        df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
+        bktoption_list = self.bktoptionset
+        if len(bktoption_list)==0 : return df
+        bvs_call = self.get_volsurface_squre('call')
+        bvs_put = self.get_volsurface_squre('put')
+        for idx,option in enumerate(bktoption_list):
+            if option.option_type == self.util.type_call:
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, self.hp)
+            else:
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, self.hp)
+            theta = option.get_theta()
+            vega = option.get_vega()
+            iv = option.get_implied_vol()
+            delta = option.get_delta()
+            rho = option.get_rho()
+            gamma = option.get_gamma()
+            if carry == None or np.isnan(carry): carry = -999.0
+            if theta == None or  np.isnan(theta): theta = -999.0
+            if vega == None or  np.isnan(vega): vega = -999.0
+            if gamma == None or  np.isnan(gamma): gamma = -999.0
+            if iv == None or  np.isnan(iv): iv = -999.0
+            if delta == None or  np.isnan(delta): delta = -999.0
+            if rho == None or  np.isnan(rho): rho = -999.0
+
+            db_row = {
+                self.util.col_date: self.eval_date,
+                self.util.col_id_instrument: option.id_instrument,
+                self.util.col_code_instrument: option.code_instrument,
+                self.util.col_option_type: option.option_type,
+                self.util.col_maturitydt: option.maturitydt,
+                self.util.col_implied_vol: float(iv),
+                self.util.col_adj_strike: float(option.adj_strike),
+                self.util.col_option_price: float(option.option_price),
+                'amt_delta':float(delta),
+                self.util.col_vega: float(vega),
+                self.util.col_theta: float(theta),
+                'amt_rho':float(rho),
+                'amt_gamma':float(gamma),
+                'amt_carry_1M': float(carry),
+            }
+            res.append(db_row)
+        return res
+
 
 
 

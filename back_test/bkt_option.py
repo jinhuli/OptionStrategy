@@ -338,6 +338,36 @@ class BktOption(object):
             vega = None
         return vega
 
+    def get_rho(self):
+        if self.implied_vol == None : self.update_implied_vol()
+        try:
+            rho = self.pricing_metrics.rho(self.evaluation, self.rf,self.underlying_price,
+                                               self.underlying_price,self.engine_type,self.implied_vol)
+        except Exception as e:
+            print(e)
+            rho = None
+        return rho
+
+    def get_gamma(self):
+        if self.implied_vol == None : self.update_implied_vol()
+        try:
+            gamma = self.pricing_metrics.gamma(self.evaluation, self.rf,self.underlying_price,
+                                               self.underlying_price,self.engine_type,self.implied_vol)
+        except Exception as e:
+            print(e)
+            gamma = None
+        return gamma
+
+    def get_vomma(self):
+        if self.implied_vol == None : self.update_implied_vol()
+        try:
+            vomma = self.pricing_metrics.vomma(self.evaluation, self.rf,self.underlying_price,
+                                               self.underlying_price,self.engine_type,self.implied_vol)
+        except Exception as e:
+            print(e)
+            vomma = None
+        return vomma
+
 
     def get_iv_roll_down(self,black_var_surface,dt): # iv(tao-1)-iv(tao), tao:maturity
         if self.implied_vol == None : self.update_implied_vol()
