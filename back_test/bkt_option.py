@@ -166,7 +166,7 @@ class BktOption(object):
 
     def update_option_price(self):
         try:
-            option_price = self.current_state[self.util.col_close]
+            option_price = self.current_state[self.util.col_settlement]
         except Exception as e:
             print(e)
             option_price = None
