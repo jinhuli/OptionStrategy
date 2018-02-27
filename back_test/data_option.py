@@ -42,7 +42,7 @@ def get_50option_mktdata(start_date,end_date):
     return df_option_metrics
 
 
-def get_sr_option_mktdata(start_date,end_date):
+def get_comoption_mktdata(start_date,end_date,name_code):
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
@@ -57,7 +57,7 @@ def get_sr_option_mktdata(start_date,end_date):
                            Option_mkt.pct_implied_vol
                            ) \
         .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
-        .filter(Option_mkt.name_code == 'sr')
+        .filter(Option_mkt.name_code == name_code)
 
     query_option = sess.query(options.id_instrument, options.cd_option_type, options.amt_strike,
                               options.dt_maturity, options.nbr_multiplier) \
@@ -66,7 +66,7 @@ def get_sr_option_mktdata(start_date,end_date):
     query_srf = sess.query(Future_mkt.dt_date, Future_mkt.id_instrument.label(util.col_id_underlying),
                            Future_mkt.amt_settlement.label(util.col_underlying_price)) \
         .filter(Future_mkt.dt_date >= start_date).filter(Future_mkt.dt_date <= end_date) \
-        .filter(Future_mkt.name_code == 'sr')
+        .filter(Future_mkt.name_code == name_code)
 
     df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
 

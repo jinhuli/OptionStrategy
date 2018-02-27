@@ -3,6 +3,8 @@ from back_test.bkt_option import BktOption
 from back_test.bkt_util import BktUtil
 import QuantLib as ql
 import numpy as np
+import datetime
+
 
 class BktOptionSet(object):
 
@@ -42,7 +44,6 @@ class BktOptionSet(object):
         self.atm_delta_min = 0.4
         self.atm_delta_max = 0.6
         self.index = 0
-        self.update_multiplier_adjustment()
         self.start()
 
 
@@ -51,6 +52,8 @@ class BktOptionSet(object):
         self.start_date = self.dt_list[0] #0
         self.end_date = self.dt_list[-1] # len(self.dt_list)-1
         self.eval_date = self.start_date
+        self.validate_data()
+        self.update_multiplier_adjustment()
         self.update_current_daily_state()
         self.update_eligible_maturities()
         self.update_bktoption()
@@ -93,6 +96,7 @@ class BktOptionSet(object):
                 if optionid in bkt_ids: continue
                 df_option = self.df_metrics[self.df_metrics[self.util.col_id_instrument] == optionid].reset_index()
                 bktoption = BktOption(self.frequency, df_option,self.flag_calculate_iv,id_instrument=optionid)
+                bktoption.start()
                 bktoption_list.append(bktoption)
                 if bktoption.option_type == 'call':
                     bktoption_list_call.append(bktoption)
@@ -120,13 +124,69 @@ class BktOptionSet(object):
         self.df_daily_state = self.df_metrics[self.df_metrics[self.util.col_date]==self.eval_date].reset_index()
 
 
+    def validate_data(self):
+        underlyingids = self.df_metrics[self.util.col_id_underlying].unique()
+        for underlying_id in underlyingids:
+            c = self.df_metrics[self.util.col_id_underlying] == underlying_id
+            df_tmp = self.df_metrics[c]
+            mdt = df_tmp[self.util.col_maturitydt].values[0]
+            """Check Null Maturity"""
+            if pd.isnull(mdt):
+                m1 = int(underlying_id[-2:])
+                y1 = int(str(20) + underlying_id[-4:-2])
+                dt1 = ql.Date(1,m1,y1)
+                if self.option_code == 'sr':
+                    mdt = self.util.to_dt_date(self.calendar.advance(dt1,ql.Period(-5,ql.Days)))
+                elif self.option_code == 'm':
+                    tmp = self.calendar.advance(dt1,ql.Period(-1,ql.Months))
+                    mdt = self.util.to_dt_date(self.calendar.advance(tmp,ql.Period(5,ql.Days)))
+                self.df_metrics.loc[c,self.util.col_maturitydt] = mdt
+        for (idx,row) in self.df_metrics.iterrows():
+            """Check Null Option Type"""
+            option_type = row[self.util.col_option_type]
+            id_instrument = row[self.util.col_id_instrument]
+            if pd.isnull(option_type):
+                if self.option_code in ['sr', 'm']:
+                    if id_instrument[8] == 'c':
+                        option_type = self.util.type_call
+                    elif id_instrument[8] == 'p':
+                        option_type = self.util.type_put
+                    else:
+                        continue
+                    self.df_metrics.loc[idx, self.util.col_option_type] = option_type
+                else:
+                    continue
+            """Check Null Strike"""
+            strike = row[self.util.col_strike]
+            if pd.isnull(strike):
+                if self.option_code in ['sr', 'm']:
+                    strike = float(id_instrument[-4:])
+                    self.df_metrics.loc[idx, self.util.col_strike] = strike
+                else:
+                    continue
+            """Check Null Multuplier"""
+            multiplier = row[self.util.col_multiplier]
+            if pd.isnull(multiplier):
+                if self.option_code in ['sr','m']:
+                    multiplier = 10
+                else:
+                    multiplier = 10000
+                self.df_metrics.loc[idx, self.util.col_multiplier] = multiplier
+
+
     def update_eligible_maturities(self): # n: 要求合约剩余期限大于n（天）
-        maturity_dates = self.df_daily_state[self.util.col_maturitydt].unique()
+        underlyingids = self.df_daily_state[self.util.col_id_underlying].unique()
         maturity_dates2 = []
-        for mdt in maturity_dates:
-            if self.option_code in ['sr', 'm'] and mdt.month not in [1, 5, 9]: continue
-            ttm = (mdt-self.eval_date).days
-            if ttm > self.min_ttm : maturity_dates2.append(mdt)
+        for underlying_id in underlyingids:
+            m1 = int(underlying_id[-2:])
+            c = self.df_daily_state[self.util.col_id_underlying] == underlying_id
+            df_tmp = self.df_daily_state[c]
+            mdt = df_tmp[self.util.col_maturitydt].values[0]
+            if self.option_code in ['sr', 'm'] and m1 not in [1, 5, 9]:
+                continue
+            ttm = (mdt - self.eval_date).days
+            if ttm > self.min_ttm:
+                maturity_dates2.append(mdt)
         self.eligible_maturities = maturity_dates2
 
     def update_multiplier_adjustment(self):
@@ -156,7 +216,6 @@ class BktOptionSet(object):
         iv_name_list = []
         maturity_list = []
         for idx,mdt in enumerate(self.eligible_maturities):
-
             iv_rename = 'implied_vol_'+str(idx)
             df_mkt = df[(df[self.util.col_maturitydt]==mdt)] \
                 .rename(columns={self.util.col_implied_vol: iv_rename}).set_index(self.util.col_adj_strike)
@@ -470,6 +529,7 @@ class BktOptionSet(object):
                 'amt_rho':float(rho),
                 'amt_gamma':float(gamma),
                 'amt_carry_1M': float(carry),
+                'timestamp':datetime.datetime.today()
             }
             res.append(db_row)
         return res

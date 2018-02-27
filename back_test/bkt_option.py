@@ -38,7 +38,7 @@ class BktOption(object):
         self.trade_long_short = None
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
-        self.start()
+        # self.start()
 
     def start(self):
         self.current_index = self.start_index
