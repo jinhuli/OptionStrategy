@@ -30,7 +30,7 @@ class BktOptionSet(object):
         self.pricing_type = pricing_type
         self.engine_type = engine_type
         self.flag_calculate_iv = flag_calculate_iv
-        if self.option_code in ['sr', 'm']: self.flag_calculate_iv = False
+        if self.option_code =='sr': self.flag_calculate_iv = False
         self.hp = hp
         self.min_ttm = min_ttm
         self.daycounter = ql.ActualActual()

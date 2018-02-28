@@ -12,7 +12,7 @@ from back_test.bkt_option_set import BktOptionSet
 
 w.start()
 
-date = datetime.date(2018, 2, 26)
+date = datetime.date(2017, 11, 9)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -149,11 +149,12 @@ if res.rowcount == 0:
 else:
     print('wind 50ETF option -- already exists')
 
-# dce option data
+# dce option data (type = 1)
+# dce option data --- day
 res = options_mktdata_daily.select((options_mktdata_daily.c.dt_date == dt_date)
-                                   & (options_mktdata_daily.c.cd_exchange == 'dce')).execute()
+                                   & (options_mktdata_daily.c.cd_exchange == 'dce')
+                                   & (options_mktdata_daily.c.flag_night == 0)).execute()
 if res.rowcount == 0:
-    # dce option data (type = 1), day
     ds = dce.spider_mktdata_day(date, date, 1)
     for dt in ds.keys():
         data = ds[dt]
@@ -162,12 +163,18 @@ if res.rowcount == 0:
         if len(db_data) == 0: continue
         try:
             conn.execute(options_mktdata_daily.insert(), db_data)
-            print('dce option data -- inserted into data base succefully')
+            print('dce option data 0 -- inserted into data base succefully')
         except Exception as e:
             print(dt)
             print(e)
             continue
-    # dce option data (type = 1), night
+else:
+    print('dce option 0 -- already exists')
+# dce option data --- night
+res = options_mktdata_daily.select((options_mktdata_daily.c.dt_date == dt_date)
+                                       & (options_mktdata_daily.c.cd_exchange == 'dce')
+                                       & (options_mktdata_daily.c.flag_night == 1)).execute()
+if res.rowcount == 0:
     ds = dce.spider_mktdata_night(date, date, 1)
     for dt in ds.keys():
         data = ds[dt]
@@ -176,13 +183,13 @@ if res.rowcount == 0:
         if len(db_data) == 0: continue
         try:
             conn.execute(options_mktdata_daily.insert(), db_data)
-            print('dce option data -- inserted into data base succefully')
+            print('dce option data 1 -- inserted into data base succefully')
         except Exception as e:
             print(dt)
             print(e)
             continue
 else:
-    print('dce option -- already exists')
+    print('dce option 1 -- already exists')
 
 # czce option data
 res = options_mktdata_daily.select((options_mktdata_daily.c.dt_date == dt_date)
@@ -462,19 +469,19 @@ else:
 
 #####################CALCULATE OPTION METRICS#########################################
 # 50 ETF OPTION
-df_option_metrics = get_50option_mktdata(date,date)
-
-bkt_optionset = BktOptionSet('daily', df_option_metrics, 20)
-
-option_metrics = bkt_optionset.collect_option_metrics()
-try:
-    for r in option_metrics:
-        res = optionMetrics.select((optionMetrics.c.id_instrument == r['id_instrument'])
-                                   & (optionMetrics.c.dt_date == r['dt_date'])).execute()
-        if res.rowcount > 0:
-            optionMetrics.delete((optionMetrics.c.id_instrument == r['id_instrument'])
-                                 & (optionMetrics.c.dt_date == r['dt_date'])).execute()
-        conn_metrics.execute(optionMetrics.insert(), r)
-    print('option metrics -- inserted into data base succefully')
-except Exception as e:
-    print(e)
+# df_option_metrics = get_50option_mktdata(date,date)
+#
+# bkt_optionset = BktOptionSet('daily', df_option_metrics, 20)
+#
+# option_metrics = bkt_optionset.collect_option_metrics()
+# try:
+#     for r in option_metrics:
+#         res = optionMetrics.select((optionMetrics.c.id_instrument == r['id_instrument'])
+#                                    & (optionMetrics.c.dt_date == r['dt_date'])).execute()
+#         if res.rowcount > 0:
+#             optionMetrics.delete((optionMetrics.c.id_instrument == r['id_instrument'])
+#                                  & (optionMetrics.c.dt_date == r['dt_date'])).execute()
+#         conn_metrics.execute(optionMetrics.insert(), r)
+#     print('option metrics -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)

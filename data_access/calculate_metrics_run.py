@@ -8,7 +8,7 @@ import datetime
 
 
 date = datetime.date(2018,2,26)
-start_date = datetime.date(2017,1,1)
+start_date = datetime.date(2018,1,1)
 end_date = datetime.date(2018,2,26)
 
 calendar = ql.China()
@@ -18,8 +18,8 @@ engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', e
 conn = engine.connect()
 metadata = MetaData(engine)
 optionMetrics = Table('option_metrics', metadata, autoload=True)
-name_option = 'sr'
-# name_option = 'm'
+# name_option = 'sr'
+name_option = 'm'
 df_option_metrics = get_comoption_mktdata(start_date,end_date,name_option)
 # df_option_metrics = get_50option_mktdata(start_date,end_date)
 
@@ -34,6 +34,7 @@ while bkt_optionset.index < len(bkt_optionset.dt_list):
 
     if evalDate == bkt_optionset.end_date:
         break
+    print(evalDate)
     option_metrics = bkt_optionset.collect_option_metrics()
     try:
         for r in option_metrics:

@@ -16,7 +16,7 @@ import QuantLib as ql
 
 
 """周报&数据周报波动率期限结构。波动率锥、波动率曲面"""
-def sr_implied_vol_analysis(evalDate,w):
+def m_implied_vol_analysis(evalDate,w):
 
     pu = PlotUtil()
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
@@ -35,7 +35,7 @@ def sr_implied_vol_analysis(evalDate,w):
     evalDate_5week = w.tdaysoffset(-5, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
     plt.rcParams['font.sans-serif'] = ['STKaiti']
     plt.rcParams.update({'font.size': 15})
-    nameCode = 'sr'
+    nameCode = 'm'
     contracts = ['1805', '1809','1901','1905']
 
     ################ # ATM Implied Vols
@@ -52,7 +52,7 @@ def sr_implied_vol_analysis(evalDate,w):
             .join(futuremkt_table, optionmkt_table.id_underlying == futuremkt_table.id_instrument) \
             .join(options_table, optionmkt_table.id_instrument == options_table.id_instrument) \
             .filter(optionmkt_table.dt_date == date) \
-            .filter(optionmkt_table.datasource == 'czce') \
+            .filter(optionmkt_table.datasource == 'dce') \
             .filter(futuremkt_table.dt_date == date) \
             .filter(futuremkt_table.name_code == nameCode) \
             .all()
@@ -99,12 +99,12 @@ def sr_implied_vol_analysis(evalDate,w):
     ax1.set_xticklabels(contracts)
     f1.set_size_inches((12,6))
     optiondata_atm_df = optiondata_atm_df[['date','contract_month','implied_vol']]
-    optiondata_atm_df.to_csv('../save_results/sr_implied_vol_term_structure.csv')
-    f1.savefig('../save_figure/sr_atm_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
+    optiondata_atm_df.to_csv('../save_results/m_implied_vol_term_structure.csv')
+    f1.savefig('../save_figure/m_atm_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
     #################### Futures and Realised Vol
     # Get core contract mktdata
-    data = w.wsd("SR.CZC", "trade_hiscode", hist_date, evalDate, "")
+    data = w.wsd("M.DCE", "trade_hiscode", hist_date, evalDate, "")
     underlying_df = pd.DataFrame({'date': data.Times, 'code_core': data.Data[0]})
 
     futuredataset = sess.query(futuremkt_table) \
@@ -255,7 +255,7 @@ def sr_implied_vol_analysis(evalDate,w):
     # fig2.savefig('../save_figure/sr_iv_surface_' + str(evalDate) + '.png', dpi=300, format='png')
 
 """周报&数据周报：主力合约历史隐含波动率"""
-def sr_hist_atm_ivs(evalDate,w):
+def m_hist_atm_ivs(evalDate,w):
     pu = PlotUtil()
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
                            echo=False)
@@ -368,7 +368,7 @@ def sr_hist_atm_ivs(evalDate,w):
     df_iv_results.to_csv('../save_results/sr_hist_atm_ivs.csv')
 
 """周报：成交持仓PCR"""
-def sr_pcr_analysis(dt_date,dt_last_week,w):
+def m_pcr_analysis(dt_date,dt_last_week,w):
     w.start()
     pu = PlotUtil()
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',

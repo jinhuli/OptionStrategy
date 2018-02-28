@@ -12,20 +12,23 @@ from data_access.db_tables import DataBaseTables as dbt
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 import QuantLib as ql
-from regular_reports.sr_option_week_report import sr_hist_atm_ivs,sr_implied_vol_analysis,sr_pcr_analysis
+from regular_reports.commodity_option_weekly_report import hist_atm_ivs,implied_vol_analysis,pcr_analysis
 
 ############################################################################################
 # Eval Settings
 
 dt_date = datetime.date(2018, 2, 23)  # Set as Friday
 dt_last_week = datetime.date(2018, 2, 9)
-current_core_underlying = 'sr_1805'
+current_core_underlying = 'm_1805'
+namecode = 'm'
+exchange_code = 'dce'
+contracts = ['1805', '1809', '1901', '1905']
 
 ############################################################################################
 w.start()
 endDate = dt_date
 evalDate = endDate.strftime("%Y-%m-%d")  # Set as Friday
-startDate = datetime.date(2017, 4, 19)
+startDate = datetime.date(2017, 1, 1)
 hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
 bd_1m = 21
 bd_2m = 2 * bd_1m
@@ -48,7 +51,8 @@ options_table = dbt.Options
 query_srf = sess2.query(futureMkt.dt_date, futureMkt.id_instrument,
                         futureMkt.amt_close, futureMkt.amt_trading_volume,
                         futureMkt.amt_settlement) \
-    .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == 'sr')
+    .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == namecode)\
+    .filter(futureMkt.flag_night != 1)
 
 df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
 
@@ -82,7 +86,7 @@ for idx_mkt in range(len(df_core)):
 df_core = df_core[df_core['dt_date']>=startDate]
 df_core = df_core[['dt_date','2近一月','3近两月','4近三月','5近半年']]
 df_core = df_core.sort_values(by='dt_date',ascending=False)
-df_core.to_csv('../save_results/sr_future_hist_vols.csv')
+df_core.to_csv('../save_results/m_future_hist_vols.csv')
 print('part1 completed')
 ######################################## PART 2 : 成交持仓认沽认购比 #####################################################
 """成交持仓认沽认购比P/C"""
@@ -100,7 +104,7 @@ query_volume = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt
                            func.sum(optionMkt.amt_trading_volume).label('total_trading_volume')
                            ) \
     .filter(optionMkt.dt_date >= startDate) \
-    .filter(optionMkt.name_code == 'sr') \
+    .filter(optionMkt.name_code == 'm') \
     .group_by(optionMkt.cd_option_type, optionMkt.dt_date,optionMkt.id_underlying)
 df = pd.read_sql(query_volume.statement, query_volume.session.bind)
 # 按持仓量最大选取主力合约
@@ -118,25 +122,26 @@ for idx, row in df_call.iterrows():
                      'f3持仓量-C': row['total_holding_volume'],
                      'f4持仓量-P': row_put['total_holding_volume'].values[0],
                      'f5成交量PCR': pcr_trading,
-                     'f6持仓量PCR': pcr_holding
+                     'f6持仓量PCR': pcr_holding,
+                     'id_instrument':row['id_underlying'],
                      })
 
 df_pcr = pd.DataFrame(pc_ratio)
 
-idx = df_srf.groupby(['dt_date'])['amt_trading_volume'].transform(max) == df_srf['amt_trading_volume']
-df2 = df_srf[idx].sort_values(by=['dt_date'],ascending=False)# 按持仓量最大选取主力合约
-df_pcr = pd.merge(df_pcr,df2[['dt_date','amt_settlement']], how='left', on=['dt_date'], suffixes=['', '_r'])
+# idx = df_srf.groupby(['dt_date'])['amt_trading_volume'].transform(max) == df_srf['amt_trading_volume']
+# df2 = df_srf[idx].sort_values(by=['dt_date'],ascending=False)# 按持仓量最大选取主力合约
+df_pcr = pd.merge(df_pcr,df_srf[['dt_date','id_instrument','amt_settlement']], how='left', on=['dt_date','id_instrument'], suffixes=['', '_r'])
 df_pcr = df_pcr.sort_values(by='dt_date',ascending=False)
 
-df_pcr.to_csv('../save_results/sr_pcr_data.csv')
+df_pcr.to_csv('../save_results/m_pcr_data.csv')
 print('part2 completed')
 
 ######################################## PART 3 : 调取周报程序 #####################################################
-
-sr_implied_vol_analysis(evalDate,w)
-sr_hist_atm_ivs(evalDate,w)
-
-print('part3 completed')
+#
+implied_vol_analysis(evalDate,w,namecode,exchange_code,contracts)
+# m_hist_atm_ivs(evalDate,w)
+#
+# print('part3 completed')
 
 
 
