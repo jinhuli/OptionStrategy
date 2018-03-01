@@ -19,10 +19,11 @@ import QuantLib as ql
 
 dt_date = datetime.date(2018, 2, 23)  # Set as Friday
 dt_last_week = datetime.date(2018, 2, 9)
-current_core_underlying = 'sr_1805'
-namecode = 'sr'
-# exchange_code = 'dce'
-exchange_code = 'czce'
+current_core_underlying = 'm_1805'
+# namecode = 'sr'
+namecode = 'm'
+exchange_code = 'dce'
+# exchange_code = 'czce'
 contracts = ['1805', '1809', '1901', '1905']
 
 ############################################################################################
@@ -209,75 +210,140 @@ def hist_vol(df_underlying_core):
 def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
 
     pu = PlotUtil()
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
+    engine1 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
                            echo=False)
-    Session = sessionmaker(bind=engine)
-    sess = Session()
-    futuremkt_table = dbt.FutureMkt
-    optionmkt_table = dbt.OptionMkt
-    options_table = dbt.Options
+    Session1 = sessionmaker(bind=engine1)
+    sess1 = Session1()
 
-    evalDate_1week = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
-    evalDate_2week = w.tdaysoffset(-2, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
-    evalDate_3week = w.tdaysoffset(-3, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
-    evalDate_4week = w.tdaysoffset(-4, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
-    evalDate_5week = w.tdaysoffset(-5, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
+    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics',
+                           echo=False)
+    Session2 = sessionmaker(bind=engine2)
+    sess2 = Session2()
+
+
+    futuresMkt = dbt.FutureMkt
+    optionsInfo = dbt.Options
+    optionMetrics = dbt.OptionMetrics
+
+    dt_1w = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
+    dt_2w = w.tdaysoffset(-2, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
+    dt_3w = w.tdaysoffset(-3, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
+    dt_4w = w.tdaysoffset(-4, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
+    dt_5w = w.tdaysoffset(-5, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
     plt.rcParams['font.sans-serif'] = ['STKaiti']
     plt.rcParams.update({'font.size': 15})
 
     """波动率期限结构"""
-    dates = [evalDate, evalDate_1week, evalDate_2week, evalDate_3week,evalDate_4week,evalDate_5week]
-    optiondata_df = pd.DataFrame()
-    columns = [
-        'date', 'id_instrument', 'implied_vol', 'contract_month',
-        'option_type', 'strike', 'underlying_price', 'atm_dif']
-    optiondata_atm_df = pd.DataFrame(columns=columns)
-    idx_o = 0
-    for date in dates:
-        optiondataset = sess.query(optionmkt_table, options_table, futuremkt_table) \
-            .join(futuremkt_table, optionmkt_table.id_underlying == futuremkt_table.id_instrument) \
-            .join(options_table, optionmkt_table.id_instrument == options_table.id_instrument) \
-            .filter(optionmkt_table.dt_date == date) \
-            .filter(optionmkt_table.datasource == exchangeCode) \
-            .filter(optionmkt_table.flag_night != 1) \
-            .filter(futuremkt_table.dt_date == date) \
-            .filter(futuremkt_table.name_code == nameCode) \
-            .filter(futuremkt_table.flag_night != 1) \
-            .all()
+    dates = [evalDate, dt_1w, dt_2w, dt_3w,dt_4w,dt_5w]
+    # optiondata_df = pd.DataFrame()
+    # columns = [
+    #     'date', 'id_instrument', 'implied_vol', 'contract_month',
+    #     'option_type', 'strike', 'underlying_price', 'atm_dif']
+    # optiondata_atm_df = pd.DataFrame(columns=columns)
+    # idx_o = 0
+    # for date in dates:
+    #     optiondataset = sess.query(optionmkt_table, options_table, futuremkt_table) \
+    #         .join(futuremkt_table, optionmkt_table.id_underlying == futuremkt_table.id_instrument) \
+    #         .join(options_table, optionmkt_table.id_instrument == options_table.id_instrument) \
+    #         .filter(optionmkt_table.dt_date == date) \
+    #         .filter(optionmkt_table.datasource == exchangeCode) \
+    #         .filter(optionmkt_table.flag_night != 1) \
+    #         .filter(futuremkt_table.dt_date == date) \
+    #         .filter(futuremkt_table.name_code == nameCode) \
+    #         .filter(futuremkt_table.flag_night != 1) \
+    #         .all()
+    #
+    #     contract_months = []
+    #     for optiondata in optiondataset:
+    #         if optiondata.Options.cd_option_type == 'put': continue
+    #         if int(optiondata.Options.name_contract_month[-2:]) not in [1,5,9]: continue
+    #         optiondata_df.loc[idx_o, 'date'] = date
+    #         optiondata_df.loc[idx_o, 'id_instrument'] = optiondata.OptionMkt.id_instrument
+    #         optiondata_df.loc[idx_o, 'implied_vol'] = optiondata.OptionMkt.pct_implied_vol
+    #         optiondata_df.loc[idx_o, 'contract_month'] = optiondata.Options.name_contract_month
+    #         optiondata_df.loc[idx_o, 'option_type'] = optiondata.Options.cd_option_type
+    #         optiondata_df.loc[idx_o, 'strike'] = optiondata.Options.amt_strike
+    #         optiondata_df.loc[idx_o, 'underlying_price'] = optiondata.FutureMkt.amt_settlement
+    #         optiondata_df.loc[idx_o, 'atm_dif'] = abs(
+    #             optiondata.Options.amt_strike - optiondata.FutureMkt.amt_settlement)
+    #         cm = optiondata.Options.name_contract_month
+    #         if optiondata.Options.name_contract_month not in contract_months:
+    #             contract_months.append(optiondata.Options.name_contract_month)
+    #         idx_o += 1
+    #
+    #     for cm1 in contract_months:
+    #         c = optiondata_df['contract_month'].map(lambda x: x == cm1)
+    #         c1 = optiondata_df['date'].map(lambda x: x == date)
+    #         critiron = c & c1
+    #         df = optiondata_df[critiron]
+    #         idx = df['atm_dif'].idxmin()
+    #         optiondata_atm_df = optiondata_atm_df.append(df.loc[idx], ignore_index=True)
+    # print('atm_implied_vols')
+    # print(optiondata_atm_df)
 
-        contract_months = []
-        for optiondata in optiondataset:
-            if optiondata.Options.cd_option_type == 'put': continue
-            if int(optiondata.Options.name_contract_month[-2:]) not in [1,5,9]: continue
-            optiondata_df.loc[idx_o, 'date'] = date
-            optiondata_df.loc[idx_o, 'id_instrument'] = optiondata.OptionMkt.id_instrument
-            optiondata_df.loc[idx_o, 'implied_vol'] = optiondata.OptionMkt.pct_implied_vol
-            optiondata_df.loc[idx_o, 'contract_month'] = optiondata.Options.name_contract_month
-            optiondata_df.loc[idx_o, 'option_type'] = optiondata.Options.cd_option_type
-            optiondata_df.loc[idx_o, 'strike'] = optiondata.Options.amt_strike
-            optiondata_df.loc[idx_o, 'underlying_price'] = optiondata.FutureMkt.amt_settlement
-            optiondata_df.loc[idx_o, 'atm_dif'] = abs(
-                optiondata.Options.amt_strike - optiondata.FutureMkt.amt_settlement)
-            cm = optiondata.Options.name_contract_month
-            if optiondata.Options.name_contract_month not in contract_months:
-                contract_months.append(optiondata.Options.name_contract_month)
-            idx_o += 1
+    query_f = sess1.query(futureMkt.dt_date, futureMkt.id_instrument.label('id_underlying'),
+                            futureMkt.amt_settlement,futureMkt.flag_night,futureMkt.name_code) \
+        .filter(or_(futureMkt.dt_date==evalDate,futureMkt.dt_date==dt_1w,futureMkt.dt_date==dt_2w,
+                    futureMkt.dt_date==dt_3w,futureMkt.dt_date==dt_4w,futureMkt.dt_date==dt_5w))\
+        .filter(futureMkt.name_code == nameCode)\
+        .filter(futureMkt.flag_night != 1)
 
-        for cm1 in contract_months:
-            c = optiondata_df['contract_month'].map(lambda x: x == cm1)
-            c1 = optiondata_df['date'].map(lambda x: x == date)
-            critiron = c & c1
-            df = optiondata_df[critiron]
-            idx = df['atm_dif'].idxmin()
-            optiondata_atm_df = optiondata_atm_df.append(df.loc[idx], ignore_index=True)
-    print('atm_implied_vols')
-    print(optiondata_atm_df)
+    query_metrics = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.cd_option_type,
+                                optionMetrics.pct_implied_vol,optionMetrics.amt_option_price) \
+        .filter(or_(optionMetrics.dt_date == evalDate, optionMetrics.dt_date == dt_1w, optionMetrics.dt_date == dt_2w,
+                    optionMetrics.dt_date == dt_3w, optionMetrics.dt_date == dt_4w, optionMetrics.dt_date == dt_5w)) \
+        # .filter(optionMetrics.name_code == nameCode)
+
+    df_future = pd.read_sql(query_f.statement, query_f.session.bind)
+    df_metrics = pd.read_sql(query_metrics.statement, query_metrics.session.bind)
+    # df_metrics = df_metrics[(df_metrics['id_instrument'][0] != '5')].reset_index()
+    for (idx,row) in df_metrics.iterrows():
+        id_option = row['id_instrument']
+
+        if id_option[0] == nameCode or id_option[0:2] == nameCode:
+            dt_date = row['dt_date']
+            option_price = row['amt_option_price']
+            strike = float(id_option[-4:])
+            if nameCode == 'm':
+                id_underlying = id_option[:6]
+            elif nameCode == 'sr':
+                id_underlying = id_option[:7]
+            else:
+                id_underlying = None
+            contract_month = id_underlying[-4:]
+            if int(contract_month[-2:]) in [1,5,9]:
+                df_metrics.loc[idx, 'flag'] = 1
+                underlying_price = df_future[(df_future['dt_date']==dt_date)&(df_future['id_underlying']==id_underlying)]['amt_settlement'].values[0]
+                df_metrics.loc[idx, 'dt_date'] = dt_date.strftime("%Y-%m-%d")
+                df_metrics.loc[idx, 'id_underlying'] = id_underlying
+                df_metrics.loc[idx, 'underlying_price'] = underlying_price
+                df_metrics.loc[idx, 'contract_month'] = id_underlying[-4:]
+                df_metrics.loc[idx, 'diff'] = abs(strike-underlying_price)
+            else:
+                df_metrics.loc[idx,'flag'] = 0
+        else:
+            df_metrics.loc[idx,'flag'] = 0
+
+    df_metrics = df_metrics[df_metrics['flag'] == 1].reset_index()
+    idx = df_metrics.groupby(['dt_date','id_underlying','cd_option_type'])['diff'].transform(min) == df_metrics['diff']
+
+    # idx = df_metrics.groupby(['dt_date','id_underlying','cd_option_type'])['diff'].max()
+    # df_iv = df_metrics[idx].to_frame()
+    df_iv = df_metrics[idx]
+    df_call_iv = df_iv[df_iv['cd_option_type']=='call'].sort_values(by=['dt_date','id_underlying'],ascending=False).reset_index()# 选取认购平值合约
+    df_put_iv = df_iv[df_iv['cd_option_type']=='put'].sort_values(by=['dt_date','id_underlying'],ascending=False).reset_index()# 选取认沽平值合约
+    df_call_iv = df_call_iv.drop_duplicates(['dt_date','id_underlying'])
+    df_put_iv = df_put_iv.drop_duplicates(['dt_date','id_underlying'])
+
+    optiondata_atm_df = df_put_iv[['dt_date','contract_month']]
+    optiondata_atm_df.loc[:,'implied_vol'] = 100*(df_call_iv.loc[:,'pct_implied_vol']+df_put_iv.loc[:,'pct_implied_vol'])/2.0
+
     f1, ax1 = plt.subplots()
     cont = 0
     contracts = []
     for d in dates:
-        c2 = optiondata_atm_df['date'].map(lambda a: a == d)
-        df = optiondata_atm_df[c2]
+        df = optiondata_atm_df[optiondata_atm_df['dt_date']==d]
+        df = df.sort_values(by=['contract_month'],ascending=True)
         pu.plot_line(ax1, cont, range(len(df)), df['implied_vol'], d, '合约月份', '波动率(%)')
         if len(contracts)==0 :contracts = df['contract_month'].tolist()
         cont += 1
@@ -286,9 +352,9 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
     ax1.set_xticks(range(len(contracts)))
     ax1.set_xticklabels(contracts)
     f1.set_size_inches((12,6))
-    optiondata_atm_df = optiondata_atm_df[['date','contract_month','implied_vol']]
+    # optiondata_atm_df = optiondata_atm_df[['date','contract_month','implied_vol']]
     optiondata_atm_df.to_csv('../save_results/'+nameCode+'_implied_vol_term_structure.csv')
-    f1.savefig('../save_figure/'+nameCode+'_atm_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
+    f1.savefig('../save_figure/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
     # ################ #Implied Vol Surface
 
@@ -568,19 +634,18 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
                  format='png',bbox_inches='tight')
 
 
-df_underlying_core = pcr(df_pcr)
-hist_vol(df_underlying_core)
+# df_underlying_core = pcr(df_pcr)
+# hist_vol(df_underlying_core)
 
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
 
-hist_atm_ivs(evalDate,w,namecode,exchange_code,contracts,df_srf)
-print('Part [历史隐含波动率] completed')
-trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
-print('Part [当日成交持仓量] completed')
+# hist_atm_ivs(evalDate,w,namecode,exchange_code,contracts,df_srf)
+# print('Part [历史隐含波动率] completed')
+# trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
+# print('Part [当日成交持仓量] completed')
 
-# print('part3 completed')
-
+plt.show()
 
 
 

@@ -33,7 +33,6 @@ class BktOption(object):
         self.dt_list = sorted(self.df_metrics[self.util.col_date].unique())
         self.pricing_type = pricing_type
         self.engine_type = engine_type
-        self.implied_vol = None
         self.trade_unit = 0
         self.trade_long_short = None
         self.daycounter = ql.ActualActual()
@@ -45,11 +44,14 @@ class BktOption(object):
         self.update_current_state()
         self.set_option_basics()
         self.set_pricing_metrics()
+        self.implied_vol = None
+
 
 
     def next(self):
         # self.current_index = min(self.current_index+1,self.last_index)
         self.current_index = self.current_index+1
+        self.implied_vol = None
         self.update_current_state()
         self.set_pricing_metrics()
 

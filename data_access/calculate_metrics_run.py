@@ -8,7 +8,8 @@ import datetime
 
 
 date = datetime.date(2018,2,26)
-start_date = datetime.date(2018,1,1)
+start_date = datetime.date(2017,3,31)
+# start_date = datetime.date(2018,2,13)
 end_date = datetime.date(2018,2,26)
 
 calendar = ql.China()
@@ -44,8 +45,8 @@ while bkt_optionset.index < len(bkt_optionset.dt_list):
                 optionMetrics.delete((optionMetrics.c.id_instrument == r['id_instrument'])
                                        &(optionMetrics.c.dt_date == r['dt_date'])).execute()
             conn.execute(optionMetrics.insert(), r)
-        print(evalDate + ' : option metrics -- inserted into data base succefully')
+        print(evalDate, ' : option metrics -- inserted into data base succefully')
     except Exception as e:
         print(e)
-        continue
+        pass
     bkt_optionset.next()

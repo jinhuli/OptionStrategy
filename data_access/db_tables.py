@@ -213,3 +213,36 @@ class DataBaseTables():
                    (self.dt_datetime,self.id_instrument,self.datasource,self.code_instrument,
                     self.amt_close, self.amt_trading_volume,self.amt_trading_value,
                     self.timestamp)
+
+
+
+
+    class OptionMetrics(Base):
+        __tablename__ = 'option_metrics'
+        dt_date = Column(Date, nullable=True ,primary_key=True)
+        id_instrument = Column(VARCHAR(45), nullable=True , primary_key=True)
+        code_instrument = Column(VARCHAR(45))
+        cd_option_type = Column(VARCHAR(10))
+        dt_maturity = Column(Date)
+        pct_implied_vol = Column(DECIMAL(10, 6))
+        amt_adj_strike = Column(DECIMAL(10, 4))
+        amt_option_price = Column(DECIMAL(18, 4))
+        amt_delta = Column(DECIMAL(10, 6))
+        amt_vega = Column(DECIMAL(10, 6))
+        amt_theta = Column(DECIMAL(10, 6))
+        amt_rho = Column(DECIMAL(10, 6))
+        amt_lambda = Column(DECIMAL(10, 6))
+        amt_gamma = Column(DECIMAL(10, 6))
+        amt_vomma = Column(DECIMAL(10, 6))
+        amt_carry_1M = Column(DECIMAL(18, 4))
+        timestamp = Column(TIMESTAMP)
+
+        def __repr__(self):
+            return "<OptionMetrics(dt_date='%s', id_instrument='%s',code_instrument='%s'," \
+                   "cd_option_type='%s',dt_maturity='%s',pct_implied_vol='%s',amt_adj_strike='%s',amt_option_price='%s'," \
+                   "amt_delta='%s',amt_vega='%s',amt_theta='%s',amt_rho='%s',amt_lambda='%s'," \
+                   "amt_gamma='%s',amt_vomma='%s',amt_carry_1M='%s',timestamp='%s')" % \
+                   (self.dt_date,self.id_instrument,self.code_instrument,self.cd_option_type,self.dt_maturity,
+                    self.pct_implied_vol,self.amt_adj_strike,self.amt_option_price,self.amt_delta,self.amt_vega,
+                    self.amt_theta,self.amt_rho,self.amt_lambda,self.amt_gamma,self.amt_vomma,
+                    self.amt_carry_1M,self.timestamp)

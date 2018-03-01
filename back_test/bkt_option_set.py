@@ -147,11 +147,12 @@ class BktOptionSet(object):
             id_instrument = row[self.util.col_id_instrument]
             if pd.isnull(option_type):
                 if self.option_code in ['sr', 'm']:
-                    if id_instrument[8] == 'c':
+                    if id_instrument[-6] == 'c':
                         option_type = self.util.type_call
-                    elif id_instrument[8] == 'p':
+                    elif id_instrument[-6] == 'p':
                         option_type = self.util.type_put
                     else:
+                        print(id_instrument,',',id_instrument[-6])
                         continue
                     self.df_metrics.loc[idx, self.util.col_option_type] = option_type
                 else:

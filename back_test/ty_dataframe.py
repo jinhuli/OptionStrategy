@@ -40,8 +40,10 @@ print(t)
 
 print(type(datetime.date(2000,1,1)))
 
-name = 'sr_1707_c_6200'
-print(name[-4:])
+sr = 'sr_1707_c_6200'
+m = 'm_1707_c_6200'
+print(sr[0:2])
+print(m[:6])
 # df = df.sort_values('d')
 # for (idx,row) in df.iterrows():
 #     df.loc[idx,'add'] = row['d']-row['c']
