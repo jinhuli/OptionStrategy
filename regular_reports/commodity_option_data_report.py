@@ -1,5 +1,4 @@
 from sqlalchemy import *
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
@@ -12,59 +11,7 @@ from data_access.db_tables import DataBaseTables as dbt
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 import QuantLib as ql
-# from regular_reports.commodity_option_weekly_report import hist_atm_ivs,implied_vol_analysis,trade_volume
 
-############################################################################################
-# Eval Settings
-
-dt_date = datetime.date(2018, 2, 23)  # Set as Friday
-dt_last_week = datetime.date(2018, 2, 9)
-current_core_underlying = 'm_1805'
-# namecode = 'sr'
-namecode = 'm'
-exchange_code = 'dce'
-# exchange_code = 'czce'
-contracts = ['1805', '1809', '1901', '1905']
-
-############################################################################################
-w.start()
-endDate = dt_date
-evalDate = endDate.strftime("%Y-%m-%d")  # Set as Friday
-startDate = datetime.date(2017, 1, 1)
-hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
-bd_1m = 21
-bd_2m = 2 * bd_1m
-bd_3m = 3 * bd_1m
-bd_6m = 6 * bd_1m
-calendar = ql.China()
-pu = PlotUtil()
-###########################################################################################
-engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
-metadata2 = MetaData(engine2)
-Session2 = sessionmaker(bind=engine2)
-sess2 = Session2()
-futureMkt = dbt.FutureMkt
-optionMkt = dbt.OptionMkt
-
-futuremkt_table = dbt.FutureMkt
-options_table = dbt.Options
-
-query_pcr = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id_underlying,
-                           func.sum(optionMkt.amt_holding_volume).label('total_holding_volume'),
-                           func.sum(optionMkt.amt_trading_volume).label('total_trading_volume')
-                           ) \
-    .filter(optionMkt.dt_date >= startDate) \
-    .filter(optionMkt.name_code == namecode) \
-    .group_by(optionMkt.cd_option_type, optionMkt.dt_date,optionMkt.id_underlying)
-
-query_srf = sess2.query(futureMkt.dt_date, futureMkt.id_instrument,
-                        futureMkt.amt_close, futureMkt.amt_trading_volume,
-                        futureMkt.amt_settlement) \
-    .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == namecode)\
-    .filter(futureMkt.flag_night != 1)
-
-df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
-df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
 
 # dates = df_srf['dt_date'].unique()
 # df_core = pd.DataFrame()
@@ -432,18 +379,22 @@ def hist_atm_ivs(evalDate,w,nameCode,exchangeCode,contracts,df_future):
                            echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
-    optionmkt_table = dbt.OptionMkt
+    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics',
+                           echo=False)
+    Session2 = sessionmaker(bind=engine2)
+    sess2 = Session2()
+
+    optionMetrics = dbt.OptionMetrics
     options_table = dbt.Options
 
 
     plt.rcParams['font.sans-serif'] = ['STKaiti']
     plt.rcParams.update({'font.size': 15})
 
-    query_sro = sess.query(optionmkt_table.dt_date,optionmkt_table.id_instrument,optionmkt_table.id_underlying,
-                           optionmkt_table.amt_strike,optionmkt_table.cd_option_type,optionmkt_table.pct_implied_vol)\
-        .filter(optionmkt_table.name_code == nameCode)\
-        .filter(optionmkt_table.datasource == exchangeCode) \
-        .filter(optionmkt_table.flag_night != 1)
+    query_sro = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
+                            optionMetrics.amt_strike,
+                           optionMetrics.cd_option_type,optionMetrics.pct_implied_vol)\
+        .filter(optionMetrics.name_code == nameCode)
 
     query_mdt = sess.query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
         .filter(options_table.cd_exchange == exchangeCode)
@@ -494,10 +445,13 @@ def hist_atm_ivs(evalDate,w,nameCode,exchangeCode,contracts,df_future):
         df0 = df_iv_atm[df_iv_atm['dt_date'] == date].reset_index()
         df_iv_results.loc[idx_dt,'dt_date'] = date
         for i in range(2):
-            df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = df0.loc[i,'pct_implied_vol']
+            iv = df0.loc[i,'pct_implied_vol']
+            if iv == 0.0:iv=np.nan
+            df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = iv
 
     df_iv_results = df_iv_results.sort_values(by='dt_date',ascending=False)
-
+    # df = df_iv_results.replace(0.0, None)
+    df_iv_results = df_iv_results.dropna()
     core_ivs = df_iv_results['contract-1'].tolist()
     current_iv = core_ivs[0]
     p_75 = np.percentile(core_ivs,75)
@@ -591,7 +545,10 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
         put_delta = row_put['amt_holding_volume']- last_holding_put
         call_deltas.append(call_delta)
         put_deltas.append(put_delta)
-    wt = 30
+    if nameCode=='sr':
+        wt = 25
+    else:
+        wt = 15
     strikes = df_call['amt_strike'].tolist()
     strikes1 = df_call['amt_strike']+wt
     holding_call = df_call['amt_holding_volume'].tolist()
@@ -634,16 +591,69 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
                  format='png',bbox_inches='tight')
 
 
-# df_underlying_core = pcr(df_pcr)
-# hist_vol(df_underlying_core)
+
+############################################################################################
+# Eval Settings
+
+dt_date = datetime.date(2018, 2, 23)  # Set as Friday
+dt_last_week = datetime.date(2018, 2, 9)
+# current_core_underlying = 'sr_1805'
+# namecode = 'sr'
+# exchange_code = 'czce'
+current_core_underlying = 'm_1805'
+namecode = 'm'
+exchange_code = 'dce'
+contracts = ['1805', '1809', '1901', '1905']
+
+############################################################################################
+w.start()
+endDate = dt_date
+evalDate = endDate.strftime("%Y-%m-%d")  # Set as Friday
+startDate = datetime.date(2017, 1, 1)
+hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
+bd_1m = 21
+bd_2m = 2 * bd_1m
+bd_3m = 3 * bd_1m
+bd_6m = 6 * bd_1m
+calendar = ql.China()
+pu = PlotUtil()
+###########################################################################################
+engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+metadata2 = MetaData(engine2)
+Session2 = sessionmaker(bind=engine2)
+sess2 = Session2()
+futureMkt = dbt.FutureMkt
+optionMkt = dbt.OptionMkt
+
+futuremkt_table = dbt.FutureMkt
+options_table = dbt.Options
+
+query_pcr = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id_underlying,
+                           func.sum(optionMkt.amt_holding_volume).label('total_holding_volume'),
+                           func.sum(optionMkt.amt_trading_volume).label('total_trading_volume')
+                           ) \
+    .filter(optionMkt.dt_date >= startDate) \
+    .filter(optionMkt.name_code == namecode) \
+    .group_by(optionMkt.cd_option_type, optionMkt.dt_date,optionMkt.id_underlying)
+
+query_srf = sess2.query(futureMkt.dt_date, futureMkt.id_instrument,
+                        futureMkt.amt_close, futureMkt.amt_trading_volume,
+                        futureMkt.amt_settlement) \
+    .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == namecode)\
+    .filter(futureMkt.flag_night != 1)
+
+df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
+df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
+
+df_underlying_core = pcr(df_pcr)
+hist_vol(df_underlying_core)
 
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
-
-# hist_atm_ivs(evalDate,w,namecode,exchange_code,contracts,df_srf)
-# print('Part [历史隐含波动率] completed')
-# trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
-# print('Part [当日成交持仓量] completed')
+hist_atm_ivs(evalDate,w,namecode,exchange_code,contracts,df_srf)
+print('Part [历史隐含波动率] completed')
+trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
+print('Part [当日成交持仓量] completed')
 
 plt.show()
 

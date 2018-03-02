@@ -177,17 +177,25 @@ class BktOptionSet(object):
 
     def update_eligible_maturities(self): # n: 要求合约剩余期限大于n（天）
         underlyingids = self.df_daily_state[self.util.col_id_underlying].unique()
+        maturities = self.df_daily_state[self.util.col_maturitydt].unique()
         maturity_dates2 = []
-        for underlying_id in underlyingids:
-            m1 = int(underlying_id[-2:])
-            c = self.df_daily_state[self.util.col_id_underlying] == underlying_id
-            df_tmp = self.df_daily_state[c]
-            mdt = df_tmp[self.util.col_maturitydt].values[0]
-            if self.option_code in ['sr', 'm'] and m1 not in [1, 5, 9]:
-                continue
-            ttm = (mdt - self.eval_date).days
-            if ttm > self.min_ttm:
-                maturity_dates2.append(mdt)
+
+        if self.option_code in ['sr', 'm']:
+            for underlying_id in underlyingids:
+                m1 = int(underlying_id[-2:])
+                if m1 not in [1, 5, 9]:
+                    continue
+                c = self.df_daily_state[self.util.col_id_underlying] == underlying_id
+                df_tmp = self.df_daily_state[c]
+                mdt = df_tmp[self.util.col_maturitydt].values[0]
+                ttm = (mdt - self.eval_date).days
+                if ttm > self.min_ttm:
+                    maturity_dates2.append(mdt)
+        else:
+            for mdt in maturities:
+                ttm = (mdt - self.eval_date).days
+                if ttm > self.min_ttm:
+                    maturity_dates2.append(mdt)
         self.eligible_maturities = maturity_dates2
 
     def update_multiplier_adjustment(self):
@@ -514,10 +522,17 @@ class BktOptionSet(object):
                 iv = option.get_implied_vol()
                 carry =theta =vega =gamma= delta =rho = -999.0
                 if iv == None or np.isnan(iv): iv = -999.0
-
+            if self.flag_calculate_iv: datasource = 'calculated'
+            else:
+                if self.option_code == 'm':datasource = 'dce'
+                else:datasource = 'czce'
             db_row = {
                 self.util.col_date: self.eval_date,
                 self.util.col_id_instrument: option.id_instrument,
+                'datasource':datasource,
+                'name_code':self.option_code,
+                'id_underlying':option.id_underlying,
+                'amt_strike':float(option.strike),
                 self.util.col_code_instrument: option.code_instrument,
                 self.util.col_option_type: option.option_type,
                 self.util.col_maturitydt: option.maturitydt,

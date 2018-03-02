@@ -106,7 +106,7 @@ class BktOption(object):
     def set_pricing_metrics(self):
         self.update_rf()
         self.update_option_price()
-        self.update_underlying_price()
+        self.update_underlying()
         if self.pricing_type == 'OptionPlainEuropean':
             ql_maturitydt = ql.Date(self.maturitydt.day,
                                     self.maturitydt.month,
@@ -181,13 +181,16 @@ class BktOption(object):
         self.adj_option_price = adj_option_price
 
 
-    def update_underlying_price(self):
+    def update_underlying(self):
         try:
             underlying_price = self.current_state[self.util.col_underlying_price]
+            id_underlying = self.current_state[self.util.col_id_underlying]
         except Exception as e:
             print(e)
             underlying_price = None
+            id_underlying = None
         self.underlying_price = underlying_price
+        self.id_underlying = id_underlying
 
 
     def update_rf(self):
@@ -200,7 +203,7 @@ class BktOption(object):
     def update_implied_vol(self):
         try:
             self.update_rf()
-            self.update_underlying_price()
+            self.update_underlying()
             self.update_option_price()
             if self.flag_calculate_iv:
                 implied_vol = self.pricing_metrics.implied_vol(self.evaluation,self.rf,
