@@ -35,10 +35,10 @@ class option_strategy_events(object):
         a = params[0]
         d = params[1]
         beta_list = params[2:2+self.nbr_events]
-        mu_list = params[3+self.nbr_events:3+self.nbr_events*2]
-        sigma_list = params[4+self.nbr_events*2:]
+        mu_list = params[2+self.nbr_events:2+self.nbr_events*2]
+        sigma_list = params[2+self.nbr_events*2:]
         obj = 0
-        for (idx_vix,r_vix) in self.df_vix.iterrow():
+        for (idx_vix,r_vix) in self.df_vix.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             for (idx_e, r_e) in self.df_events.iterrows():
@@ -55,9 +55,9 @@ class option_strategy_events(object):
         return math.exp(-(dt-mu)**2/(2*s**2))/(s*math.sqrt(2*math.pi))
 
     def optimization(self):
-        init_params = np.ndarray([0]*(3*self.nbr_events+2))
+        init_params = np.zeros(3*self.nbr_events+2)
         res = minimize(self.func_derm, init_params, method='Nelder-Mead', tol=1e-6)
-
+        print(res)
 
 engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata?charset=utf8mb4', echo=False)
 conn = engine.connect()
@@ -74,6 +74,6 @@ df_vix = pd.read_sql(query_vix.statement,query_vix.session.bind)
 
 s = option_strategy_events(df_events,df_vix)
 s.add_nbr_days_from_events()
-
+s.optimization()
 # print(s.df_vix)
 print('')
