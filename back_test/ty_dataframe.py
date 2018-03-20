@@ -44,6 +44,10 @@ sr = 'sr_1707_c_6200'
 m = 'm_1707_c_6200'
 print(sr[0:2])
 print(m[:6])
+
+a = [1,2,3,4,5,6,7,8,9]
+n = 5
+print(a[2:])
 # df = df.sort_values('d')
 # for (idx,row) in df.iterrows():
 #     df.loc[idx,'add'] = row['d']-row['c']
