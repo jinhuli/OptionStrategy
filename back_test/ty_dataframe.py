@@ -4,6 +4,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from scipy.stats import norm
+import numpy as np
+
 
 df = pd.DataFrame({
     'a': [1,2,3,4,5,6],
@@ -48,6 +50,17 @@ print(m[:6])
 a = [1,2,3,4,5,6,7,8,9]
 n = 5
 print(a[2:])
+
+a = []
+a.append(3)
+a.append(3)
+a.append(3)
+print(a)
+
+X = np.array([ [0.1, 0.3, 0.4, 0.8, 0.9],
+               [3.2, 2.4, 2.4, 0.1, 5.5]
+             ])
+print(np.cov(X))
 # df = df.sort_values('d')
 # for (idx,row) in df.iterrows():
 #     df.loc[idx,'add'] = row['d']-row['c']

@@ -70,18 +70,18 @@ class option_strategy_events(object):
     #     return res
 
     def nerm_residuals(self,params):
-        a,beta,mu,sigma = params
+        a,d,beta,mu,sigma = params
         squred_e = 0
         for (idx_vix,r_vix) in self.df_vix.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             dt = r_vix[self.event_id]
-            if dt > 30 or dt < -30: continue
+            if dt > 60 or dt < -60: continue
             norm += beta * self.normal_distribution(dt, mu, sigma)
             y_t = r_vix['amt_close']
             y_t1 = self.df_vix.loc[idx_vix-1,'amt_close']
-            # obj_t = - y_t + a + d*y_t1 + norm
-            obj_t = - y_t + a + norm
+            obj_t = - y_t + a + d*y_t1 + norm
+            # obj_t = - y_t + a + norm
             squred_e += obj_t**2
             if dt not in self.x:
                 self.x.append(dt)
@@ -91,10 +91,10 @@ class option_strategy_events(object):
         return squred_e
 
     def optimization_ols(self):
-        # init_params = np.ones(5)
-        init_params = np.ones(4)
-        # bnds = ((1e-3, 50), (-1, 1), (None, None), (1e-3, 30), (1e-3, 100))
-        bnds = ((1e-3, 50), (None, None), (1e-3, 30), (1e-3, 100))
+        init_params = np.ones(5)
+        # init_params = np.ones(4)
+        bnds = ((1e-3, 50), (-1, 1), (None, None), (1e-3, 30), (1e-3, 100))
+        # bnds = ((1e-3, 50), (None, None), (1e-3, 30), (1e-3, 100))
         res = minimize(self.nerm_residuals, init_params, method='L-BFGS-B', bounds=bnds, tol=1e-3)
         # res = minimize(self.func_derm, init_params, method='Nelder-Mead',tol=1e-3)
         # res = minimize(self.func_derm, init_params, method='SLSQP')
@@ -118,21 +118,24 @@ class option_strategy_events(object):
                 print(res.x)
                 print(res.success)
                 print(res.message)
-                # a, d, beta, mu, sigma = res.x
-                a, beta, mu, sigma = res.x
+                a, d, beta, mu, sigma = res.x
+                # a, beta, mu, sigma = res.x
                 res_y = []
                 res_norm = []
                 for (i,xi) in enumerate(x):
-                    # yi = a + d*self.y_1[i] + beta*self.normal_distribution(xi,mu,sigma)
-                    yi = a + beta*self.normal_distribution(xi,mu,sigma)
-                    res_norm.append(beta*self.normal_distribution(xi,mu,sigma))
+                    yi = a + d*self.y_1[i] + beta*self.normal_distribution(xi,mu,sigma)
+                    # yi = a + beta*self.normal_distribution(xi,mu,sigma)
+
                     res_y.append(yi)
+                x_norm = np.arange(-10,30,1)
+                for xj in x_norm:
+                    res_norm.append(beta * self.normal_distribution(xj, mu, sigma))
                 plt.figure(idx_e)
                 plt.scatter(x, y,label='data')
                 plt.plot(x, res_y,label='regress',color='r')
                 plt.legend()
                 plt.figure(idx_e+1)
-                plt.plot(x, res_norm,label='regress 2',color='y')
+                plt.plot(x_norm, res_norm,label='regress 2',color='y')
                 plt.legend()
                 plt.show()
                 plt.clf()
@@ -168,15 +171,13 @@ class option_strategy_events(object):
     def optimize_events(self):
         init_params = np.ones(3*self.nbr_events+2)
         # TODO: ADD BOUNDS
-        res = minimize(self.nerm_residuals_all, init_params, method='L-BFGS-B',tol=1e-3)
-        print('=' * 50)
-        print(self.event_id)
-        print('-' * 50)
-        print(res.x)
-        print(res.success)
-        print(res.message)
+        res = minimize(self.nerm_residuals_all, init_params, method='BFGS',tol=1e-3)
+        # res = minimize(self.nerm_residuals_all, init_params, method='SLSQP',tol=1e-3)
         params = res.x
         res_y = []
+        res_norm = []
+        x_norm = []
+        events = []
         x = []
         y = []
         a = params[0]
@@ -187,21 +188,43 @@ class option_strategy_events(object):
         for (idx_vix,r_vix) in self.df_vix.iterrows():
             if idx_vix == 0 : continue
             norm = 0
+            date = r_vix['dt_date']
             for (idx_e, r_e) in self.df_events.iterrows():
                 event_id = r_e['id_event']
                 dt = r_vix[event_id]
                 if dt >30 or dt< -30 : continue
+                if dt == 0:
+                    x_norm.append(date)
+                    events.append(2)
                 norm += beta_list[idx_e] * self.normal_distribution(dt,mu_list[idx_e], sigma_list[idx_e])
             y_t = r_vix['amt_close']
             y_t1 = self.df_vix.loc[idx_vix-1,'amt_close']
             res_y.append(a + d*y_t1 + norm)
-            x.append(r_vix['dt_date'])
+            x.append(date)
             y.append(y_t)
-        plt.figure()
+            res_norm.append(norm)
+        print('=' * 100)
+        df_res = pd.DataFrame()
+        for (idx_e, r_e) in self.df_events.iterrows():
+            event_id = r_e['id_event']
+            r = pd.DataFrame(data={'1-id_event':[event_id],'2-name_event':[r_e['name_event']],'3-beta':[beta_list[idx_e]],
+                                   '4-mu':[mu_list[idx_e]],'5-sigma':[sigma_list[idx_e]],
+                                   '6-a':[a],'7-d':[d]},index=[event_id])
+            df_res = df_res.append(r)
+            print(event_id)
+            print('beta is ',beta_list[idx_e])
+            print('mu is ',mu_list[idx_e])
+            print('sigma is ',sigma_list[idx_e])
+        df_res.to_csv('../save_results/drem_regression_results.csv')
+        plt.figure(1)
         plt.scatter(x, y, label='data')
-        plt.plot(x, res_y, label='regress')
+        plt.plot(x, res_y, label='regress',color='r')
         plt.legend()
-        plt.show()
+        plt.figure(2)
+        plt.plot(x, res_norm, label='nerm')
+        plt.bar(x_norm, events, label='event',color = 'r')
+        plt.legend()
+        # plt.show()
         return res
 
 
@@ -214,17 +237,40 @@ Session = sessionmaker(bind=engine)
 sess = Session()
 events = Table('events', metadata, autoload=True)
 indexes = Table('indexes_mktdata', metadata, autoload=True)
-query_events = sess.query(events).filter(events.c.dt_first_trading > '2016-1-1')\
-                                .filter(events.c.dt_first_trading < '2018-2-1')
+query_events = sess.query(events).filter(events.c.dt_first_trading > '2015-3-1')\
+                                .filter(events.c.dt_first_trading < '2016-1-1')\
+                                .filter(events.c.flag_impact == 1)
 query_vix = sess.query(indexes.c.dt_date,indexes.c.id_instrument,indexes.c.amt_close)\
-    .filter(indexes.c.id_instrument == 'index_cvix').filter(indexes.c.dt_date > '2016-1-1')\
-    .filter(indexes.c.dt_date < '2018-2-1')
+    .filter(indexes.c.id_instrument == 'index_cvix')\
+    .filter(indexes.c.dt_date > '2015-3-1')\
+    .filter(indexes.c.dt_date < '2016-1-1')
+
 df_events = pd.read_sql(query_events.statement,query_events.session.bind)
 df_vix = pd.read_sql(query_vix.statement,query_vix.session.bind)
 
 s = option_strategy_events(df_events,df_vix)
 s.add_nbr_days_from_events()
 # s.event_analysis()
-s.optimize_events()
+res = s.optimize_events()
+print('=' * 100)
+print(res)
+print('=' * 100)
+
+print(res.x)
+print(res.success)
+print(res.message)
+
+try:
+    print(res.fun)
+    print('jac : ',res.jac)
+    print(res.hess)
+except:
+    pass
+
+try:
+    print('hess_inv : ',res.hess_inv)
+    for i in res.hess_inv: print(i)
+except:
+    pass
 # print(s.df_vix)
 print('')
