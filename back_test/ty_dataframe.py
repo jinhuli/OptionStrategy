@@ -48,6 +48,7 @@ print(sr[0:2])
 print(m[:6])
 
 a = [1,2,3,4,5,6,7,8,9]
+b = [1,2,3,4,5,6,7,8,9]
 n = 5
 print(a[2:])
 
@@ -57,10 +58,25 @@ a.append(3)
 a.append(3)
 print(a)
 
-X = np.array([ [0.1, 0.3, 0.4, 0.8, 0.9],
-               [3.2, 2.4, 2.4, 0.1, 5.5]
+X = np.array([ [0.11, 0.3, 0.4, 0.8, 0.9],
+               [3.2, 2.41, 2.4, 0.1, 5.5]
              ])
-print(np.cov(X))
+Y = np.array([ [0.1, 0.3, 0.41, 0.8, 0.9],
+               [3.2, 2.4, 2.4, 0.11, 5.5]
+             ])
+x = X.tolist()
+y = Y.tolist()
+c = np.append(X,Y,axis=0)
+print(c)
+print(c[0][0],c[1][1],c[2][2])
+l = []
+for idx,e in enumerate(c):
+    l.append(c[idx][idx])
+print(l)
+a = [[1],[2],[4],[4]]
+b = [[1],[2],[4],[4]]
+c = a.__add__(b)
+print(c)
 # df = df.sort_values('d')
 # for (idx,row) in df.iterrows():
 #     df.loc[idx,'add'] = row['d']-row['c']
