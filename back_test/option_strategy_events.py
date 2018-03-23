@@ -5,14 +5,17 @@ from sqlalchemy.orm import sessionmaker
 from scipy.optimize import minimize
 import scipy.optimize as optimize
 from matplotlib import pyplot as plt
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.tsa.ar_model import AR
+# from arch import arch_model
 import numpy as np
 import math
 
 class option_strategy_events(object):
 
     def __init__(self,df_events,df_metrics,event_model='normal'):
-        self.df_events = df_events
-        self.df_vix = df_metrics
+        self.df_events = df_events.sort_values(by='dt_date',ascending=True)
+        self.df_metrics = df_metrics.sort_values(by='dt_date',ascending=True)
         self.event_model = event_model
 
         self.dt_list = sorted(df_vix['dt_date'].unique())
@@ -31,7 +34,7 @@ class option_strategy_events(object):
         for (idx_e,r_e) in self.df_events.iterrows():
             dt_event = r_e['dt_first_trading']
             id_event = r_e['id_event']
-            self.df_vix[id_event] = self.calculate_nbr_days(self.df_vix['dt_date'], dt_event)
+            self.df_metrics[id_event] = self.calculate_nbr_days(self.df_metrics['dt_date'], dt_event)
             # self.df_index[id_event] = self.calculate_nbr_days(self.df_index['dt_date'], dt_event)
 
     def calculate_nbr_days(self,dt_list,dt_event):
@@ -48,27 +51,53 @@ class option_strategy_events(object):
 
     def residual_fun_nerm(self,params):
         a,d,beta,mu,sigma = params
-        squred_e = 0
-        for (idx_vix,r_vix) in self.df_vix.iterrows():
+        square_e = 0
+        for (idx_vix,r_vix) in self.df_metrics.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             dt = r_vix[self.event_id]
             if dt > 60 or dt < -60: continue
             norm += beta * self.normal_distribution(dt, mu, sigma)
             y_t = r_vix['amt_close']
-            y_t1 = self.df_vix.loc[idx_vix-1,'amt_close']
+            y_t1 = self.df_metrics.loc[idx_vix-1,'amt_close']
             obj_t = - y_t + a + d*y_t1 + norm
             # obj_t = - y_t + a + norm
-            squred_e += obj_t**2
+            square_e += obj_t**2
             if dt not in self.x:
                 self.x.append(dt)
                 self.y.append(y_t)
                 self.y_1.append(y_t1)
-        return squred_e
+        return square_e
 
-    def residual_fun_polinomial(self):
+    def residual_fun_polinomial(self,params):
         return None
 
+    def regress_ar(self):
+        # a,d = params
+        square_e = 0
+        yt = self.df_metrics['amt_close']
+        yt_l1 = yt.shift(1)
+        df = self.df_metrics
+        df['amt_close_l1'] = yt_l1
+        # GARCH MODEL
+        # garch11 = arch_model(yt, p=1, q=1)
+        # res = garch11.fit(update_freq=10)
+        # Auto-regression Plot
+        # plot_acf(yt, lags=31)
+        # plt.show()
+        #
+        df1 = df[['dt_date','amt_close']]
+        df1 = df1.set_index('dt_date')
+        X = df1.values
+        # train, test = X[1:len(X) - 7], X[len(X) - 7:]
+        # train autoregression
+        model = AR(X)
+        res = model.fit()
+        residuals = res.resid
+        # res_x = df1['amt_close'][res.k_ar :]
+        plt.plot(residuals)
+        plt.show()
+        return res
 
     def optimize_per_event(self):
         for (idx_e, r_e) in self.df_events.iterrows():
@@ -139,7 +168,7 @@ class option_strategy_events(object):
         mu_list = params[2+self.nbr_events:2+self.nbr_events*2]
         sigma_list = params[2+self.nbr_events*2:]
         squared_e = 0
-        for (idx_vix,r_vix) in self.df_vix.iterrows():
+        for (idx_vix,r_vix) in self.df_metrics.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             for (idx_e, r_e) in self.df_events.iterrows():
@@ -148,7 +177,7 @@ class option_strategy_events(object):
                 if dt >30 or dt< -30 : continue
                 norm += beta_list[idx_e] * self.normal_distribution(dt,mu_list[idx_e], sigma_list[idx_e])
             y_t = r_vix['amt_close']
-            y_t1 = self.df_vix.loc[idx_vix-1,'amt_close']
+            y_t1 = self.df_metrics.loc[idx_vix-1,'amt_close']
             obj_t = - y_t + a + d*y_t1 + norm
             squared_e += obj_t**2
             date = r_vix['dt_date']
@@ -162,7 +191,7 @@ class option_strategy_events(object):
         mu_list = params[2+self.nbr_events:2+self.nbr_events*2]
         sigma_list = params[2+self.nbr_events*2:]
         squared_e = 0
-        for (idx_vix,r_vix) in self.df_vix.iterrows():
+        for (idx_vix,r_vix) in self.df_metrics.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             for (idx_e, r_e) in self.df_events.iterrows():
@@ -171,7 +200,7 @@ class option_strategy_events(object):
                 if dt >30 or dt< -30 : continue
                 norm += beta_list[idx_e] * self.normal_distribution(dt,mu_list[idx_e], sigma_list[idx_e])
             y_t = r_vix['amt_close']
-            y_t1 = self.df_vix.loc[idx_vix-1,'amt_close']
+            y_t1 = self.df_metrics.loc[idx_vix-1,'amt_close']
             obj_t = - math.log(y_t,math.e) + a + d*math.log(y_t1,math.e) + norm
             squared_e += obj_t**2
             date = r_vix['dt_date']
@@ -196,7 +225,7 @@ class option_strategy_events(object):
         tss = 0
 
         ess = 0 # explained sum of squared errors
-        for (idx_vix,r_vix) in self.df_vix.iterrows():
+        for (idx_vix,r_vix) in self.df_metrics.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             date = r_vix['dt_date']
@@ -209,7 +238,7 @@ class option_strategy_events(object):
                     events.append(2)
                 norm += beta_list[idx_e] * self.normal_distribution(dt,mu_list[idx_e], sigma_list[idx_e])
             y_t = r_vix['amt_close']
-            y_t1 = self.df_vix.loc[idx_vix-1,'amt_close']
+            y_t1 = self.df_metrics.loc[idx_vix-1,'amt_close']
             res_y.append(a + d*y_t1 + norm)
             x.append(date)
             y.append(y_t)
@@ -314,6 +343,6 @@ df_index = pd.read_sql(query_index.statement,query_index.session.bind)
 df_metrics = add_index_yield(df_vix)
 # s = option_strategy_events(df_events,df_metrics)
 s = option_strategy_events(df_events,df_vix)
-
-s.optimize_per_event()
+s.regress_ar()
+# s.optimize_per_event()
 # res = s.optimize_events()
