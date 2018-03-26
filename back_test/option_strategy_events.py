@@ -5,8 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from scipy.optimize import minimize
 import scipy.optimize as optimize
 from matplotlib import pyplot as plt
-from statsmodels.graphics.tsaplots import plot_acf
-from statsmodels.tsa.ar_model import AR
+# from statsmodels.graphics.tsaplots import plot_acf
+# from statsmodels.tsa.ar_model import AR
 # from arch import arch_model
 import numpy as np
 import math
@@ -50,13 +50,16 @@ class option_strategy_events(object):
         return math.exp(-(dt-mu)**2/(2*s**2))/(s*math.sqrt(2*math.pi))
 
     def residual_fun_nerm(self,params):
-        a,d,beta,mu,sigma = params
+        # a,d,beta,mu,sigma = params
+        beta,mu,sigma = params
+        self.a = a = 0.24
+        self.d = d = 0.99
         square_e = 0
         for (idx_vix,r_vix) in self.df_metrics.iterrows():
             if idx_vix == 0 : continue
             norm = 0
             dt = r_vix[self.event_id]
-            if dt > 60 or dt < -60: continue
+            if dt > 30 or dt < -30: continue
             norm += beta * self.normal_distribution(dt, mu, sigma)
             y_t = r_vix['amt_close']
             y_t1 = self.df_metrics.loc[idx_vix-1,'amt_close']
@@ -91,13 +94,87 @@ class option_strategy_events(object):
         X = df1.values
         # train, test = X[1:len(X) - 7], X[len(X) - 7:]
         # train autoregression
-        model = AR(X)
-        res = model.fit()
-        residuals = res.resid
+        # model = AR(X)
+        # res = model.fit()
+        # residuals = res.resid
         # res_x = df1['amt_close'][res.k_ar :]
-        plt.plot(residuals)
+        # plt.plot(residuals)
+        plt.show()
+
+    def residuals_ar1(self,params):
+        a,d = params
+        yt = self.df_metrics['amt_close']
+        yt_l1 = yt.shift(1)
+        df = self.df_metrics
+        df['amt_close_l1'] = yt_l1
+        square_e = 0
+        for (idx,r) in df.iterrows():
+            if idx == 0 : continue
+            y_t = r['amt_close']
+            y_t1 = df.loc[idx,'amt_close_l1']
+            obj_t = - y_t + a + d*y_t1
+            square_e += obj_t**2
+        return square_e
+
+    def optimize_ar1(self):
+        init_params = np.ones(2)
+        res = minimize(self.residuals_ar1, init_params, method='L-BFGS-B',tol=1e-3)
+        params = res.x
+        res_y = []
+        res_norm = []
+        x_norm = []
+        events = []
+        x = []
+        y = []
+        a = params[0]
+        d = params[1]
+        tss = 0
+        ess = 0 # explained sum of squared errors
+        for (idx_vix,r_vix) in self.df_metrics.iterrows():
+            if idx_vix == 0 : continue
+            date = r_vix['dt_date']
+            for (idx_e, r_e) in self.df_events.iterrows():
+                event_id = r_e['id_event']
+                dt = r_vix[event_id]
+                if dt == 0:
+                    x_norm.append(date)
+                    events.append(15)
+            y_t = r_vix['amt_close']
+            y_t1 = self.df_metrics.loc[idx_vix-1,'amt_close']
+            res_y.append(a + d*y_t1)
+            x.append(date)
+            y.append(y_t)
+        regression_errors = []
+        y_mean = np.mean(y)
+        for (idx,res_yi) in enumerate(res_y):
+            ess += (res_yi-y_mean)**2
+            yi = y[idx]
+            tss += (yi - y_mean) ** 2
+            regression_errors.append(yi-res_yi)
+        rss = tss - ess  # residual sum of squared errors
+        print('=' * 100)
+        cov = res.hess_inv.todense()
+        print('cov : ',cov)
+        cov_ii = np.diag(cov)
+        df = len(self.dt_list)-1-3
+        t_a = a/np.sqrt(cov_ii[0]*rss/df)
+        t_d = d/np.sqrt(cov_ii[1]*rss/df)
+        print('a : ',a, ' ',t_a)
+        print('d : ',d, ' ',t_d)
+        print('TSS : ',tss)
+        print('RSS : ',rss)
+        print('R square : ',ess/tss)
+        plt.figure(1)
+        plt.scatter(x, y, label='data')
+        plt.plot(x, res_y, label='regress',color='r')
+        plt.legend()
+        plt.figure(2)
+        plt.plot(x, regression_errors, label='nerm')
+        plt.bar(x_norm, events, label='event',color = 'r')
+        plt.legend()
         plt.show()
         return res
+
 
     def optimize_per_event(self):
         for (idx_e, r_e) in self.df_events.iterrows():
@@ -106,10 +183,13 @@ class option_strategy_events(object):
             self.y_1.clear()
             try:
                 self.event_id = r_e['id_event']
-                init_params = np.ones(5)
-                bnds = ((1e-3, 50), (-1, 1), (None, None), (1e-3, 30), (1e-3, 100))
+                # init_params = np.ones(5)
+                init_params = np.ones(3)
+                # bnds = ((1e-3, 50), (-1, 1), (None, None), (1e-3, 30), (1e-3, 100))
+                bnds = ((None, None), (1e-3, 30), (1e-3, 100))
                 if self.event_model == 'normal':
-                    res = minimize(self.residual_fun_nerm, init_params, method='L-BFGS-B', bounds=bnds, tol=1e-3)
+                    # res = minimize(self.residual_fun_nerm, init_params, method='L-BFGS-B', bounds=bnds, tol=1e-3)
+                    res = minimize(self.residual_fun_nerm, init_params, method='L-BFGS-B',  tol=1e-3)
                 else:
                     break
                 x = self.x
@@ -118,7 +198,10 @@ class option_strategy_events(object):
                 print(self.event_id, r_e['name_event'])
                 print('-' * 50)
 
-                a, d, beta, mu, sigma = res.x
+                # a, d, beta, mu, sigma = res.x
+                a = self.a
+                d = self.d
+                beta, mu, sigma = res.x
                 cov = res.hess_inv.todense()
                 cov_ii = np.diag(cov)
                 res_y = []
@@ -131,21 +214,25 @@ class option_strategy_events(object):
                     res_norm.append(beta * self.normal_distribution(xj, mu, sigma))
                 ess = 0
                 tss = 0
+                rss = 0
                 y_mean = np.mean(y)
-                for res_yi in res_y:
+                for (idx,res_yi) in enumerate(res_y):
                     ess += (res_yi - y_mean) ** 2
-                for yi in y:
+                    yi = y[idx]
                     tss += (yi - y_mean) ** 2
-                rss = tss - ess  # residual sum of squared errors
-                df = len(self.dt_list) - 6
-
-                t_a = a / np.sqrt(cov_ii[0] * rss / df)
-                t_d = d / np.sqrt(cov_ii[1] * rss / df)
-                t_b = beta / np.sqrt(cov_ii[2] * rss / df)
-                t_mu = mu / np.sqrt(cov_ii[3] * rss / df)
-                t_s = sigma / np.sqrt(cov_ii[4] * rss / df)
-                print('a : ', a, ' ', t_a)
-                print('d : ', d, ' ', t_d)
+                    rss += (res_yi - yi) ** 2
+                # df = len(x) - 6
+                df = len(x) - 4
+                # t_a = a / np.sqrt(cov_ii[0] * rss / df)
+                # t_d = d / np.sqrt(cov_ii[1] * rss / df)
+                # t_b = beta / np.sqrt(cov_ii[2] * rss / df)
+                # t_mu = mu / np.sqrt(cov_ii[3] * rss / df)
+                # t_s = sigma / np.sqrt(cov_ii[4] * rss / df)
+                t_b = beta / np.sqrt(cov_ii[0] * rss / df)
+                t_mu = mu / np.sqrt(cov_ii[1] * rss / df)
+                t_s = sigma / np.sqrt(cov_ii[2] * rss / df)
+                # print('a : ', a, ' ', t_a)
+                # print('d : ', d, ' ', t_d)
                 print('beta : ', beta, ' ', t_b)
                 print('mu : ', mu, ' ', t_mu)
                 print('sigma : ', sigma, ' ', t_s)
@@ -343,6 +430,7 @@ df_index = pd.read_sql(query_index.statement,query_index.session.bind)
 df_metrics = add_index_yield(df_vix)
 # s = option_strategy_events(df_events,df_metrics)
 s = option_strategy_events(df_events,df_vix)
-s.regress_ar()
-# s.optimize_per_event()
+# s.optimize_ar1()
+# s.regress_ar()
+s.optimize_per_event()
 # res = s.optimize_events()
