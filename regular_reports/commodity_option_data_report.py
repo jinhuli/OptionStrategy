@@ -595,12 +595,12 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 ############################################################################################
 # Eval Settings
 
-dt_date = datetime.date(2018, 3, 16)  # Set as Friday
-dt_last_week = datetime.date(2018, 3, 9)
-current_core_underlying = 'sr_1805'
+dt_date = datetime.date(2018, 3, 30)  # Set as Friday
+dt_last_week = datetime.date(2018, 3, 23)
+current_core_underlying = 'sr_1809'
 namecode = 'sr'
 exchange_code = 'czce'
-# current_core_underlying = 'm_1805'
+# current_core_underlying = 'm_1809'
 # namecode = 'm'
 # exchange_code = 'dce'
 contracts = ['1805', '1809', '1901', '1905']
@@ -648,7 +648,7 @@ df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
 df_underlying_core = pcr(df_pcr)
 hist_vol(df_underlying_core)
 
-implied_vol_analysis(evalDate,w,namecode,exchange_code)
+# implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
 hist_atm_ivs(evalDate,w,namecode,exchange_code,contracts,df_srf)
 print('Part [历史隐含波动率] completed')
