@@ -70,7 +70,7 @@ class CarryLongShort_EW(BktOptionStrategy):
         return df
 
 
-    """ 1 : Equal Long/Short Market Value """
+    """ Equal Long/Short Market Value """
     def get_weighted_ls(self, invest_fund, df):
         if len(df) == 0: return df
         df = self.get_long_short(df)
@@ -95,6 +95,78 @@ class CarryLongShort_EW(BktOptionStrategy):
             df.loc[idx, 'mtm'] = unit * bktoption.option_price * bktoption.multiplier
         return df
 
+    def run(self):
+        bkt_optionset = self.bkt_optionset
+        bkt = self.bkt_account
+
+        while bkt_optionset.index < len(bkt_optionset.dt_list):
+            if bkt_optionset.index == 0:
+                bkt_optionset.next()
+                continue
+
+            evalDate = bkt_optionset.eval_date
+            hp_enddate = self.to_dt_date(
+                self.calendar.advance(self.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
+
+            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.col_date] == evalDate)]
+
+            """回测期最后一天全部清仓"""
+            if evalDate == bkt_optionset.end_date:
+                print(' Liquidate all positions !!! ')
+                bkt.liquidate_all(evalDate)
+                bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+                break
+
+            """清仓到期头寸"""
+            for bktoption in bkt.holdings:
+                if bktoption.maturitydt == evalDate:
+                    print('Liquidate position at maturity : ', evalDate, ' , ', bktoption.maturitydt)
+                    bkt.close_position(evalDate, bktoption)
+
+            """持有期holding_period满，进行调仓 """
+            if (bkt_optionset.index - 1) % self.holding_period == 0 or not self.flag_trade:
+                print('调仓 : ', evalDate)
+                invest_fund = bkt.cash * self.money_utl
+                df_option = self.get_ranked_options(evalDate)
+                df_option = self.get_weighted_ls(invest_fund, df_option)
+                df_buy = df_option[df_option['weight'] > 0]
+                df_sell = df_option[df_option['weight'] < 0]
+
+                """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
+                for bktoption in bkt.holdings:
+                    if bktoption.maturitydt <= hp_enddate:
+                        bkt.close_position(evalDate, bktoption)
+                    else:
+                        if bktoption.trade_long_short == 1 and bktoption in df_buy['bktoption']: continue
+                        if bktoption.trade_long_short == -1 and bktoption in df_sell['bktoption']: continue
+                        bkt.close_position(evalDate, bktoption)
+
+                """开仓：做多df_buy，做空df_sell"""
+                if len(df_buy) + len(df_sell) == 0:
+                    self.flag_trade = False
+                else:
+
+                    for (idx, row) in df_buy.iterrows():
+                        bktoption = row['bktoption']
+                        unit = row['unit']
+                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
+                            bkt.rebalance_position(evalDate, bktoption, unit)
+                        else:
+                            bkt.open_long(evalDate, bktoption, unit)
+                    for (idx, row) in df_sell.iterrows():
+                        bktoption = row['bktoption']
+                        unit = row['unit']
+                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
+                            bkt.rebalance_position(evalDate, bktoption, unit)
+                        else:
+                            bkt.open_short(evalDate, bktoption, unit)
+                    self.flag_trade = True
+
+            """按当日价格调整保证金，计算投资组合盯市价值"""
+            bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+            print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+            bkt_optionset.next()
 
 
 class CarryLongShort_RW(BktOptionStrategy):
@@ -172,3 +244,76 @@ class CarryLongShort_RW(BktOptionStrategy):
         c = sum(df[df['weight'] > 0]['weight'])
         df['weight'] = df['weight'] / c
         return df
+
+    def run(self):
+        bkt_optionset = self.bkt_optionset
+        bkt = self.bkt_account
+
+        while bkt_optionset.index < len(bkt_optionset.dt_list):
+            if bkt_optionset.index == 0:
+                bkt_optionset.next()
+                continue
+
+            evalDate = bkt_optionset.eval_date
+            hp_enddate = self.to_dt_date(
+                self.calendar.advance(self.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
+
+            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.col_date] == evalDate)]
+
+            """回测期最后一天全部清仓"""
+            if evalDate == bkt_optionset.end_date:
+                print(' Liquidate all positions !!! ')
+                bkt.liquidate_all(evalDate)
+                bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+                break
+
+            """清仓到期头寸"""
+            for bktoption in bkt.holdings:
+                if bktoption.maturitydt == evalDate:
+                    print('Liquidate position at maturity : ', evalDate, ' , ', bktoption.maturitydt)
+                    bkt.close_position(evalDate, bktoption)
+
+            """持有期holding_period满，进行调仓 """
+            if (bkt_optionset.index - 1) % self.holding_period == 0 or not self.flag_trade:
+                print('调仓 : ', evalDate)
+                invest_fund = bkt.cash * self.money_utl
+                df_option = self.get_ranked_options(evalDate)
+                df_option = self.get_weighted_ls(invest_fund, df_option)
+                df_buy = df_option[df_option['weight'] > 0]
+                df_sell = df_option[df_option['weight'] < 0]
+
+                """平仓：将手中头寸进行平仓，除非当前头寸在新一轮持有期中仍判断持有相同的方向，则不会先平仓再开仓"""
+                for bktoption in bkt.holdings:
+                    if bktoption.maturitydt <= hp_enddate:
+                        bkt.close_position(evalDate, bktoption)
+                    else:
+                        if bktoption.trade_long_short == 1 and bktoption in df_buy['bktoption']: continue
+                        if bktoption.trade_long_short == -1 and bktoption in df_sell['bktoption']: continue
+                        bkt.close_position(evalDate, bktoption)
+
+                """开仓：做多df_buy，做空df_sell"""
+                if len(df_buy) + len(df_sell) == 0:
+                    self.flag_trade = False
+                else:
+
+                    for (idx, row) in df_buy.iterrows():
+                        bktoption = row['bktoption']
+                        unit = row['unit']
+                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
+                            bkt.rebalance_position(evalDate, bktoption, unit)
+                        else:
+                            bkt.open_long(evalDate, bktoption, unit)
+                    for (idx, row) in df_sell.iterrows():
+                        bktoption = row['bktoption']
+                        unit = row['unit']
+                        if bktoption in bkt.holdings and bktoption.trade_flag_open:
+                            bkt.rebalance_position(evalDate, bktoption, unit)
+                        else:
+                            bkt.open_short(evalDate, bktoption, unit)
+                    self.flag_trade = True
+
+            """按当日价格调整保证金，计算投资组合盯市价值"""
+            bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+            print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+            bkt_optionset.next()

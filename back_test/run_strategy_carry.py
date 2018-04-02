@@ -1,12 +1,8 @@
-import pandas as pd
 import QuantLib as ql
 import datetime
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from data_access.db_tables import DataBaseTables as dbt
 from back_test.bkt_util import BktUtil
 from back_test.bkt_strategy_longshort import CarryLongShort_RW as strategy
-from back_test.data_option import get_option_mktdata
+from back_test.data_option import get_50option_mktdata
 
 
 """Back Test Settings"""
@@ -21,7 +17,7 @@ open_trades = []
 
 """Collect Mkt Date"""
 
-df_option_metrics = get_option_mktdata(start_date,end_date)
+df_option_metrics = get_50option_mktdata(start_date,end_date)
 
 
 """Run Backtest"""

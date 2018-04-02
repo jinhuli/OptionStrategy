@@ -5,13 +5,24 @@ from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
 from back_test.bkt_util import BktUtil
 
-
+def get_eventsdata(start_date,end_date):
+    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    Session = sessionmaker(bind=engine)
+    sess = Session()
+    metadata = MetaData(engine)
+    events = Table('events', metadata, autoload=True)
+    query = sess.query(events.c.id_event,events.c.name_event,events.c.dt_impact_beg,
+                       events.c.dt_impact_end,events.c.dt_vol_peak)\
+        .filter(events.c.dt_impact_beg >= start_date)\
+        .filter(events.c.dt_impact_end <= end_date)\
+        .filter(events.c.flag_impact == 1)
+    df_event = pd.read_sql(query.statement, query.session.bind)
+    return df_event
 
 def get_50option_mktdata(start_date,end_date):
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
-
     Index_mkt = dbt.IndexMkt
     Option_mkt = dbt.OptionMkt
     options = dbt.Options

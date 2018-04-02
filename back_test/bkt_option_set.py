@@ -20,7 +20,7 @@ class BktOptionSet(object):
     #TODO: 目前只能处理日频数据，高频数据还需调整结构进一步完善（目前注释未删的部分）
 
 
-    def __init__(self, cd_frequency, df_option_metrics,hp,flag_calculate_iv=True,min_ttm =2,col_date='dt_date',col_datetime='dt_datetime',
+    def __init__(self, cd_frequency, df_option_metrics,flag_calculate_iv=True,min_ttm =2,col_date='dt_date',col_datetime='dt_datetime',
                  pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
         self.util = BktUtil()
         tmp = df_option_metrics.loc[0,self.util.id_instrument]
@@ -31,7 +31,7 @@ class BktOptionSet(object):
         self.engine_type = engine_type
         self.flag_calculate_iv = flag_calculate_iv
         if self.option_code =='sr': self.flag_calculate_iv = False
-        self.hp = hp
+        # self.hp = hp
         self.min_ttm = min_ttm
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
@@ -426,7 +426,7 @@ class BktOptionSet(object):
     #     return df,res
 
     """Separate Call/Put Vol Surface"""
-    def rank_by_carry1(self,bktoption_list):
+    def rank_by_carry1(self,bktoption_list,hp=20):
 
         df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         if len(bktoption_list)==0 : return df
@@ -435,9 +435,9 @@ class BktOptionSet(object):
         for idx,option in enumerate(bktoption_list):
             if option.maturitydt not in self.eligible_maturities: continue
             if option.option_type == self.util.type_call:
-                carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, self.hp)
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, hp)
             else:
-                carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, self.hp)
+                carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, hp)
             if carry == None or np.isnan(carry): carry = -999.0
             if theta == None or  np.isnan(theta): theta = -999.0
             if vega == None or  np.isnan(vega): vega = -999.0
@@ -460,13 +460,13 @@ class BktOptionSet(object):
         return df
 
     """Use Mid Call/Put Integrated Vol Surface"""
-    def rank_by_carry2(self,bktoption_list):
+    def rank_by_carry2(self,bktoption_list,hp=20):
         df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         if len(bktoption_list)==0 : return df
         bvs = self.get_mid_volsurface_squre()
         for idx,option in enumerate(bktoption_list):
             if option.maturitydt not in self.eligible_maturities: continue
-            carry, theta, vega, iv_roll_down = option.get_carry(bvs, self.hp)
+            carry, theta, vega, iv_roll_down = option.get_carry(bvs, hp)
             if carry == None or np.isnan(carry): carry = -999.0
             if theta == None or  np.isnan(theta): theta = -999.0
             if vega == None or  np.isnan(vega): vega = -999.0
@@ -492,7 +492,7 @@ class BktOptionSet(object):
 
 
 
-    def collect_option_metrics(self):
+    def collect_option_metrics(self,hp=20):
         res = []
         df = pd.DataFrame(columns=[self.util.col_date,self.util.col_carry,self.util.bktoption])
         bktoption_list = self.bktoptionset
@@ -502,9 +502,9 @@ class BktOptionSet(object):
         for idx,option in enumerate(bktoption_list):
             if option.option_price > 0.0:
                 if option.option_type == self.util.type_call:
-                    carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, self.hp)
+                    carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, hp)
                 else:
-                    carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, self.hp)
+                    carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, hp)
                 theta = option.get_theta()
                 vega = option.get_vega()
                 iv = option.get_implied_vol()
