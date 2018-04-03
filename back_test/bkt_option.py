@@ -454,6 +454,7 @@ class BktOption(object):
         # unit = mtm_value/(self.option_price*self.multiplier)
         return unit
 
+
     def liquidate(self):
         self.trade_flag_open = False
         self.trade_unit = None

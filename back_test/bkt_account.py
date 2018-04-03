@@ -8,13 +8,14 @@ from Utilities.PlotUtil import PlotUtil
 
 class BktAccount(object):
     def __init__(self, leverage=1.0, margin_rate=0.1, init_fund=1000000.0, tick_size=0.0001,
-                 contract_multiplier=10000, fee_rate=2.0 / 10000, nbr_slippage=0):
+                 contract_multiplier=10000, fee_rate=2.0 / 10000, nbr_slippage=0,rf = 0.03):
 
         self.util = BktUtil()
         self.init_fund = init_fund
         self.fee = fee_rate
         self.cash = init_fund
         self.total_asset = init_fund
+        self.rf = rf
         self.total_margin_capital = 0.0
         self.total_transaction_cost = 0.0
         self.npv = 1.0
@@ -225,7 +226,7 @@ class BktAccount(object):
         total_premium_paied = 0
         # TODO: 资金使用率监控
         holdings = []
-
+        self.cash = self.cash*(1+(1.0/365)*self.rf)
         for bktoption in self.holdings:
             if not bktoption.trade_flag_open: continue
             holdings.append(bktoption)

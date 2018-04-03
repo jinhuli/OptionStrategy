@@ -1,6 +1,6 @@
 from back_test.bkt_strategy import BktOptionStrategy
 import pandas as pd
-
+import QuantLib as ql
 
 
 class CarryLongShort_EW(BktOptionStrategy):
@@ -27,23 +27,23 @@ class CarryLongShort_EW(BktOptionStrategy):
             df_ranked_put = self.bkt_optionset.rank_by_carry2(option_put)
             n = self.nbr_top_bottom
             if len(df_ranked_call) <= 2 * n:
-                df_top_call = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption])
-                df_bottom_call = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption])
+                df_top_call = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
+                df_bottom_call = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
             else:
                 df_top_call = df_ranked_call[0:n]
                 df_bottom_call = df_ranked_call[-n:]
             if len(df_ranked_put) <= 2 * n:
-                df_top_put = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption])
-                df_bottom_put = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption])
+                df_top_put = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
+                df_bottom_put = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
             else:
                 df_top_put = df_ranked_put[0:n]
                 df_bottom_put = df_ranked_put[-n:]
             df_top = df_top_call.append(df_top_put, ignore_index=True)
             df_bottom = df_bottom_call.append(df_bottom_put, ignore_index=True)
         else:
-            if self.option_type == self.type_call:
+            if self.option_type == self.util.type_call:
                 option_list = self.bkt_optionset.bktoptionset_call
-            elif self.option_type == self.type_put:
+            elif self.option_type == self.util.type_put:
                 option_list = self.bkt_optionset.bktoptionset_put
             else:
                 print('option type not set')
@@ -52,8 +52,8 @@ class CarryLongShort_EW(BktOptionStrategy):
             df_ranked = self.bkt_optionset.rank_by_carry2(option_list)
             n = self.nbr_top_bottom
             if len(df_ranked) <= 2 * n:
-                df_top = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption])
-                df_bottom = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption])
+                df_top = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
+                df_bottom = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
                 print('option nbr not enough')
             else:
                 df_top = df_ranked[0:n]
@@ -65,7 +65,7 @@ class CarryLongShort_EW(BktOptionStrategy):
 
 
     def get_long_short(self, df):
-        if self.trade_type == self.long_bottom:
+        if self.trade_type == self.util.long_bottom:
             df['weight'] = df['weight'] * (-1)
         return df
 
@@ -105,16 +105,16 @@ class CarryLongShort_EW(BktOptionStrategy):
                 continue
 
             evalDate = bkt_optionset.eval_date
-            hp_enddate = self.to_dt_date(
-                self.calendar.advance(self.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
+            hp_enddate = self.util.to_dt_date(
+                self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
-            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.col_date] == evalDate)]
+            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.util.col_date] == evalDate)]
 
             """回测期最后一天全部清仓"""
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
                 bkt.liquidate_all(evalDate)
-                bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+                bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
                 print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
@@ -164,7 +164,7 @@ class CarryLongShort_EW(BktOptionStrategy):
                     self.flag_trade = True
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
-            bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+            bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
             print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
             bkt_optionset.next()
 
@@ -185,16 +185,16 @@ class CarryLongShort_RW(BktOptionStrategy):
     def get_ranked_options(self,eval_date):
         if self.option_type == None or self.option_type == 'all':
             option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoptionset)
-        elif self.option_type == self.type_call:
+        elif self.option_type == self.util.type_call:
             option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoptionset_call)
-        elif self.option_type == self.type_put:
+        elif self.option_type == self.util.type_put:
             option_list = self.get_candidate_set(eval_date,self.bkt_optionset.bktoptionset_put)
         else:
             print('option type not set')
             return
         n = self.nbr_top_bottom
         if len(option_list)<2*n:
-            df = pd.DataFrame(columns=[self.col_date, self.col_carry, self.bktoption,'weight'])
+            df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption,'weight'])
         else:
             df_ranked = self.bkt_optionset.rank_by_carry2(option_list)
             df_top = df_ranked[0:n]
@@ -230,15 +230,15 @@ class CarryLongShort_RW(BktOptionStrategy):
 
     def get_long_short(self,df):
         df_copy = df.copy()
-        if self.trade_type == self.long_top:
-            df = df.loc[:, df.columns != self.col_carry].join(df[[self.col_carry]].rank(method='dense'))
-        elif self.trade_type == self.long_bottom:
-            df = df.loc[:, df.columns != self.col_carry].join(df[[self.col_carry]].rank(method='dense',ascending=False))
+        if self.trade_type == self.util.long_top:
+            df = df.loc[:, df.columns != self.util.col_carry].join(df[[self.util.col_carry]].rank(method='dense'))
+        elif self.trade_type == self.util.long_bottom:
+            df = df.loc[:, df.columns != self.util.col_carry].join(df[[self.util.col_carry]].rank(method='dense',ascending=False))
         else:
             print('Trade type not set!')
             return
-        df = df.rename(columns={self.col_carry: 'rank'})
-        df = df.join(df_copy.loc[:, df_copy.columns == self.col_carry])
+        df = df.rename(columns={self.util.col_carry: 'rank'})
+        df = df.join(df_copy.loc[:, df_copy.columns == self.util.col_carry])
         n = len(df)
         df['weight'] = df['rank'] - (n + 1) / 2
         c = sum(df[df['weight'] > 0]['weight'])
@@ -255,16 +255,16 @@ class CarryLongShort_RW(BktOptionStrategy):
                 continue
 
             evalDate = bkt_optionset.eval_date
-            hp_enddate = self.to_dt_date(
-                self.calendar.advance(self.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
+            hp_enddate = self.util.to_dt_date(
+                self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
 
-            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.col_date] == evalDate)]
+            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.util.col_date] == evalDate)]
 
             """回测期最后一天全部清仓"""
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
                 bkt.liquidate_all(evalDate)
-                bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+                bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
                 print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
@@ -314,6 +314,6 @@ class CarryLongShort_RW(BktOptionStrategy):
                     self.flag_trade = True
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
-            bkt.mkm_update(evalDate, df_metrics_today, self.col_close)
+            bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
             print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
             bkt_optionset.next()

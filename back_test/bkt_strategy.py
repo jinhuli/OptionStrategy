@@ -5,14 +5,14 @@ from back_test.bkt_util import BktUtil
 from abc import ABCMeta, abstractmethod
 import pandas as pd
 
-class BktOptionStrategy(BktUtil):
+class BktOptionStrategy():
 
     __metaclass__=ABCMeta
 
 
     def __init__(self, df_option_metrics, hp, money_utilization, init_fund, tick_size,
                  fee_rate,nbr_slippage, max_money_utilization):
-        BktUtil.__init__(self)
+        self.util = BktUtil()
         self.init_fund = init_fund
         self.money_utl = money_utilization
         self.holding_period = hp
@@ -21,8 +21,8 @@ class BktOptionStrategy(BktUtil):
         self.bkt_account = BktAccount(fee_rate=fee_rate, init_fund=init_fund)
         self.bkt_optionset = BktOptionSet('daily', df_option_metrics)
         self.option_type = None
-        self.min_ttm = None
-        self.max_ttm = None
+        self.min_ttm = 1
+        self.max_ttm = 252
         self.moneyness_type = None
         self.trade_type = None
         self.min_volume = None
@@ -52,16 +52,16 @@ class BktOptionStrategy(BktUtil):
         if self.min_ttm != None:
             for option in option_set:
                 if option not in candidate_set: continue
-                min_maturity = self.to_dt_date(
-                    self.calendar.advance(self.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
+                min_maturity = self.util.to_dt_date(
+                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
                 if option.maturitydt < min_maturity:
                     candidate_set.remove(option)
 
         if self.max_ttm != None:
             for option in option_set:
                 if option not in candidate_set: continue
-                max_maturity = self.to_dt_date(
-                    self.calendar.advance(self.to_ql_date(eval_date), ql.Period(self.max_ttm, ql.Days)))
+                max_maturity = self.util.to_dt_date(
+                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.max_ttm, ql.Days)))
                 if option.maturitydt > max_maturity:
                     candidate_set.remove(option)
 
@@ -81,14 +81,38 @@ class BktOptionStrategy(BktUtil):
 
         return candidate_set
 
+    def get_mdt1_candidate_set(self,eval_date,option_set):
+        candidate_set = option_set.copy()
+        maturities = sorted(self.bkt_optionset.eligible_maturities)
+        min_maturity = self.util.to_dt_date(
+            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
+        mdt = maturities[0]
+        for mdt in maturities:
+            if mdt > min_maturity: break
+        for option in option_set:
+            if option not in candidate_set: continue
+            if option.maturitydt != mdt:
+                candidate_set.remove(option)
+        return candidate_set
+
+    def get_1st_eligible_maturity(self,eval_date):
+        maturities = sorted(self.bkt_optionset.eligible_maturities)
+        min_maturity = self.util.to_dt_date(
+            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
+        mdt = None
+        for mdt in maturities:
+            if mdt > min_maturity: break
+        return mdt
+
     """Construct a delta neutral long straddle strategy, 
         returning bkt_option objects to buy in a dataframe"""
-    def long_straddle(self,moneyness,df_metrics_today,fund):
+    def long_straddle(self,df_metrics_today,fund,moneyness,mdt):
         df = pd.DataFrame()
         # moneymess：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
+
         # if moneyness == 0:
 
         return df

@@ -32,10 +32,15 @@ class BktOptionSet(object):
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
         self.bktoptionset = set()
-        self.bktoptionset_call = []
-        self.bktoptionset_put = []
-        self.bktoptionset_atm = []
-        self.bktoptionset_otm = []
+        self.bktoptions_mdts = {}
+        self.bktoptionset_mdt1 = {}
+        self.bktoptionset_mdt2 = {}
+        self.bktoptionset_mdt3 = {}
+        self.bktoptionset_mdt4 = {}
+        self.bktoptionset_call = set()
+        self.bktoptionset_put = set()
+        self.bktoptionset_atm = set()
+        self.bktoptionset_otm = set()
         self.eligible_maturities = []
         self.atm_delta_min = 0.4
         self.atm_delta_max = 0.6
@@ -52,6 +57,7 @@ class BktOptionSet(object):
         self.update_multiplier_adjustment()
         self.update_current_daily_state()
         self.update_eligible_maturities()
+        self.update_bktoptionset_mdts()
         self.update_bktoption()
 
 
@@ -60,6 +66,7 @@ class BktOptionSet(object):
             self.update_eval_date()
             self.update_current_daily_state()
             self.update_eligible_maturities()
+            self.update_bktoptionset_mdts()
         self.update_bktoption()
 
 
@@ -108,6 +115,21 @@ class BktOptionSet(object):
             self.bktoptionset_put = set(bktoption_list_put)
             # self.bktoptionset_atm = set(bktoption_list_atm)
             # self.bktoptionset_otm = set(bktoption_list_otm)
+
+
+    def update_bktoptionset_mdts(self):
+        if len(self.eligible_maturities)==0:
+            print(self.eval_date,' No eligible maturities')
+            return
+        dict = {}
+        for mdt in self.eligible_maturities:
+            options = []
+            for option in self.bktoptionset:
+                if option.maturitydt == mdt:
+                    options.append(option)
+            dict.update({mdt:options})
+        self.bktoptions_mdts = dict
+
 
 
     def update_eval_date(self):
@@ -224,11 +246,60 @@ class BktOptionSet(object):
             for (idx,row) in self.df_metrics.iterrows():
                 self.df_metrics.loc[idx, self.util.col_date] = row[self.util.col_datetime].date()
 
-    def get_amt_mdt1(self):
-        df = pd.DataFrame()
-        # TODO:
+    def get_straddle(self,moneyness_rank,mdt):
+        # moneyness_rank：
+        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
+        # -1：虚值level1：平值行权价往虚值方向移一档
+        # 1: 实值level1： 平值新全价往实值方向移一档
+        optionset = self.bktoptions_mdts[mdt]
+        res = self.order_by_moneyness(optionset)
+        option_atm_call = res[self.util.type_call][moneyness_rank]
+        option_atm_put = res[self.util.type_put][moneyness_rank]
+        delta_call = option_atm_call.get_delta()
+        delta_put = option_atm_put.get_delta()
+        res = [
+            {self.util.id_instrument:option_atm_call.id_instrument,
+               self.util.unit:1,
+               self.util.bktoption:option_atm_call},
+            {self.util.id_instrument: option_atm_put.id_instrument,
+             self.util.unit: -delta_call/delta_put,
+             self.util.bktoption: option_atm_put}
+               ]
+        df_delta0 = pd.DataFrame(res)
+        return df_delta0
 
-        return df
+    """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
+    def order_by_moneyness(self,optionset_mdt):
+        dict_call = {}
+        dict_put = {}
+        res_call = {}
+        res_put = {}
+        atm_call = 1000
+        atm_put = -1000
+        spot = optionset_mdt[0].underlying_price
+        for option in optionset_mdt:
+            if option.option_type == self.util.type_call:
+                k = option.strike
+                m = round(k-spot,6)
+                if m >=0 :
+                    atm_call = min(atm_call,m)
+                dict_call.update({m:option})
+            else:
+                k = option.strike
+                m = round(k-spot,6)
+                if m <=0:
+                    atm_put = max(atm_put,m)
+                dict_put.update({m:option})
+        keys_call = sorted(dict_call)
+        keys_put = sorted(dict_put)
+        idx_call = keys_call.index(atm_call)
+        idx_put = keys_put.index(atm_put)
+        for (i,key) in enumerate(keys_call):
+            res_call.update({i-idx_call:dict_call[key]})
+        for (i,key) in enumerate(keys_put):
+            res_put.update({i-idx_put:dict_put[key]})
+        res_callput = {self.util.type_call:res_call,self.util.type_put:res_put}
+        return res_callput
 
     """ Get Call/Put volatility surface separately"""
     def get_volsurface_squre(self,option_type):
