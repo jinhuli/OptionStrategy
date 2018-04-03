@@ -3,7 +3,7 @@ from back_test.bkt_option_set import BktOptionSet
 import QuantLib as ql
 from back_test.bkt_util import BktUtil
 from abc import ABCMeta, abstractmethod
-
+import pandas as pd
 
 class BktOptionStrategy(BktUtil):
 
@@ -81,14 +81,17 @@ class BktOptionStrategy(BktUtil):
 
         return candidate_set
 
-    def straddle(self,moneyness,df_metrics_today):
+    """Construct a delta neutral long straddle strategy, 
+        returning bkt_option objects to buy in a dataframe"""
+    def long_straddle(self,moneyness,df_metrics_today,fund):
+        df = pd.DataFrame()
         # moneymess：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
         # if moneyness == 0:
 
-        return None
+        return df
 
     def strangle(self):
         return None

@@ -17,6 +17,7 @@ class BktStrategyEventVol(BktOptionStrategy):
 
         BktOptionStrategy.__init__(self, df_option_metrics, hp, money_utilization, init_fund, tick_size,
                  fee_rate,nbr_slippage, max_money_utilization)
+        self.df_events = df_events.sort_values(by='dt_impact_beg',ascending=True).reset_index()
         self.buy_ratio = buy_ratio
         self.sell_ratio = sell_ratio
 
@@ -29,15 +30,17 @@ class BktStrategyEventVol(BktOptionStrategy):
         bkt = self.bkt_account
 
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-            if bkt_optionset.index == 0:
-                bkt_optionset.next()
-                continue
-
+            # if bkt_optionset.index == 0:
+            #     bkt_optionset.next()
+            #     continue
+            idx_event = 0
+            dt_event = self.df_events.loc[idx_event,'dt_impact_beg']
+            dt_volpeak = self.df_events.loc[idx_event,'dt_vol_peak']
             evalDate = bkt_optionset.eval_date
-            # hp_enddate = self.to_dt_date(
+            # hp_enddate = self.to_dt_date(e
             #     self.calendar.advance(self.to_ql_date(evalDate), ql.Period(self.holding_period, ql.Days)))
+            # df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.col_date] == evalDate)]
 
-            df_metrics_today = self.df_option_metrics[(self.df_option_metrics[self.col_date] == evalDate)]
             df_metrics_today = bkt_optionset.df_daily_state
             """回测期最后一天全部清仓"""
             if evalDate == bkt_optionset.end_date:
@@ -52,6 +55,15 @@ class BktStrategyEventVol(BktOptionStrategy):
                 if bktoption.maturitydt == evalDate:
                     print('Liquidate position at maturity : ', evalDate, ' , ', bktoption.maturitydt)
                     bkt.close_position(evalDate, bktoption)
+
+            """Event day，open vol position"""
+            if evalDate == dt_event:
+                """ Select Strategy"""
+                df_open_position = self.long_straddle(df_metrics_today,0,self.cash)
+                for (idx, row) in df_open_position.iterrows():
+                    bktoption = row['bktoption']
+                    unit = row['unit']
+                    bkt.open_long(evalDate, bktoption, unit)
 
             """持有期holding_period满，进行调仓 """
             if (bkt_optionset.index - 1) % self.holding_period == 0 or not self.flag_trade:
