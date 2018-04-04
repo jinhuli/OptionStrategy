@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData, Table, Column,TIMESTAMP
+from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
 from WindPy import w
@@ -10,10 +10,9 @@ import math
 
 
 class DataCollection():
-
     class table_options():
 
-        def get_option_contracts(self,datestr):
+        def get_option_contracts(self, datestr):
             engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata',
                                    echo=False)
             metadata = MetaData(engine)
@@ -22,18 +21,18 @@ class DataCollection():
             sess = Session()
             query = sess.query(option_contracts.c.dt_listed,
                                option_contracts.c.dt_maturity,
-                                option_contracts.c.windcode,
-                                option_contracts.c.id_instrument,
-                                option_contracts.c.amt_strike,
-                                option_contracts.c.cd_option_type
-                               )\
+                               option_contracts.c.windcode,
+                               option_contracts.c.id_instrument,
+                               option_contracts.c.amt_strike,
+                               option_contracts.c.cd_option_type
+                               ) \
                 .filter(option_contracts.c.dt_listed <= datestr) \
-                .filter(option_contracts.c.dt_maturity >= datestr)\
+                .filter(option_contracts.c.dt_maturity >= datestr) \
                 .filter(option_contracts.c.id_underlying == 'index_50etf')
             df_optionchain = pd.read_sql(query.statement, query.session.bind)
             return df_optionchain
 
-        def czce_daily(self,dt, data):
+        def czce_daily(self, dt, data):
             db_data = []
             # print(data)
             cd_exchange = 'czce'
@@ -99,7 +98,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-        def dce_day(self,dt, data):
+        def dce_day(self, dt, data):
             db_data = []
             # print(data)
             cd_exchange = 'dce'
@@ -164,7 +163,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-        def dce_night(self,dt, data):
+        def dce_night(self, dt, data):
             db_data = []
             # print(data)
             cd_exchange = 'dce'
@@ -229,10 +228,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-
-
-
-        def wind_data_50etf_option(self,datestr):
+        def wind_data_50etf_option(self, datestr):
 
             db_data = []
             id_underlying = 'index_50etf'
@@ -252,7 +248,7 @@ class DataCollection():
             for (i2, df_mktdata) in df_mktdatas.iterrows():
                 dt_date = datetime.datetime.strptime(datestr, "%Y-%m-%d").date()
                 windcode = df_mktdata['option_code'] + '.SH'
-                option_info = df_optionchain[df_optionchain['windcode']==windcode]
+                option_info = df_optionchain[df_optionchain['windcode'] == windcode]
                 id_instrument = option_info['id_instrument'].values[0]
                 amt_strike = option_info['amt_strike'].values[0]
                 cd_option_type = option_info['cd_option_type'].values[0]
@@ -300,10 +296,9 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-
     class table_futures():
 
-        def dce_night(self,dt, data):
+        def dce_night(self, dt, data):
             db_data = []
             datasource = cd_exchange = 'dce'
             for column in data.columns.values:
@@ -346,7 +341,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-        def dce_day(self,dt, data):
+        def dce_day(self, dt, data):
             db_data = []
             datasource = cd_exchange = 'dce'
             for column in data.columns.values:
@@ -389,7 +384,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-        def sfe_daily(self,dt, data):
+        def sfe_daily(self, dt, data):
             key_map = du.key_map_sfe()
             data_dict1 = data['o_curinstrument']
             db_data = []
@@ -449,7 +444,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-        def czce_daily(self,dt, data):
+        def czce_daily(self, dt, data):
             db_data = []
             # print(data)
             datasource = cd_exchange = 'czce'
@@ -496,7 +491,7 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-        def wind_index_future_daily(self,datestr, id_instrument, windcode):
+        def wind_index_future_daily(self, datestr, id_instrument, windcode):
             db_data = []
             datasource = 'wind'
             flag_night = -1
@@ -504,7 +499,7 @@ class DataCollection():
             name_code = id_instrument[0:2]
             tickdata = w.wsd(windcode,
                              "pre_close,open,high,low,close,volume,amt,oi,pre_settle,settle",
-                             datestr , datestr , "Fill=Previous")
+                             datestr, datestr, "Fill=Previous")
             if tickdata.ErrorCode != 0:
                 print('wind get data error ', datestr, ',errorcode : ', tickdata.ErrorCode)
                 return []
@@ -548,9 +543,94 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
+    class table_stocks():
+
+        def wind_A_shares_total(self,datestr):
+            db_data = []
+            data = w.wset("sectorconstituent","date="+datestr+";sectorid=a001010100000000")
+            if data.ErrorCode != 0:
+                print('wind get data error ', datestr, ',errorcode : ', data.ErrorCode)
+                return []
+            df = pd.DataFrame()
+            for i, f in enumerate(data.Fields):
+                df[f] = data.Data[i]
+            for (idx, row) in df.iterrows():
+                windcode = row['wind_code']
+                name_instrument = row['sec_name'].encode('utf-8')
+                db_row = {'id_section': 'A_shares_total',
+                          'windcode': windcode,
+                          'name_instrument':name_instrument,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
+        def get_A_shares_total(self):
+            engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata',
+                                   echo=False)
+            metadata = MetaData(engine)
+            stocks = Table('stocks', metadata, autoload=True)
+            Session = sessionmaker(bind=engine)
+            sess = Session()
+            query = sess.query(stocks.c.id_section,
+                               stocks.c.windcode,
+                               ) \
+                .filter(stocks.c.id_section == 'A_shares_total')
+            df = pd.read_sql(query.statement, query.session.bind)
+            return df
+
+        def wind_stocks_daily(self, datestr, windcode):
+            db_data = []
+            datasource = 'wind'
+            tickdata = w.wsd(windcode, "pre_close,open,high,low,close,volume,amt,trade_status,sec_name,windcode,exch_eng",
+                             datestr, datestr, "Fill=Previous")
+            if tickdata.ErrorCode != 0:
+                print('wind get data error ', datestr, ',errorcode : ', tickdata.ErrorCode)
+                return []
+            df = pd.DataFrame()
+            for i, f in enumerate(tickdata.Fields):
+                df[f] = tickdata.Data[i]
+            df['dt_date'] = tickdata.Times
+            for (idx, row) in df.iterrows():
+                dt = row['dt_date']
+                dt_date = datetime.date(dt.year, dt.month, dt.day)
+                open_price = row['OPEN']
+                high = row['HIGH']
+                low = row['LOW']
+                close = row['CLOSE']
+                volume = row['VOLUME']
+                amt = row['AMT']
+                amt_last_close = row['PRE_CLOSE']
+                cd_exchange = row['EXCH_ENG'].lower()
+                trade_status = row['TRADE_STATUS'].encode('utf-8')
+                name_instrument = row['SEC_NAME'].encode('utf-8')
+                if trade_status == '交易':
+                    flag_in_trade = 1
+                else:
+                    flag_in_trade = 0
+                id_instrument = windcode[0:6]+'_'+windcode[-2:]
+                db_row = {'dt_date': dt_date,
+                          'id_instrument': id_instrument,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'name_instrument':name_instrument,
+                          'flag_in_trade':flag_in_trade,
+                          'amt_last_close': amt_last_close,
+                          'amt_open': open_price,
+                          'amt_high': high,
+                          'amt_low': low,
+                          'amt_close': close,
+                          'amt_trading_volume': volume,
+                          'amt_trading_value': amt,
+                          'cd_exchange': cd_exchange,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
     class table_future_contracts():
 
-        def get_future_contract_ids(self,datestr):
+        def get_future_contract_ids(self, datestr):
             engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata',
                                    echo=False)
             FutureContracts = dbt.Futures
@@ -562,8 +642,7 @@ class DataCollection():
             df_windcode = pd.read_sql(query.statement, query.session.bind)
             return df_windcode
 
-
-        def wind_future_contracts(self,category_code, nbr_multiplier):
+        def wind_future_contracts(self, category_code, nbr_multiplier):
             db_data = []
 
             cd_exchange = 'cfe'
@@ -600,7 +679,6 @@ class DataCollection():
                           }
                 db_data.append(db_row)
             return db_data
-
 
     class table_option_contracts():
 
@@ -799,10 +877,9 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-
     class table_index():
 
-        def wind_data_index(self,windcode, date, id_instrument):
+        def wind_data_index(self, windcode, date, id_instrument):
             db_data = []
             datasource = 'wind'
             data = w.wsd(windcode, "open,high,low,close,volume,amt",
@@ -840,10 +917,9 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-
     class table_index_intraday():
 
-        def wind_data_equity_index(self,windcode, date, id_instrument):
+        def wind_data_equity_index(self, windcode, date, id_instrument):
             db_data = []
             datasource = 'wind'
             data = w.wsi(windcode, "close,volume,amt", date + " 09:00:00", date + " 15:01:00", "Fill=Previous")
@@ -867,10 +943,9 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-
     class table_option_intraday():
 
-        def wind_data_50etf_option_intraday(self,datestr, df_optionchain_row):
+        def wind_data_50etf_option_intraday(self, datestr, df_optionchain_row):
             db_data = []
             datasource = 'wind'
             windcode = df_optionchain_row['windcode']
@@ -900,14 +975,12 @@ class DataCollection():
                     db_data.append(db_row)
             except Exception as e:
                 print(e)
-                print(datestr,' , ',id_instrument)
+                print(datestr, ' , ', id_instrument)
             return db_data
-
 
     class table_option_tick():
 
-
-        def wind_50etf_option_tick(self,datestr, df_optionchain_row):
+        def wind_50etf_option_tick(self, datestr, df_optionchain_row):
             db_data = []
             datasource = 'wind'
             windcode = df_optionchain_row['windcode']
@@ -966,11 +1039,9 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
-
     class table_future_tick():
 
-
-        def wind_index_future_tick(self,datestr, id_instrument, windcode):
+        def wind_index_future_tick(self, datestr, id_instrument, windcode):
             db_data = []
             datasource = 'wind'
             tickdata = w.wst(windcode,
@@ -1026,7 +1097,6 @@ class DataCollection():
                           }
                 db_data.append(db_row)
             return db_data
-
 
     class table_future_positions():
 
@@ -1130,10 +1200,3 @@ class DataCollection():
                           }
                 db_data.append(db_row)
             return db_data
-
-
-
-
-
-
-

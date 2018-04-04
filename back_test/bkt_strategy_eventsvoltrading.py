@@ -14,7 +14,7 @@ class BktStrategyEventVol(BktOptionStrategy):
         BktOptionStrategy.__init__(self, df_option_metrics, hp, money_utilization, init_fund, tick_size,
                  fee_rate,nbr_slippage, max_money_utilization)
         self.df_events = df_events.sort_values(by='dt_impact_beg',ascending=True).reset_index()
-
+        self.moneyness = 0
 
     def run(self):
         bkt_optionset = self.bkt_optionset
@@ -24,6 +24,7 @@ class BktStrategyEventVol(BktOptionStrategy):
         while bkt_optionset.index < len(bkt_optionset.dt_list):
             dt_event = self.df_events.loc[idx_event,'dt_impact_beg']
             dt_volpeak = self.df_events.loc[idx_event,'dt_vol_peak']
+            cd_trade_deriction = self.df_events.loc[idx_event,'cd_trade_direction']
             evalDate = bkt_optionset.eval_date
 
             df_metrics_today = bkt_optionset.df_daily_state
@@ -59,7 +60,13 @@ class BktStrategyEventVol(BktOptionStrategy):
                     return
 
                 """ Select Strategy : 跨式策略多头"""
-                df_open_position = self.bkt_optionset.get_straddle(0,self.get_1st_eligible_maturity(evalDate))
+                if cd_trade_deriction == -1:
+                    df_open_position = self.bkt_optionset.get_put(self.moneyness,self.get_1st_eligible_maturity(evalDate))  # 选择跨式期权头寸
+                elif cd_trade_deriction == 1:
+                    df_open_position = self.bkt_optionset.get_call(self.moneyness,self.get_1st_eligible_maturity(evalDate))  # 选择跨式期权头寸
+                else:
+                    df_open_position = self.bkt_optionset.get_straddle(self.moneyness,self.get_1st_eligible_maturity(evalDate)) # 选择跨式期权头寸
+
                 fund = 0
                 for (idx, row) in df_open_position.iterrows():
                     bktoption = row[self.util.bktoption]
@@ -119,7 +126,7 @@ bkt.run()
 # bkt.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
 
 bkt.return_analysis()
-
+print(bkt.bkt_account.df_trading_records)
 
 
 

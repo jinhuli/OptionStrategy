@@ -268,6 +268,38 @@ class BktOptionSet(object):
         df_delta0 = pd.DataFrame(res)
         return df_delta0
 
+    def get_put(self,moneyness_rank,mdt):
+        # moneyness_rank：
+        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
+        # -1：虚值level1：平值行权价往虚值方向移一档
+        # 1: 实值level1： 平值新全价往实值方向移一档
+        optionset = self.bktoptions_mdts[mdt]
+        res = self.order_by_moneyness(optionset)
+        option_atm_put = res[self.util.type_put][moneyness_rank]
+        res = [
+            {self.util.id_instrument: option_atm_put.id_instrument,
+             self.util.unit: 1,
+             self.util.bktoption: option_atm_put}
+               ]
+        df_delta0 = pd.DataFrame(res)
+        return df_delta0
+
+    def get_call(self,moneyness_rank,mdt):
+        # moneyness_rank：
+        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
+        # -1：虚值level1：平值行权价往虚值方向移一档
+        # 1: 实值level1： 平值新全价往实值方向移一档
+        optionset = self.bktoptions_mdts[mdt]
+        res = self.order_by_moneyness(optionset)
+        option_atm_call = res[self.util.type_call][moneyness_rank]
+        res = [
+            {self.util.id_instrument: option_atm_call.id_instrument,
+             self.util.unit: 1,
+             self.util.bktoption: option_atm_call}
+               ]
+        df_delta0 = pd.DataFrame(res)
+        return df_delta0
+
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
     def order_by_moneyness(self,optionset_mdt):
         dict_call = {}

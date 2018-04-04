@@ -12,6 +12,7 @@ def get_eventsdata(start_date,end_date):
     metadata = MetaData(engine)
     events = Table('events', metadata, autoload=True)
     query = sess.query(events.c.id_event,events.c.name_event,events.c.dt_impact_beg,
+                       events.c.cd_trade_direction,
                        events.c.dt_impact_end,events.c.dt_vol_peak)\
         .filter(events.c.dt_impact_beg >= start_date)\
         .filter(events.c.dt_impact_end <= end_date)\
