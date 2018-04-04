@@ -103,14 +103,14 @@ class BktAccount(object):
             margin_capital = bktoption.trade_margin_capital
             dt_open = bktoption.trade_dt_open
             multiplier = bktoption.multiplier
-            premium = bktoption.premium
+            premium_open = bktoption.premium
             open_price = bktoption.trade_open_price
-
+            premium = unit * mkt_price * multiplier
             position = pd.Series()
             position[self.util.id_instrument] = id_instrument
             position[self.util.dt_open] = dt_open
             position[self.util.long_short] = long_short
-            position[self.util.premium] = premium
+            # position[self.util.premium] = premium
             position[self.util.open_price] = open_price
             position[self.util.unit] = unit
             position[self.util.margin_capital] = margin_capital
@@ -123,7 +123,7 @@ class BktAccount(object):
             fee = unit * mkt_price * self.fee * multiplier
             realized_pnl = long_short * (
             unit * mkt_price * multiplier - bktoption.premium) - bktoption.transaction_fee - fee
-            premium_to_cash = long_short * premium
+            premium_to_cash = long_short * premium_open
             position[self.util.dt_close] = dt
             position[self.util.days_holding] = (dt - dt_open).days
             position[self.util.close_price] = mkt_price
