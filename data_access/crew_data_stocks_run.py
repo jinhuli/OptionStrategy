@@ -24,7 +24,7 @@ stocks_mktdata = Table('stocks_mktdata', metadata, autoload=True)
 
 dc = DataCollection()
 
-beg_date = datetime.date(2018, 1, 1)
+beg_date = datetime.date(2018, 1, 9)
 end_date = datetime.date(2018, 4, 3)
 
 date_range = w.tdays(beg_date, end_date, "").Data[0]
@@ -44,11 +44,14 @@ for dt in date_range:
     df_A_shares = dc.table_stocks().get_A_shares_total()
     for (idx,row) in df_A_shares.iterrows():
         windcode = row['windcode']
-        db_datas = dc.table_stocks().wind_stocks_daily(dt,windcode)
-        for db_data in db_datas:
-            try:
-                conn.execute(stocks_mktdata.insert(), db_data)
-            except Exception as e:
-                print(e)
-                continue
+        res = stocks_mktdata.select((stocks_mktdata.c.dt_date == dt) &
+                                    (stocks_mktdata.c.code_instrument == windcode)).execute()
+        if res.rowcount == 0:
+            db_datas = dc.table_stocks().wind_stocks_daily(dt,windcode)
+            for db_data in db_datas:
+                try:
+                    conn.execute(stocks_mktdata.insert(), db_data)
+                except Exception as e:
+                    print(e)
+                    continue
 

@@ -602,19 +602,23 @@ class DataCollection():
                 amt = row['AMT']
                 amt_last_close = row['PRE_CLOSE']
                 cd_exchange = row['EXCH_ENG'].lower()
-                trade_status = row['TRADE_STATUS'].encode('utf-8')
-                name_instrument = row['SEC_NAME'].encode('utf-8')
-                if trade_status == '交易':
-                    flag_in_trade = 1
-                else:
-                    flag_in_trade = 0
+                try :
+                    # trade_status = row['TRADE_STATUS'].encode('utf-8')
+                    name_instrument = row['SEC_NAME'].encode('utf-8')
+                    # if trade_status == '交易':
+                    #     flag_in_trade = 1
+                    # else:
+                    #     flag_in_trade = 0
+                except:
+                    # flag_in_trade = -1
+                    name_instrument = 'nan'
                 id_instrument = windcode[0:6]+'_'+windcode[-2:]
                 db_row = {'dt_date': dt_date,
                           'id_instrument': id_instrument,
                           'datasource': datasource,
                           'code_instrument': windcode,
                           'name_instrument':name_instrument,
-                          'flag_in_trade':flag_in_trade,
+                          # 'flag_in_trade':flag_in_trade,
                           'amt_last_close': amt_last_close,
                           'amt_open': open_price,
                           'amt_high': high,
