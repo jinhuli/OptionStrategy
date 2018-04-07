@@ -12,9 +12,9 @@ from back_test.bkt_option_set import BktOptionSet
 
 w.start()
 
-date = datetime.date(2018, 4, 4)
-dt_date = date.strftime("%Y-%m-%d")
-print(dt_date)
+# date = datetime.date(2018, 4, 4)
+# dt_date = date.strftime("%Y-%m-%d")
+# print(dt_date)
 
 engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata', echo=False)
 conn = engine.connect()
@@ -24,8 +24,8 @@ stocks_mktdata = Table('stocks_mktdata', metadata, autoload=True)
 
 dc = DataCollection()
 
-beg_date = datetime.date(2018, 1, 9)
-end_date = datetime.date(2018, 4, 3)
+beg_date = datetime.date(2017, 10, 9)
+end_date = datetime.date(2018, 1, 9)
 
 date_range = w.tdays(beg_date, end_date, "").Data[0]
 #####################CONTRACT INFO#########################################
