@@ -42,18 +42,18 @@ ql.Settings.instance().evaluationDate = ql_evalDate
 ##################################################################################################
 ql_mdt = calendar.advance(ql_evalDate,ql.Period(3,ql.Months))
 
-spot_300 = 4302.0181
-spot_50 = 3120.6951
-spot_500 = 6309.8836
+spot_300 = 3898.4977
+spot_50 = 2722.1530
+spot_500 = 6114.7382
 strike_300 = spot_300
 strike_50 = spot_50
 strike_500 = spot_500
-option_300_call = spot_300*4.07/100.0
-option_300_put = spot_300*3.4/100.0
-option_50_call = spot_50*4.08/100.0
-option_50_put = spot_50*3.33/100.0
-option_500_call = spot_500*4.09/100.0
-option_500_put = spot_500*4.59/100.0
+option_300_call = spot_300*5.79/100.0
+option_300_put = spot_300*6.17/100.0
+option_50_call = spot_50*5.73/100.0
+option_50_put = spot_50*5.82/100.0
+option_500_call = spot_500*5.36/100.0
+option_500_put = spot_500*6.78/100.0
 iv_300_call = calculate_implied_vol(ql.Option.Call,ql_mdt,strike_300,spot_300,option_300_call)
 iv_300_put = calculate_implied_vol(ql.Option.Put,ql_mdt,strike_300,spot_300,option_300_put)
 iv_50_call = calculate_implied_vol(ql.Option.Call,ql_mdt,strike_50,spot_50,option_50_call)
@@ -66,6 +66,12 @@ print('iv_50_call : ',iv_50_call)
 print('iv_50_put : ',iv_50_put)
 print('iv_500_call : ',iv_500_call)
 print('iv_500_put : ',iv_500_put)
+print(iv_300_call)
+print(iv_300_put)
+print(iv_50_call)
+print(iv_50_put)
+print(iv_500_call)
+print(iv_500_put)
 ##################################################################################################
 
 
