@@ -6,14 +6,18 @@ from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
 #######################################################################################
 evalDate = datetime.date(2018, 4, 9)
 mdtDate = datetime.date(2018, 5, 8)
-spot_price = 48.83
-vol = 35.5 / 100
+spot_price = 31.7756
+vol = 0.0
 rf = 0.03
 # dividend_rate = 0.22/48.83 # 4月份分红预案已出 每10股派2.2
 dividend_rate = 0.0
 # strike = spot_price
 strike = spot_price
+quote =  5.59/100
+option_price = quote*spot_price
 print('=' * 100)
+
+#######################################################################################
 
 optionType = ql.Option.Call
 calendar = ql.China()
@@ -25,7 +29,6 @@ effectivedt = calendar.advance(eval_date, ql.Period(3, ql.Days))  # T+3日可开
 maturitydt = ql.Date(mdtDate.day, mdtDate.month, mdtDate.year)
 evaluation = Evaluation(eval_date, daycounter, calendar)
 
-#######################################################################################
 
 exercise = ql.AmericanExercise(effectivedt, maturitydt)
 payoff = ql.PlainVanillaPayoff(optionType, strike)
@@ -44,10 +47,7 @@ ame_option.setPricingEngine(ql.BinomialVanillaEngine(bsmprocess, 'crr', 801))
 
 european_option.setPricingEngine(ql.AnalyticEuropeanEngine(bsmprocess))
 
-ame_price = ame_option.NPV()
-bs_price = european_option.NPV()
-print('volalility : ', round(volatility.value(), 2))
-print("The theoretical american option price is ", ame_price, ' , ', round(100 * ame_price / spot_price, 2),
-      '% of spot')
-print("The theoretical european option price is ", bs_price, ' , ', round(100 * bs_price / spot_price, 2), '% of spot')
+iv = ame_option.impliedVolatility(option_price, bsmprocess, 1.0e-3, 300, 0.05, 1.0)
+
+print("The implied vol is ", iv)
 print('-' * 100)
