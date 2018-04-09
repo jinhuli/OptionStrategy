@@ -51,7 +51,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                     df = self.bkt_optionset.get_straddle(0,mdt_next)
             """ Open position on event day, close on vol peak day"""
             if evalDate == dt_event:
-                print(idx_event)
+                print(idx_event,' ',evalDate,' open position')
 
                 # optionset = self.bkt_optionset.bktoptionset
                 # eligible_options = self.get_mdt1_candidate_set(evalDate, self.bkt_optionset.bktoptionset)
@@ -86,7 +86,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
             """ Close position """
             if evalDate == dt_volpeak:
-                print('######',dt_volpeak,'######')
+                print(idx_event,' ',evalDate,' close position')
+
                 self.flag_trade = False
                 for bktoption in bkt.holdings:
                     bkt.close_position(evalDate,bktoption)

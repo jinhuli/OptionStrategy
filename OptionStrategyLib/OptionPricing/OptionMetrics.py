@@ -6,6 +6,28 @@ class OptionMetrics:
     def __init__(self, option):
         self.Option = option
 
+    def option_price(self, evaluation, rf, spot_price, vol, engineType):
+
+        ql_evalDate = evaluation.evalDate
+        # ql.Settings.instance().evaluationDate = ql_evalDate
+        calendar = evaluation.calendar
+        daycounter = evaluation.daycounter
+        option = self.Option.option_ql
+        flat_vol_ts = ql.BlackVolTermStructureHandle(
+            ql.BlackConstantVol(ql_evalDate, calendar, vol, daycounter))
+        dividend_ts = ql.YieldTermStructureHandle(
+            ql.FlatForward(ql_evalDate, 0.0, daycounter))
+        yield_ts = ql.YieldTermStructureHandle(ql.FlatForward(ql_evalDate, rf, daycounter))
+        process = ql.BlackScholesMertonProcess(ql.QuoteHandle(ql.SimpleQuote(spot_price)), dividend_ts, yield_ts,
+                                               flat_vol_ts)
+        engine = util.get_engine(process, engineType)
+        option.setPricingEngine(engine)
+        # try:
+        p = option.NPV()
+        # except RuntimeError as e:
+        #     p = 0.0
+        return p
+
     def implied_vol(self, evaluation, rf, spot_price, option_price, engineType):
 
         ql_evalDate = evaluation.evalDate

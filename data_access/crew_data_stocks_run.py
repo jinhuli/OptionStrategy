@@ -24,7 +24,7 @@ stocks_mktdata = Table('stocks_mktdata', metadata, autoload=True)
 
 dc = DataCollection()
 
-beg_date = datetime.date(2017, 10, 9)
+beg_date = datetime.date(2017, 10, 27)
 end_date = datetime.date(2018, 1, 9)
 
 date_range = w.tdays(beg_date, end_date, "").Data[0]
