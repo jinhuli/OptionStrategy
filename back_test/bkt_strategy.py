@@ -10,12 +10,12 @@ class BktOptionStrategy():
     __metaclass__=ABCMeta
 
 
-    def __init__(self, df_option_metrics, hp, money_utilization, init_fund, tick_size,
+    def __init__(self, df_option_metrics, money_utilization, init_fund, tick_size,
                  fee_rate,nbr_slippage, max_money_utilization):
         self.util = BktUtil()
         self.init_fund = init_fund
         self.money_utl = money_utilization
-        self.holding_period = hp
+        # self.holding_period = hp
         self.df_option_metrics = df_option_metrics
         self.calendar = ql.China()
         self.bkt_account = BktAccount(fee_rate=fee_rate, init_fund=init_fund)

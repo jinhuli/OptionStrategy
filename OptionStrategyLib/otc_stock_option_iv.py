@@ -6,14 +6,14 @@ from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
 #######################################################################################
 evalDate = datetime.date(2018, 4, 9)
 mdtDate = datetime.date(2018, 5, 8)
-spot_price = 31.7756
+spot_price = 17.75
 vol = 0.0
 rf = 0.03
 # dividend_rate = 0.22/48.83 # 4月份分红预案已出 每10股派2.2
 dividend_rate = 0.0
 # strike = spot_price
 strike = spot_price
-quote =  5.59/100
+quote =  4.54/100
 option_price = quote*spot_price
 print('=' * 100)
 

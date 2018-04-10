@@ -57,7 +57,6 @@ class BktOptionSet(object):
         self.update_multiplier_adjustment()
         self.update_current_daily_state()
         self.update_eligible_maturities()
-        self.update_bktoptionset_mdts()
         self.update_bktoption()
 
 
@@ -66,7 +65,6 @@ class BktOptionSet(object):
             self.update_eval_date()
             self.update_current_daily_state()
             self.update_eligible_maturities()
-            self.update_bktoptionset_mdts()
         self.update_bktoption()
 
 
@@ -115,6 +113,7 @@ class BktOptionSet(object):
             self.bktoptionset_put = set(bktoption_list_put)
             # self.bktoptionset_atm = set(bktoption_list_atm)
             # self.bktoptionset_otm = set(bktoption_list_otm)
+        self.update_bktoptionset_mdts()
 
 
     def update_bktoptionset_mdts(self):
@@ -309,27 +308,43 @@ class BktOptionSet(object):
         atm_call = 1000
         atm_put = -1000
         spot = optionset_mdt[0].underlying_price
+        list_call = []
+        list_put = []
+        m_container = []
         for option in optionset_mdt:
+            # k = option.strike
+            # m = round(k - spot, 6)
+            # if option.option_type == self.util.type_call:
+            #     list_call.append({'m':m,'option':option})
+            # else:
+            #     list_put.append({'m':m,'option':option})
+
             if option.option_type == self.util.type_call:
                 k = option.strike
                 m = round(k-spot,6)
                 if m >=0 :
                     atm_call = min(atm_call,m)
                 dict_call.update({m:option})
+                if m not in m_container:m_container.append(m)
             else:
                 k = option.strike
                 m = round(k-spot,6)
-                if m <=0:
+                if m <=0 :
                     atm_put = max(atm_put,m)
                 dict_put.update({m:option})
+                if m not in m_container:m_container.append(m)
+        df_call = pd.DataFrame(list_call)
+        df_put = pd.DataFrame(list_put)
         keys_call = sorted(dict_call)
         keys_put = sorted(dict_put)
-        idx_call = keys_call.index(atm_call)
-        idx_put = keys_put.index(atm_put)
-        for (i,key) in enumerate(keys_call):
-            res_call.update({i-idx_call:dict_call[key]})
-        for (i,key) in enumerate(keys_put):
-            res_put.update({i-idx_put:dict_put[key]})
+        if atm_call != 1000:
+            idx_call = keys_call.index(atm_call)
+            for (i, key) in enumerate(keys_call):
+                res_call.update({i - idx_call: dict_call[key]})
+        if atm_put != -1000:
+            idx_put = keys_put.index(atm_put)
+            for (i,key) in enumerate(keys_put):
+                res_put.update({i-idx_put:dict_put[key]})
         res_callput = {self.util.type_call:res_call,self.util.type_put:res_put}
         return res_callput
 
