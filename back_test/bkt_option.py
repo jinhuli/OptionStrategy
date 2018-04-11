@@ -455,16 +455,7 @@ class BktOption(object):
         return unit
 
 
-    def liquidate(self):
-        self.trade_flag_open = False
-        self.trade_unit = None
-        self.trade_dt_open = None
-        self.trade_long_short = None
-        self.premium = None
-        self.trade_open_price = None
-        self.trade_margin_capital = None
-        self.transaction_fee = None
-        self.open_price = None
+
 
 
 

@@ -10,8 +10,8 @@ class BktOptionStrategy():
     __metaclass__=ABCMeta
 
 
-    def __init__(self, df_option_metrics, money_utilization, init_fund, tick_size,
-                 fee_rate,nbr_slippage, max_money_utilization):
+    def __init__(self, df_option_metrics, money_utilization=0.2, init_fund=100000000.0, tick_size=0.0001,
+                 fee_rate=2.0 / 10000, nbr_slippage=0, max_money_utilization=0.5,rf = 0.03):
         self.util = BktUtil()
         self.init_fund = init_fund
         self.money_utl = money_utilization
@@ -141,8 +141,9 @@ class BktOptionStrategy():
     def return_analysis(self):
         ar = 100 * self.bkt_account.calculate_annulized_return()
         mdd = 100 * self.bkt_account.calculate_max_drawdown()
+        sharpe = self.bkt_account.calculate_sharpe_ratio()
         print('=' * 50)
-        print("%20s %20s" % ('annulized_return(%)', 'max_drawdown(%)'))
-        print("%20s %20s" % (round(ar, 4), round(mdd, 4)))
+        print("%20s %20s %20s" % ('annulized_return(%)', 'max_drawdown(%)','sharpe ratio'))
+        print("%20s %20s %20s" % (round(ar, 4), round(mdd, 4),round(sharpe, 4)))
         print('-' * 50)
         self.bkt_account.plot_npv()

@@ -42,6 +42,7 @@ class BktOptionSet(object):
         self.bktoptionset_atm = set()
         self.bktoptionset_otm = set()
         self.eligible_maturities = []
+        self.options_by_moneyness = {}
         self.atm_delta_min = 0.4
         self.atm_delta_max = 0.6
         self.index = 0
@@ -66,6 +67,7 @@ class BktOptionSet(object):
             self.update_current_daily_state()
             self.update_eligible_maturities()
         self.update_bktoption()
+        self.options_by_moneyness = {}
 
 
     def update_bktoption(self):
@@ -250,10 +252,11 @@ class BktOptionSet(object):
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
-        optionset = self.bktoptions_mdts[mdt]
-        res = self.order_by_moneyness(optionset)
-        option_atm_call = res[self.util.type_call][moneyness_rank]
-        option_atm_put = res[self.util.type_put][moneyness_rank]
+        if self.options_by_moneyness == {}:
+            optionset = self.bktoptions_mdts[mdt]
+            self.update_options_by_moneyness(optionset)
+        option_atm_call = self.options_by_moneyness[self.util.type_call][moneyness_rank]
+        option_atm_put = self.options_by_moneyness[self.util.type_put][moneyness_rank]
         delta_call = option_atm_call.get_delta()
         delta_put = option_atm_put.get_delta()
         res = [
@@ -272,9 +275,17 @@ class BktOptionSet(object):
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
-        optionset = self.bktoptions_mdts[mdt]
-        res = self.order_by_moneyness(optionset)
-        option_atm_put = res[self.util.type_put][moneyness_rank]
+        if self.options_by_moneyness == {}:
+            optionset = self.bktoptions_mdts[mdt]
+            self.update_options_by_moneyness(optionset)
+        res_dict = self.options_by_moneyness[self.util.type_put]
+        if res_dict =={}:
+            print('bkt_option_set--get_call failed,option dict is empty!')
+            return pd.DataFrame()
+        if moneyness_rank not in res_dict.keys():
+            print('bkt_option_set--get_call failed,given moneyness rank not exit!')
+            return pd.DataFrame()
+        option_atm_put = res_dict[moneyness_rank]
         res = [
             {self.util.id_instrument: option_atm_put.id_instrument,
              self.util.unit: 1,
@@ -288,9 +299,17 @@ class BktOptionSet(object):
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
-        optionset = self.bktoptions_mdts[mdt]
-        res = self.order_by_moneyness(optionset)
-        option_atm_call = res[self.util.type_call][moneyness_rank]
+        if self.options_by_moneyness == {}:
+            optionset = self.bktoptions_mdts[mdt]
+            self.update_options_by_moneyness(optionset)
+        res_dict = self.options_by_moneyness[self.util.type_call]
+        if res_dict =={}:
+            print('bkt_option_set--get_call failed,option dict is empty!')
+            return pd.DataFrame()
+        if moneyness_rank not in res_dict.keys():
+            print('bkt_option_set--get_call failed,given moneyness rank not exit!')
+            return pd.DataFrame()
+        option_atm_call = res_dict[moneyness_rank]
         res = [
             {self.util.id_instrument: option_atm_call.id_instrument,
              self.util.unit: 1,
@@ -300,7 +319,7 @@ class BktOptionSet(object):
         return df_delta0
 
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
-    def order_by_moneyness(self,optionset_mdt):
+    def update_options_by_moneyness(self,optionset_mdt):
         dict_call = {}
         dict_put = {}
         res_call = {}
@@ -308,44 +327,36 @@ class BktOptionSet(object):
         atm_call = 1000
         atm_put = -1000
         spot = optionset_mdt[0].underlying_price
-        list_call = []
-        list_put = []
-        m_container = []
+        m_call = []
+        m_put = []
         for option in optionset_mdt:
-            # k = option.strike
-            # m = round(k - spot, 6)
-            # if option.option_type == self.util.type_call:
-            #     list_call.append({'m':m,'option':option})
-            # else:
-            #     list_put.append({'m':m,'option':option})
-
             if option.option_type == self.util.type_call:
                 k = option.strike
                 m = round(k-spot,6)
                 if m >=0 :
                     atm_call = min(atm_call,m)
                 dict_call.update({m:option})
-                if m not in m_container:m_container.append(m)
+                m_call.append(m)
             else:
                 k = option.strike
                 m = round(k-spot,6)
                 if m <=0 :
                     atm_put = max(atm_put,m)
                 dict_put.update({m:option})
-                if m not in m_container:m_container.append(m)
-        df_call = pd.DataFrame(list_call)
-        df_put = pd.DataFrame(list_put)
+                m_put.append(m)
         keys_call = sorted(dict_call)
         keys_put = sorted(dict_put)
-        if atm_call != 1000:
-            idx_call = keys_call.index(atm_call)
-            for (i, key) in enumerate(keys_call):
-                res_call.update({i - idx_call: dict_call[key]})
-        if atm_put != -1000:
-            idx_put = keys_put.index(atm_put)
-            for (i,key) in enumerate(keys_put):
-                res_put.update({i-idx_put:dict_put[key]})
+        if atm_call == 1000:atm_call = max(m_call)
+        if atm_put == -1000:atm_put = min(m_put)
+
+        idx_call = keys_call.index(atm_call)
+        for (i, key) in enumerate(keys_call):
+            res_call.update({idx_call-i: dict_call[key]})
+        idx_put = keys_put.index(atm_put)
+        for (i,key) in enumerate(keys_put):
+            res_put.update({i-idx_put:dict_put[key]}) # moneyness : option
         res_callput = {self.util.type_call:res_call,self.util.type_put:res_put}
+        self.options_by_moneyness = res_callput
         return res_callput
 
     """ Get Call/Put volatility surface separately"""

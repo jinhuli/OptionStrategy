@@ -1,10 +1,11 @@
 import pandas as pd
 import datetime
+import math
 from back_test.bkt_util import BktUtil
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 from Utilities.PlotUtil import PlotUtil
-
+import numpy as np
 
 class BktAccount(object):
     def __init__(self, leverage=1.0, margin_rate=0.1, init_fund=1000000.0, tick_size=0.0001,
@@ -29,14 +30,42 @@ class BktAccount(object):
         self.holdings = []  # 当前持仓
         self.pu = PlotUtil()
 
-    def open_long(self, dt, bktoption, unit):  # 多开
+    def open_long(self, dt, unit, bktoption=None, trade_order_dict=None):
+        if bktoption != None:
+            self.open_long_option(dt,bktoption,unit)
+        if trade_order_dict != None:
+            self.option_long_1(trade_order_dict)
+
+    def option_long_1(self,trade_order_dict):
+        mkt_price = float(trade_order_dict['price'])
+        unit = float(trade_order_dict['unit'])
+        id_instrument = trade_order_dict['id_instrument']
+        dt = trade_order_dict['dt_date']
+        premium = unit * mkt_price
+        fee = premium * self.fee
+        trade_type = 'open'
+        self.cash = self.cash - mkt_price*unit - fee
+        self.nbr_trade += 1
+        if trade_order_dict not in self.holdings: self.holdings.append(trade_order_dict)
+        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                    self.util.dt_trade: [dt],
+                                    self.util.trading_type: [trade_type],
+                                    self.util.trade_price: [mkt_price],
+                                    self.util.trading_cost: [fee],
+                                    self.util.unit: [unit],
+                                    'premium paid': [premium],
+                                    'cash': [self.cash],
+                                    'margin capital': [self.total_margin_capital]
+                                    })
+        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+
+    def open_long_option(self, dt, bktoption, unit):  # 多开
         bktoption.trade_dt_open = dt
         bktoption.trade_long_short = self.util.long
         id_instrument = bktoption.id_instrument
         mkt_price = bktoption.option_price
         multiplier = bktoption.multiplier
         trade_type = '多开'
-        # unit = bktoption.get_trade_unit(trade_fund)
         fee = unit * mkt_price * self.fee * multiplier
         premium = unit * mkt_price * multiplier
         margin_capital = 0.0
@@ -94,7 +123,32 @@ class BktAccount(object):
                                     })
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
-    def close_position(self, dt, bktoption):  # 多空平仓
+    def close_position(self,dt,bktoption=None,trade_order_dict=None):
+        if bktoption != None:
+            self.close_position_option(dt,bktoption)
+        if trade_order_dict != None:
+            self.close_position_1(trade_order_dict)
+
+    def close_position_1(self,trade_order_dict):
+        mkt_price = float(trade_order_dict['price'])
+        unit = float(trade_order_dict['unit'])
+        id_instrument = trade_order_dict['id_instrument']
+        dt = trade_order_dict['dt_date']
+        trade_type = 'close'
+        fee = mkt_price*unit*self.fee
+        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                    self.util.dt_trade: [dt],
+                                    self.util.trading_type: [trade_type],
+                                    self.util.trade_price: [mkt_price],
+                                    self.util.trading_cost: [fee],
+                                    self.util.unit: [unit],
+                                    'premium paid': [- mkt_price*unit],
+                                    'cash': [self.cash],
+                                    'margin capital': [self.total_margin_capital]
+                                    })
+        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+
+    def close_position_option(self, dt, bktoption):  # 多空平仓
         if bktoption.trade_flag_open:
             id_instrument = bktoption.id_instrument
             mkt_price = bktoption.option_price
@@ -110,7 +164,6 @@ class BktAccount(object):
             position[self.util.id_instrument] = id_instrument
             position[self.util.dt_open] = dt_open
             position[self.util.long_short] = long_short
-            # position[self.util.premium] = premium
             position[self.util.open_price] = open_price
             position[self.util.unit] = unit
             position[self.util.margin_capital] = margin_capital
@@ -128,7 +181,7 @@ class BktAccount(object):
             position[self.util.days_holding] = (dt - dt_open).days
             position[self.util.close_price] = mkt_price
             position[self.util.realized_pnl] = realized_pnl
-            bktoption.liquidate()
+            self.liquidate_option(bktoption)
             self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
             self.cash = self.cash + margin_capital + realized_pnl + premium_to_cash
             self.total_margin_capital -= margin_capital
@@ -156,7 +209,6 @@ class BktAccount(object):
         open_price = bktoption.trade_open_price
         multiplier = bktoption.multiplier
         premium = bktoption.premium
-        # unit = bktoption.get_trade_unit(trade_fund)
         if unit != holding_unit:
             if unit > holding_unit:  # 加仓
                 margin_add = (unit - holding_unit) * bktoption.get_init_margin()
@@ -212,20 +264,31 @@ class BktAccount(object):
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.nbr_trade += 1
 
+    def liquidate_option(self,bktoption):
+        bktoption.trade_flag_open = False
+        bktoption.trade_unit = None
+        bktoption.trade_dt_open = None
+        bktoption.trade_long_short = None
+        bktoption.premium = None
+        bktoption.trade_open_price = None
+        bktoption.trade_margin_capital = None
+        bktoption.transaction_fee = None
+        bktoption.open_price = None
+
     def switch_long(self):
         return None
 
     def switch_short(self):
         return None
 
-    def mkm_update(self, dt, df_metric, col_option_price):  # 每日更新
+    def mkm_update(self, dt, df_metric):  # 每日更新
         unrealized_pnl = 0
         mtm_portfolio_value = 0
         mtm_long_positions = 0
         mtm_short_positions = 0
         total_premium_paied = 0
-        # TODO: 资金使用率监控
         holdings = []
+        npv_last = self.npv
         self.cash = self.cash*(1+(1.0/365)*self.rf)
         for bktoption in self.holdings:
             if not bktoption.trade_flag_open: continue
@@ -252,6 +315,7 @@ class BktAccount(object):
         self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
         self.npv = self.total_asset / self.init_fund
         self.holdings = holdings
+        ri = (self.npv/ npv_last)**252 - 1
         account = pd.DataFrame(data={self.util.dt_date: [dt],
                                      self.util.nbr_trade: [self.nbr_trade],
                                      self.util.margin_capital: [self.total_margin_capital],
@@ -262,7 +326,10 @@ class BktAccount(object):
                                      self.util.cash: [self.cash],
                                      self.util.money_utilization: [money_utilization],
                                      self.util.npv: [self.npv],
-                                     self.util.total_asset: [self.total_asset]})
+                                     self.util.total_asset: [self.total_asset],
+                                     'ri':[ri]
+                                     }
+                               )
         self.df_account = self.df_account.append(account, ignore_index=True)
         self.nbr_trade = 0
         self.realized_pnl = 0
@@ -299,7 +366,17 @@ class BktAccount(object):
         dt_end = self.df_account.loc[len(self.df_account) - 1, self.util.dt_date]
         invest_days = (dt_end - dt_start).days
         annulized_return = (self.total_asset / self.init_fund) ** (365 / invest_days) - 1
+        self.annualized_return = annulized_return
         return annulized_return
+
+    def calculate_sharpe_ratio(self):
+        df = self.df_account
+        df['excess_return'] = df['ri']-self.rf
+        r = np.array(df['excess_return'].tolist())
+        mean = np.mean(r)
+        std = np.std(r)
+        sharp = mean/std
+        return sharp
 
     def plot_npv(self):
         fig = plt.figure()
