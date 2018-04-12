@@ -1,19 +1,19 @@
 import datetime
 import QuantLib as ql
 import pandas as pd
-from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
+# from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
 
 #######################################################################################
-evalDate = datetime.date(2018, 4, 9)
-mdtDate = datetime.date(2018, 5, 8)
-spot_price = 17.75
+evalDate = datetime.date(2018, 4, 12)
+# mdtDate = datetime.date(2018, 5, 13)
+spot_price = 11.75
 vol = 0.0
 rf = 0.03
 # dividend_rate = 0.22/48.83 # 4月份分红预案已出 每10股派2.2
 dividend_rate = 0.0
 # strike = spot_price
 strike = spot_price
-quote =  4.54/100
+quote =  7.33/100
 option_price = quote*spot_price
 print('=' * 100)
 
@@ -26,9 +26,8 @@ underlying = ql.SimpleQuote(spot_price)
 volatility = ql.SimpleQuote(vol)
 eval_date = ql.Date(evalDate.day, evalDate.month, evalDate.year)
 effectivedt = calendar.advance(eval_date, ql.Period(3, ql.Days))  # T+3日可开始行权
-maturitydt = ql.Date(mdtDate.day, mdtDate.month, mdtDate.year)
-evaluation = Evaluation(eval_date, daycounter, calendar)
-
+maturitydt = calendar.advance(eval_date, ql.Period(1, ql.Months))
+ql.Settings.instance().evaluationDate = eval_date
 
 exercise = ql.AmericanExercise(effectivedt, maturitydt)
 payoff = ql.PlainVanillaPayoff(optionType, strike)
