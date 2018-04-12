@@ -579,38 +579,42 @@ class DataCollection():
             df = pd.read_sql(query.statement, query.session.bind)
             return df
 
-        def wind_stocks_daily(self, datestr, windcode):
+        def wind_stocks_daily(self,begdate ,enddate, windcode):
             db_data = []
             datasource = 'wind'
-            tickdata = w.wsd(windcode, "pre_close,open,high,low,close,volume,amt,trade_status,sec_name,windcode,exch_eng",
-                             datestr, datestr, "Fill=Previous")
+            # tickdata = w.wsd(windcode, "pre_close,open,high,low,close,volume,amt,trade_status,sec_name,windcode,exch_eng",
+            #                  begdate, enddate, "Fill=Previous")
+            tickdata = w.wsd(windcode, "pre_close,close,sec_name,windcode,exch_eng",
+                             begdate, enddate, "Fill=Previous")
             if tickdata.ErrorCode != 0:
-                print('wind get data error ', datestr, ',errorcode : ', tickdata.ErrorCode)
+                print('wind get data error ', begdate, enddate, ',errorcode : ', tickdata.ErrorCode)
                 return []
             df = pd.DataFrame()
             for i, f in enumerate(tickdata.Fields):
                 df[f] = tickdata.Data[i]
             df['dt_date'] = tickdata.Times
+            df = df.fillna(-1)
             for (idx, row) in df.iterrows():
                 dt = row['dt_date']
                 dt_date = datetime.date(dt.year, dt.month, dt.day)
-                open_price = row['OPEN']
-                high = row['HIGH']
-                low = row['LOW']
+                # open_price = row['OPEN']
+                # high = row['HIGH']
+                # low = row['LOW']
                 close = row['CLOSE']
-                volume = row['VOLUME']
-                amt = row['AMT']
+                # volume = row['VOLUME']
+                # amt = row['AMT']
                 amt_last_close = row['PRE_CLOSE']
+                # if open_price ==None : open_price = -1
+                # if high==None : high = -1
+                # if low==None : low = -1
+                # if close==None : close = -1
+                # if volume==None : volume = -1
+                # if amt==None : amt = -1
+                # if amt_last_close==None : amt_last_close = -1
                 cd_exchange = row['EXCH_ENG'].lower()
                 try :
-                    # trade_status = row['TRADE_STATUS'].encode('utf-8')
                     name_instrument = row['SEC_NAME'].encode('utf-8')
-                    # if trade_status == '交易':
-                    #     flag_in_trade = 1
-                    # else:
-                    #     flag_in_trade = 0
                 except:
-                    # flag_in_trade = -1
                     name_instrument = 'nan'
                 id_instrument = windcode[0:6]+'_'+windcode[-2:]
                 db_row = {'dt_date': dt_date,
@@ -619,18 +623,54 @@ class DataCollection():
                           'code_instrument': windcode,
                           'name_instrument':name_instrument,
                           # 'flag_in_trade':flag_in_trade,
-                          'amt_last_close': amt_last_close,
-                          'amt_open': open_price,
-                          'amt_high': high,
-                          'amt_low': low,
-                          'amt_close': close,
-                          'amt_trading_volume': volume,
-                          'amt_trading_value': amt,
+                          'amt_last_close': float(amt_last_close),
+                          # 'amt_open': float(open_price),
+                          # 'amt_high': float(high),
+                          # 'amt_low': float(low),
+                          'amt_close': float(close),
+                          # 'amt_trading_volume': float(volume),
+                          # 'amt_trading_value': float(amt),
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()
                           }
                 db_data.append(db_row)
             return db_data
+
+        def wind_stocks_daily_wss(self,date,codeset):
+            db_data = []
+            datasource = 'wind'
+
+            setcode = w.wset("SectorConstituent", u"date=" + date + ";sector=全部A股")
+            code = setcode.Data[1]
+            tickdata = w.wss(code, "close", "tradeDate=" + date + ";priceAdj=U;cycle=D")
+            if tickdata.ErrorCode != 0:
+                print('wind get data error ', date, ',errorcode : ', tickdata.ErrorCode)
+                return []
+            df = pd.DataFrame()
+            # for i, f in enumerate(tickdata.Fields):
+            #     df[f] = tickdata.Data[i]
+            codes = tickdata.Codes
+            closes = tickdata.Data[0]
+            # df = df.fillna(-1)
+            # dt = tickdata.Times[0]
+            for (idx, windcode) in enumerate(codes):
+                dt_date = date
+                # close = closes[idx]
+                try:
+                    close = float(closes[idx])
+                except:
+                    close = -1
+                id_instrument = windcode[0:6]+'_'+windcode[-2:]
+                db_row = {'dt_date': dt_date,
+                          'id_instrument': id_instrument,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'amt_close': float(close),
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
 
     class table_future_contracts():
 

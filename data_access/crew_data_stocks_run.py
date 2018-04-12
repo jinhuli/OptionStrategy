@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
 from WindPy import w
+import pandas as pd
 from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
@@ -24,11 +25,12 @@ stocks_mktdata = Table('stocks_mktdata', metadata, autoload=True)
 
 dc = DataCollection()
 
-beg_date = datetime.date(2017, 10, 27)
-end_date = datetime.date(2018, 1, 9)
+# beg_date = datetime.date(2018, 4, 4)
+# end_date = datetime.date(2018, 4, 10)
+date = '2018-04-12'
 
-date_range = w.tdays(beg_date, end_date, "").Data[0]
-#####################CONTRACT INFO#########################################
+# date_range = w.tdays(beg_date, end_date, "").Data[0]
+##################### CONTRACT INFO #########################################
 # option_contracts
 
 # db_datas = dc.table_stocks().wind_A_shares_total(dt_date)
@@ -39,19 +41,45 @@ date_range = w.tdays(beg_date, end_date, "").Data[0]
 #         print(e)
 #         continue
 
-for dt in date_range:
-    print(dt)
-    df_A_shares = dc.table_stocks().get_A_shares_total()
-    for (idx,row) in df_A_shares.iterrows():
-        windcode = row['windcode']
-        res = stocks_mktdata.select((stocks_mktdata.c.dt_date == dt) &
-                                    (stocks_mktdata.c.code_instrument == windcode)).execute()
-        if res.rowcount == 0:
-            db_datas = dc.table_stocks().wind_stocks_daily(dt,windcode)
-            for db_data in db_datas:
-                try:
-                    conn.execute(stocks_mktdata.insert(), db_data)
-                except Exception as e:
-                    print(e)
-                    continue
+# for dt in date_range:
+#     print(dt)
 
+##################### GET STOCK MKT DATA #########################################
+
+setcode = w.wset("SectorConstituent", u"date=" + date + ";sector=全部A股")
+
+code = setcode.Data[1]
+
+db_datas = dc.table_stocks().wind_stocks_daily_wss(date,code)
+try:
+    conn.execute(stocks_mktdata.insert(), db_datas)
+except Exception as e:
+    print(e)
+
+
+##################### RECHECK DATA #########################################
+
+# df_codes = pd.read_excel('../data/recheck.xls',converters={'code_errors': lambda x: str(x)})
+# code_errors = df_codes['code_errors'].unique()
+#
+# df = dc.table_stocks().get_A_shares_total()
+#
+# df['code'] = df['windcode'].apply(lambda x:x.split('.')[0])
+#
+# for (i, row) in df.iterrows():
+#     if i<4:continue
+#     code = row['code']
+#     if code in code_errors:
+#         windcode = row['windcode']
+#         print(windcode)
+#         db_datas = dc.table_stocks().wind_stocks_daily(beg_date, end_date, windcode)
+#         for db_data in db_datas:
+#             # stocks_mktdata.delete((stocks_mktdata.c.id_instrument == db_data['id_instrument'])
+#             #                      & (stocks_mktdata.c.dt_date == db_data['dt_date'])
+#             #                      & (stocks_mktdata.c.datasource == db_data['datasource'])
+#             #                       ).execute()
+#             try:
+#                 conn.execute(stocks_mktdata.insert(), db_data)
+#             except Exception as e:
+#                 print(e)
+#                 continue
