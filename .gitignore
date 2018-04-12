@@ -2,3 +2,5 @@
 .idea/
 *.csv
 *.png
+*.xlsx
+*.xls
