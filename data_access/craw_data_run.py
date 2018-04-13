@@ -12,7 +12,7 @@ from back_test.bkt_option_set import BktOptionSet
 
 w.start()
 
-date = datetime.date(2018, 4, 4)
+date = datetime.date(2018, 4, 13)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -373,69 +373,72 @@ if res.rowcount == 0:
 else:
     print('index daily -- already exists')
 
-############################################# MKT INTRADAY #############################################
-## index mktdata intraday
-res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
-                                   (equity_index_intraday.c.id_instrument == 'index_50etf')).execute()
-if res.rowcount == 0:
-    windcode = "510050.SH"
-    id_instrument = 'index_50etf'
-    db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
-    try:
-        conn_intraday.execute(equity_index_intraday.insert(), db_data)
-        print('equity_index_intraday-50etf -- inserted into data base succefully')
-    except Exception as e:
-        print(e)
-res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
-                                   (equity_index_intraday.c.id_instrument == 'index_50sh')).execute()
-if res.rowcount == 0:
-    windcode = "000016.SH"
-    id_instrument = 'index_50sh'
-    db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
-    try:
-        conn_intraday.execute(equity_index_intraday.insert(), db_data)
-        print('equity_index_intraday-50sh -- inserted into data base succefully')
-    except Exception as e:
-        print(e)
-res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
-                                   (equity_index_intraday.c.id_instrument == 'index_300sh')).execute()
-if res.rowcount == 0:
-    windcode = "000300.SH"
-    id_instrument = 'index_300sh'
-    db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
-    try:
-        conn_intraday.execute(equity_index_intraday.insert(), db_data)
-        print('equity_index_intraday-300sh -- inserted into data base succefully')
-    except Exception as e:
-        print(e)
-res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
-                                   (equity_index_intraday.c.id_instrument == 'index_500sh')).execute()
-if res.rowcount == 0:
-    windcode = "000905.SH"
-    id_instrument = 'index_500sh'
-    db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
-    try:
-        conn_intraday.execute(equity_index_intraday.insert(), db_data)
-        print('equity_index_intraday-500sh -- inserted into data base succefully')
-    except Exception as e:
-        print(e)
-else:
-    print(
-        'equity index intraday -- already exists')
+date = datetime.date(2018, 4, 9)
+# ############################################# MKT INTRADAY #############################################
+# ## index mktdata intraday
+# res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
+#                                    (equity_index_intraday.c.id_instrument == 'index_50etf')).execute()
+# if res.rowcount == 0:
+#     windcode = "510050.SH"
+#     id_instrument = 'index_50etf'
+#     db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
+#     try:
+#         conn_intraday.execute(equity_index_intraday.insert(), db_data)
+#         print('equity_index_intraday-50etf -- inserted into data base succefully')
+#     except Exception as e:
+#         print(e)
+# res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
+#                                    (equity_index_intraday.c.id_instrument == 'index_50sh')).execute()
+# if res.rowcount == 0:
+#     windcode = "000016.SH"
+#     id_instrument = 'index_50sh'
+#     db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
+#     try:
+#         conn_intraday.execute(equity_index_intraday.insert(), db_data)
+#         print('equity_index_intraday-50sh -- inserted into data base succefully')
+#     except Exception as e:
+#         print(e)
+# res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
+#                                    (equity_index_intraday.c.id_instrument == 'index_300sh')).execute()
+# if res.rowcount == 0:
+#     windcode = "000300.SH"
+#     id_instrument = 'index_300sh'
+#     db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
+#     try:
+#         conn_intraday.execute(equity_index_intraday.insert(), db_data)
+#         print('equity_index_intraday-300sh -- inserted into data base succefully')
+#     except Exception as e:
+#         print(e)
+# res = equity_index_intraday.select((equity_index_intraday.c.dt_datetime == dt_date + " 09:30:00") &
+#                                    (equity_index_intraday.c.id_instrument == 'index_500sh')).execute()
+# if res.rowcount == 0:
+#     windcode = "000905.SH"
+#     id_instrument = 'index_500sh'
+#     db_data = dc.table_index_intraday().wind_data_equity_index(windcode, dt_date, id_instrument)
+#     try:
+#         conn_intraday.execute(equity_index_intraday.insert(), db_data)
+#         print('equity_index_intraday-500sh -- inserted into data base succefully')
+#     except Exception as e:
+#         print(e)
+# else:
+#     print(
+#         'equity index intraday -- already exists')
+#
+# ##option_mktdata_intraday
+# res = option_mktdata_intraday.select(option_mktdata_intraday.c.dt_datetime == dt_date + " 09:30:00").execute()
+# if res.rowcount == 0:
+#     df = dc.table_options().get_option_contracts(dt_date)
+#     for (idx_oc, row) in df.iterrows():
+#         db_data = dc.table_option_intraday().wind_data_50etf_option_intraday(dt_date, row)
+#         try:
+#             conn_intraday.execute(option_mktdata_intraday.insert(), db_data)
+#             print('option_mktdata_intraday -- inserted into data base succefully')
+#         except Exception as e:
+#             print(e)
+# else:
+#     print('option intraday -- already exists')
 
-##option_mktdata_intraday
-res = option_mktdata_intraday.select(option_mktdata_intraday.c.dt_datetime == dt_date + " 09:30:00").execute()
-if res.rowcount == 0:
-    df = dc.table_options().get_option_contracts(dt_date)
-    for (idx_oc, row) in df.iterrows():
-        db_data = dc.table_option_intraday().wind_data_50etf_option_intraday(dt_date, row)
-        try:
-            conn_intraday.execute(option_mktdata_intraday.insert(), db_data)
-            print('option_mktdata_intraday -- inserted into data base succefully')
-        except Exception as e:
-            print(e)
-else:
-    print('option intraday -- already exists')
+
 
 ########################################### TICK #################################################
 # # equity index futures

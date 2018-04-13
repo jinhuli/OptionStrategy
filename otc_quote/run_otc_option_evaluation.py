@@ -41,19 +41,14 @@ def otc_quote(evalDate,  spot_price,strike, vol, mdtDate=None, T=None, rf=0.03, 
     ame_price = ame_option.NPV()
     return ame_price
 
-def hisvol(data,n):
-    datas=np.log(data)
-    df=datas.diff()
-    vol=df.rolling(window = n).std()*np.sqrt(252)
-    return vol
 
-
+#######################################################################################
 
 # TODO: CHANGE URL
 url = '../data/'
 # TODO : CHANGE TO TEH LAST TEADING DAY
-end_date = datetime.date(2018, 4, 13)
-evaluation_date = end_date
+end_date = datetime.date(2018, 4, 12)
+
 
 
 engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
@@ -75,15 +70,14 @@ df['code'] = df['code_instrument'].apply(lambda x:x.split('.')[0])
 # read stock codes to quotes
 df_codes = pd.read_excel(url+'20180411_东证润和_期权卖方报价.xls',converters={'股票代码': lambda x: str(x)})
 code_stocks = df_codes['股票代码'].unique() # 所有待报价的股票代码
-A_shares_codes = df['code'].unique()
+
 # get otc option quotes
-hist_vols = []
 recheck = []
 res_quote = []
 print('=' * 100)
 print('%20s %20s %20s %20s %20s %20s %20s %20s' %('code','eval date','empty days','vol','spot price','option price 1M(%)','option price 2M(%)','option price 3M(%)'))
 print('-'*100)
-for code in A_shares_codes:
+for code in code_stocks:
 
     dataset = df[df['code'] == code]
     data_checked = dataset[dataset['amt_close']!=-1] # 收盘价不为空
@@ -103,52 +97,32 @@ for code in A_shares_codes:
     strike = spot_price = closes.iloc[-1]
     try:
         vol = np.percentile(vol_data, 75)
-        hist_vols.append({'code':code,'vol':vol,'spot_price':spot_price})
-        if code in code_stocks:
-            quote_1M = otc_quote(eval_date, spot_price, strike, vol, T='1M')
-            quote_2M = otc_quote(eval_date, spot_price, strike, vol, T='2M')
-            quote_3M = otc_quote(eval_date, spot_price, strike, vol, T='3M')
-            option_price1 = 100*quote_1M/spot_price
-            option_price2 = 100*quote_2M/spot_price
-            option_price3 = 100*quote_3M/spot_price
-            res_quote.append({
-                '1 code':code,
-                '2 eval date':eval_date,
-                '3 empty days':cont,
-                '4 vol':vol,
-                '5 spot price':spot_price,
-                '6 option price 1M (%)':option_price1,
-                '7 option price 2M (%)':option_price2,
-                '8 option price 3M (%)':option_price3
-            })
-            # print('%20s %20s %20s %20s %20s %20s %20s %20s' %(code,eval_date,cont,round(vol,4),spot_price,round(option_price1,4),round(option_price2,4),round(option_price3,4)))
+        quote_1M = otc_quote(eval_date, spot_price, strike, vol, T='1M')
+        quote_2M = otc_quote(eval_date, spot_price, strike, vol, T='2M')
+        quote_3M = otc_quote(eval_date, spot_price, strike, vol, T='3M')
+        option_price1 = 100*quote_1M/spot_price
+        option_price2 = 100*quote_2M/spot_price
+        option_price3 = 100*quote_3M/spot_price
+        res_quote.append({
+            '1 code':code,
+            '2 eval date':eval_date,
+            '3 empty days':cont,
+            '4 vol':vol,
+            '5 spot price':spot_price,
+            '6 option price 1M (%)':option_price1,
+            '7 option price 2M (%)':option_price2,
+            '8 option price 3M (%)':option_price3
+        })
+        print('%20s %20s %20s %20s %20s %20s %20s %20s' %(code,eval_date,cont,round(vol,4),spot_price,round(option_price1,4),round(option_price2,4),round(option_price3,4)))
     except Exception as e:
         print(code,' : ',e)
 
-df_histvols = pd.DataFrame(hist_vols).set_index(['code'])
-df_histvols.to_excel(url+'hist_vols_'+end_date.strftime('%Y%m%d')+'.xls')
+
 df_quote = pd.DataFrame(res_quote)
 df_quote.to_excel(url+'otc_quotes_'+end_date.strftime('%Y%m%d')+'.xls')
 
 df_recheck = pd.DataFrame({'code_errors':recheck})
 df_recheck.to_excel(url+'recheck.xls')
 
-res_eval = []
-# OTC Option Evaluation
-df_eval = pd.read_excel(url+evaluation_date.strftime('%Y%m%d')+'_场外期权估值表.xlsx')
-df_eval['code'] = df_eval['标的'].apply(lambda x: x[-6:])
-print(df_eval)
-for (idx,row) in df_eval.iterrows():
-    code = row['标的'].replace(" ", "")[-6:]
-    # vol = df_histvols[code]
-    strike = row['行权价格']
-    mdt = row['终止日期']
-    # notional = row['名义本金']
-    # df = df_histvols.loc[[code]]
-    spot_price = df_histvols.at[code,'spot_price']
-    vol = df_histvols.at[code,'vol']
-    quote = otc_quote(end_date, spot_price, strike, vol, mdtDate=mdt)
-    option_price = quote/spot_price
-    res_eval.append({'code':code,'vol':vol,'option price':option_price})
-df_eval_res = pd.DataFrame(res_eval)
-df_eval_res.to_excel(url+evaluation_date.strftime('%Y%m%d')+'_场外期权估值表_results.xlsx',sheet_name='results')
+
+

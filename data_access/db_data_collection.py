@@ -34,7 +34,7 @@ class DataCollection():
 
         def czce_daily(self, dt, data):
             db_data = []
-            # print(data)
+
             cd_exchange = 'czce'
             datasource = 'czce'
             flag_night = -1
@@ -94,13 +94,11 @@ class DataCollection():
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()
                           }
-                # print(db_data)
                 db_data.append(db_row)
             return db_data
 
         def dce_day(self, dt, data):
             db_data = []
-            # print(data)
             cd_exchange = 'dce'
             datasource = 'dce'
             flag_night = 0
@@ -159,13 +157,11 @@ class DataCollection():
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()
                           }
-                # print(db_data)
                 db_data.append(db_row)
             return db_data
 
         def dce_night(self, dt, data):
             db_data = []
-            # print(data)
             cd_exchange = 'dce'
             datasource = 'dce'
             flag_night = 1
@@ -224,7 +220,6 @@ class DataCollection():
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()
                           }
-                # print(db_data)
                 db_data.append(db_row)
             return db_data
 
@@ -446,9 +441,7 @@ class DataCollection():
 
         def czce_daily(self, dt, data):
             db_data = []
-            # print(data)
             datasource = cd_exchange = 'czce'
-            # datasource = 'czce'
             flag_night = -1
             for column in data.columns.values:
                 product = data[column]
@@ -487,7 +480,6 @@ class DataCollection():
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()
                           }
-                # print(db_data)
                 db_data.append(db_row)
             return db_data
 

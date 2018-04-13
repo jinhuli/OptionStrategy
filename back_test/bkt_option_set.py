@@ -33,6 +33,8 @@ class BktOptionSet(object):
         self.calendar = ql.China()
         self.bktoptionset = set()
         self.bktoptions_mdts = {}
+        self.bktoptions_mdts_call = {}
+        self.bktoptions_mdts_put = {}
         self.bktoptionset_mdt1 = {}
         self.bktoptionset_mdt2 = {}
         self.bktoptionset_mdt3 = {}
@@ -123,14 +125,25 @@ class BktOptionSet(object):
             print(self.eval_date,' No eligible maturities')
             return
         dict = {}
+        dict_call = {}
+        dict_put = {}
         for mdt in self.eligible_maturities:
             options = []
+            call = []
+            put = []
             for option in self.bktoptionset:
                 if option.maturitydt == mdt:
                     options.append(option)
+                    if option.option_type == self.util.type_call:
+                        call.append(option)
+                    else:
+                        put.append(option)
             dict.update({mdt:options})
+            dict_call.update({mdt:call})
+            dict_put.update({mdt:put})
         self.bktoptions_mdts = dict
-
+        self.bktoptions_mdts_call = dict_call
+        self.bktoptions_mdts_put = dict_put
 
 
     def update_eval_date(self):
@@ -359,13 +372,80 @@ class BktOptionSet(object):
         self.options_by_moneyness = res_callput
         return res_callput
 
+    def get_optionset_by_type(self,option_type):
+        if option_type==self.util.type_call:
+            return self.bktoptionset_call
+        elif option_type == self.util.type_put:
+            return self.bktoptionset_put
+        else:
+            return "Unsupport Option Type!"
+
+    def get_optionsetmdts_by_type(self,option_type):
+        if option_type==self.util.type_call:
+            return self.bktoptions_mdts_call
+        elif option_type == self.util.type_put:
+            return self.bktoptions_mdts_put
+        else:
+            return "Unsupport Option Type!"
+
+    def get_key_volatilites(self,option_type):
+        optionset = self.get_optionsetmdts_by_type(option_type)
+        keyvols_mdts = {}
+        for mdt in self.eligible_maturities:
+            optionset_mdt = optionset[mdt]
+            df = self.get_duplicate_strikes_dropped(self.collect_implied_vol(optionset_mdt))\
+                .sort_values(by=[self.util.col_adj_strike])
+            spot = optionset_mdt[0].underlying_price
+            strikes = []
+            vols = []
+            for option in optionset_mdt:
+
+                strike = option.adj_strike
+                iv = option.get_implied_vol()
+                if iv > 0 :
+                    strikes.append(float(strike))
+                    vols.append(iv)
+                else:
+                    continue
+            volset = [vols]
+            m_list = [[mdt]]
+            vol_matrix = ql.Matrix(len(strikes), len(m_list))
+            # print(vol_matrix)
+            for i in range(vol_matrix.rows()):
+                for j in range(vol_matrix.columns()):
+                    vol_matrix[i][j] = volset[j][i]
+            ql_evalDate = self.util.to_ql_date(self.eval_date)
+            ql_maturities = [ql.Date(mdt.day, mdt.month, mdt.year)]
+            black_var_surface = ql.BlackVarianceSurface(
+                    ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+            keyvols_mdt = {}
+            try:
+                vol_100 = black_var_surface.blackVol(ql_maturities[0],spot)
+                keyvols_mdt.update({100:vol_100})
+            except Exception as e:
+                print(e)
+                pass
+            try:
+                vol_110 = black_var_surface.blackVol(ql_maturities[0],spot*1.1)
+            except Exception as e:
+                print(e)
+                pass
+            try:
+                vol_90 = black_var_surface.blackVol(ql_maturities[0],spot*0.9)
+                keyvols_mdt.update({90:vol_90})
+            except Exception as e:
+                print(e)
+                pass
+            keyvols_mdts.update({mdt:keyvols_mdt})
+        return keyvols_mdts
+
     """ Get Call/Put volatility surface separately"""
     def get_volsurface_squre(self,option_type):
         ql_maturities = []
         option_list = []
         for option in self.bktoptionset:
             mdt = option.maturitydt
-            ttm = (mdt-self.eval_date).days
+            # ttm = (mdt-self.eval_date).days
             cd_type = option.option_type
             if cd_type == option_type:
                 option_list.append(option)

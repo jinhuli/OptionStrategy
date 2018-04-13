@@ -6,110 +6,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from scipy.stats import norm
 import numpy as np
 
-
-df = pd.DataFrame({
-    'a': [1,2,3,4,5,6],
-    'b': [1,2,3,4,5,6],
-    'c': [1,2,3,4,5,6],
-     'd': [7,6,4,8,5,6]
-})
 df1 = pd.DataFrame({
     'a': [1,2,3,4,5,],
     'b': [1,2,3,4,5,],
     'c': [1,2,3,4,5,],
      'd': [7,6,4,8,5,]
 })
-
-
-a = [1,2,3,4]
-b = [3,4,5,6]
-print([1]*len(a))
-a_ = set(a)
-b_ = set(b)
-a_ = a_.intersection(b_)
-print(a_)
-
-for i,e in enumerate(a_):
-    print(i,e)
-
-print(a_)
-t = set()
-t.add('s')
-t.add(1)
-print(t)
-t.remove(1)
-print(t)
-
-print(type(datetime.date(2000,1,1)))
-
-sr = 'sr_1707_c_6200'
-m = 'm_1707_c_6200'
-print(sr[0:2])
-print(m[:6])
-
-a = [1,2,3,4,5,6,7,8,9]
-b = [1,2,3,4,5,6,7,8,9]
-n = 5
-print(a[2:])
-
-a = []
-a.append(3)
-a.append(3)
-a.append(3)
-print(a)
-
-X = np.array([ [0.11, 0.3, 0.4, 0.8, 0.9],
-               [3.2, 2.41, 2.4, 0.1, 5.5]
-             ])
-Y = np.array([ [0.1, 0.3, 0.41, 0.8, 0.9],
-               [3.2, 2.4, 2.4, 0.11, 5.5]
-             ])
-x = X.tolist()
-y = Y.tolist()
-c = np.append(X,Y,axis=0)
-print(c)
-print(c[0][0],c[1][1],c[2][2])
-l = []
-for idx,e in enumerate(c):
-    l.append(c[idx][idx])
-print(l)
-a = [[1],[2],[4],[4]]
-b = [[1],[2],[4],[4]]
-c = a.__add__(b)
-print(c)
-# df = df.sort_values('d')
-# for (idx,row) in df.iterrows():
-#     df.loc[idx,'add'] = row['d']-row['c']
-# print(df)
-# df = df.loc[:, df.columns != 'b'].join(df[['b']].rank(method='dense'))
-# n = len(df)
-# df['weight'] = df['b']-(n+1)/2
-# print(df)
-# c = sum(df[df['weight']>0]['weight'])
-# df['weight'] = df['weight']/c
-# print(df)
-# print(sum(df[df['weight']>0]['weight']))
-# print(df)
-# print('-'*10)
-#
-# print(df['a'][0:2].tolist())
-
-# print(df)
-# print('-'*10)
-# print(df[0:2])
-# print('-'*10)
-# df = df.reset_index()
-# print('='*10)
-# print(df.loc[0:2])
-# print('-'*10)
-# print(df[0:1])
-# print('='*10)
-# print(df.loc[len(df)-2:])
-# print('-'*10)
-# print(df[len(df)-2:])
-
-# a = [1,2,3,4,5]
-# i = [0]*len(a)
-
-# print(a)
-# print(i)
+df1= df1.sort_values(by=['d'],ascending=True)
+print(df1)
+print(df1.at[1,'a'])
+print(df1.iat[1,1])

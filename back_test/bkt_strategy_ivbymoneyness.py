@@ -57,10 +57,20 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
             bkt_optionset.next()
         return res
 
+    def get_ivs_keyvols(self):
+        res = []
+        bkt_optionset = self.bkt_optionset
+        while bkt_optionset.index < len(bkt_optionset.dt_list):
+            evalDate = bkt_optionset.eval_date
+            # print(evalDate)
+            # bkt_optionset.get_volsurface_squre('call')
+            keyvols_mdts_call = bkt_optionset.get_key_volatilites('call')
+            keyvols_mdts_put = bkt_optionset.get_key_volatilites('put')
+            print(keyvols_mdts_call)
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 1, 1)
-end_date = datetime.date(2018, 7, 31)
+start_date = datetime.date(2018, 3, 1)
+end_date = datetime.date(2018, 3, 31)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
@@ -78,6 +88,7 @@ df_option_metrics = get_mktdata(start_date, end_date)
 
 bkt = BktStrategyMoneynessVol(df_option_metrics)
 bkt.set_min_ttm(5) # 期权到期时间至少5个工作日
+bkt.get_ivs_keyvols()
 res = bkt.get_ivs_mdt1(0)
 df = pd.DataFrame(res)
 print(df)
