@@ -37,9 +37,9 @@ class BktStrategyEventVol(BktOptionStrategy):
                 break
 
             """ 持有期较长或者标的价格大幅变化--可能需要调整Delta中性 """
-            if bkt_optionset.index == 0:
-                # TODO:
-                bkt.open_long(evalDate, bktoption, trade_unit)
+            # if bkt_optionset.index == 0:
+            #     # TODO:
+            #     bkt.open_long(evalDate, bktoption, trade_unit)
 
             """ 快到期前移仓换月 (5日)"""
             # min_maturity = self.util.to_dt_date(
@@ -103,9 +103,9 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-# start_date = datetime.date(2016, 1, 1)
+# start_date = datetime.date(2017, 1, 1)
 start_date = datetime.date(2015, 6, 1)
-end_date = datetime.date(2017, 12, 31)
+end_date = datetime.date(2017,12, 31)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()

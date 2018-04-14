@@ -315,7 +315,7 @@ class BktAccount(object):
         self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
         self.npv = self.total_asset / self.init_fund
         self.holdings = holdings
-        ri = (self.npv/ npv_last)**252 - 1
+        # ri = (self.npv/ npv_last)**252 - 1
         account = pd.DataFrame(data={self.util.dt_date: [dt],
                                      self.util.nbr_trade: [self.nbr_trade],
                                      self.util.margin_capital: [self.total_margin_capital],
@@ -327,10 +327,11 @@ class BktAccount(object):
                                      self.util.money_utilization: [money_utilization],
                                      self.util.npv: [self.npv],
                                      self.util.total_asset: [self.total_asset],
-                                     'ri':[ri]
+                                     # 'ri':[ri]
                                      }
                                )
         self.df_account = self.df_account.append(account, ignore_index=True)
+        # npv_last = self.npv
         self.nbr_trade = 0
         self.realized_pnl = 0
 
@@ -371,12 +372,16 @@ class BktAccount(object):
 
     def calculate_sharpe_ratio(self):
         df = self.df_account
-        df['excess_return'] = df['ri']-self.rf
-        r = np.array(df['excess_return'].tolist())
-        mean = np.mean(r)
-        std = np.std(r)
-        sharp = mean/std
+        npvs = df[self.util.npv]
+        std = self.hisvol(npvs,1)
+        sharp = (self.annualized_return-self.rf)/std
         return sharp
+
+    def hisvol(self,data, n):
+        datas = np.log(data)
+        df = datas.diff()
+        vol = df.std() * np.sqrt(252)
+        return vol
 
     def plot_npv(self):
         fig = plt.figure()

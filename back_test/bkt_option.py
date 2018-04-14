@@ -43,8 +43,8 @@ class BktOption(object):
         self.current_index = self.start_index
         self.update_current_state()
         self.set_option_basics()
-        self.set_pricing_metrics()
-        self.implied_vol = None
+        self.update_pricing_metrics()
+
 
 
 
@@ -53,7 +53,7 @@ class BktOption(object):
         self.current_index = self.current_index+1
         self.implied_vol = None
         self.update_current_state()
-        self.set_pricing_metrics()
+        self.update_pricing_metrics()
 
 
     def update_current_state(self):
@@ -103,7 +103,7 @@ class BktOption(object):
         self.update_multiplier()
 
 
-    def set_pricing_metrics(self):
+    def update_pricing_metrics(self):
         self.update_rf()
         self.update_option_price()
         self.update_underlying()
@@ -123,7 +123,7 @@ class BktOption(object):
             print('Unsupported Option Type !')
             option = None
         self.pricing_metrics = OptionMetrics(option)
-
+        self.implied_vol = None
 
     def update_strike(self):
         try:
@@ -168,7 +168,15 @@ class BktOption(object):
 
     def update_option_price(self):
         try:
-            option_price = self.current_state[self.util.col_settlement]
+            settle = self.current_state[self.util.col_settlement]
+            close = self.current_state[self.util.col_close]
+            if close != -999.0:
+                option_price = close
+            elif settle != -999.0:
+                option_price = settle
+            else:
+                print(self.id_instrument,' : amt_close and amt_settlement are null!',)
+                option_price = None
         except Exception as e:
             print(e)
             option_price = None

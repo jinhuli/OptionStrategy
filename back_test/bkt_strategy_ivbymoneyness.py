@@ -64,12 +64,12 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
             evalDate = bkt_optionset.eval_date
             # print(evalDate)
             # bkt_optionset.get_volsurface_squre('call')
-            keyvols_mdts_call = bkt_optionset.get_key_volatilites('call')
-            keyvols_mdts_put = bkt_optionset.get_key_volatilites('put')
-            print(keyvols_mdts_call)
+            atmvol_1m = bkt_optionset.get_atmvols_1M('call')
+            print(evalDate,atmvol_1m)
+            bkt_optionset.next()
 
 """Back Test Settings"""
-start_date = datetime.date(2018, 3, 1)
+start_date = datetime.date(2018, 3, 15)
 end_date = datetime.date(2018, 3, 31)
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -89,23 +89,23 @@ df_option_metrics = get_mktdata(start_date, end_date)
 bkt = BktStrategyMoneynessVol(df_option_metrics)
 bkt.set_min_ttm(5) # 期权到期时间至少5个工作日
 bkt.get_ivs_keyvols()
-res = bkt.get_ivs_mdt1(0)
-df = pd.DataFrame(res)
-print(df)
-for r in res:
-    query_res = table.select((table.c.id_underlying == r['id_underlying'])
-                               & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
-                             & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
-    if query_res.rowcount > 0:
-        table.delete((table.c.id_underlying == r['id_underlying'])
-                               & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
-                             & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
-    try:
-        conn.execute(table.insert(), r)
-    except Exception as e:
-        print(e)
-        print(r)
-        continue
+# res = bkt.get_ivs_mdt1(0)
+# df = pd.DataFrame(res)
+# print(df)
+# for r in res:
+#     query_res = table.select((table.c.id_underlying == r['id_underlying'])
+#                                & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
+#                              & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
+#     if query_res.rowcount > 0:
+#         table.delete((table.c.id_underlying == r['id_underlying'])
+#                                & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
+#                              & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
+#     try:
+#         conn.execute(table.insert(), r)
+#     except Exception as e:
+#         print(e)
+#         print(r)
+#         continue
 
 # plt.plot(dates,implied_vols)
 # plt.show()

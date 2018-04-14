@@ -65,11 +65,12 @@ class BktOptionSet(object):
 
     def next(self):
         if self.frequency in self.util.cd_frequency_low:
+            self.clear_daily_metrics()
             self.update_eval_date()
             self.update_current_daily_state()
             self.update_eligible_maturities()
         self.update_bktoption()
-        self.options_by_moneyness = {}
+
 
 
     def update_bktoption(self):
@@ -119,6 +120,19 @@ class BktOptionSet(object):
             # self.bktoptionset_otm = set(bktoption_list_otm)
         self.update_bktoptionset_mdts()
 
+    def clear_daily_metrics(self):
+        self.bktoptions_mdts = {}
+        self.bktoptions_mdts_call = {}
+        self.bktoptions_mdts_put = {}
+        self.bktoptionset_mdt1 = {}
+        self.bktoptionset_mdt2 = {}
+        self.bktoptionset_mdt3 = {}
+        self.bktoptionset_mdt4 = {}
+        self.bktoptionset_call = set()
+        self.bktoptionset_put = set()
+        self.bktoptionset_atm = set()
+        self.bktoptionset_otm = set()
+        self.options_by_moneyness = {}
 
     def update_bktoptionset_mdts(self):
         if len(self.eligible_maturities)==0:
@@ -227,7 +241,7 @@ class BktOptionSet(object):
                 ttm = (mdt - self.eval_date).days
                 if ttm > self.min_ttm:
                     maturity_dates2.append(mdt)
-        self.eligible_maturities = maturity_dates2
+        self.eligible_maturities = sorted(maturity_dates2)
 
     def update_multiplier_adjustment(self):
         if self.option_code == '50etf':
@@ -388,7 +402,7 @@ class BktOptionSet(object):
         else:
             return "Unsupport Option Type!"
 
-    def get_key_volatilites(self,option_type):
+    def get_keyvols_by_maturities(self,option_type):
         optionset = self.get_optionsetmdts_by_type(option_type)
         keyvols_mdts = {}
         for mdt in self.eligible_maturities:
@@ -398,11 +412,10 @@ class BktOptionSet(object):
             spot = optionset_mdt[0].underlying_price
             strikes = []
             vols = []
-            for option in optionset_mdt:
-
-                strike = option.adj_strike
-                iv = option.get_implied_vol()
-                if iv > 0 :
+            for (idx,row) in df.iterrows():
+                strike = row[self.util.col_adj_strike]
+                iv = row[self.util.col_implied_vol]
+                if iv > 0:
                     strikes.append(float(strike))
                     vols.append(iv)
                 else:
@@ -410,34 +423,65 @@ class BktOptionSet(object):
             volset = [vols]
             m_list = [[mdt]]
             vol_matrix = ql.Matrix(len(strikes), len(m_list))
-            # print(vol_matrix)
             for i in range(vol_matrix.rows()):
                 for j in range(vol_matrix.columns()):
                     vol_matrix[i][j] = volset[j][i]
             ql_evalDate = self.util.to_ql_date(self.eval_date)
             ql_maturities = [ql.Date(mdt.day, mdt.month, mdt.year)]
-            black_var_surface = ql.BlackVarianceSurface(
-                    ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-            keyvols_mdt = {}
             try:
-                vol_100 = black_var_surface.blackVol(ql_maturities[0],spot)
-                keyvols_mdt.update({100:vol_100})
+                black_var_surface = ql.BlackVarianceSurface(
+                        ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+                keyvols_mdt = {}
+                try:
+                    vol_100 = black_var_surface.blackVol(ql_maturities[0],spot)
+                    keyvols_mdt.update({100:vol_100})
+                except Exception as e:
+                    print(e)
+                    pass
+                try:
+                    vol_110 = black_var_surface.blackVol(ql_maturities[0],spot*1.1)
+                    keyvols_mdt.update({110:vol_110})
+                except Exception as e:
+                    pass
+                try:
+                    vol_105 = black_var_surface.blackVol(ql_maturities[0],spot*1.05)
+                    keyvols_mdt.update({105:vol_105})
+                except Exception as e:
+                    pass
+                try:
+                    vol_90 = black_var_surface.blackVol(ql_maturities[0],spot*0.9)
+                    keyvols_mdt.update({90:vol_90})
+                except Exception as e:
+                    pass
+                try:
+                    vol_95 = black_var_surface.blackVol(ql_maturities[0],spot*0.95)
+                    keyvols_mdt.update({95:vol_95})
+                except Exception as e:
+                    pass
+                keyvols_mdts.update({mdt:keyvols_mdt})
             except Exception as e:
                 print(e)
-                pass
-            try:
-                vol_110 = black_var_surface.blackVol(ql_maturities[0],spot*1.1)
-            except Exception as e:
-                print(e)
-                pass
-            try:
-                vol_90 = black_var_surface.blackVol(ql_maturities[0],spot*0.9)
-                keyvols_mdt.update({90:vol_90})
-            except Exception as e:
-                print(e)
-                pass
-            keyvols_mdts.update({mdt:keyvols_mdt})
         return keyvols_mdts
+
+
+    def get_atmvols_1M(self,option_type):
+        keyvols_mdts = self.get_keyvols_by_maturities(option_type)
+        ql_evalDate = self.util.to_ql_date(self.eval_date)
+        mdt_1m = self.util.to_dt_date(self.calendar.advance(ql_evalDate, ql.Period(1, ql.Months)))
+        d0 = datetime.date(1999,1,1)
+        mdt_1m_num = (mdt_1m-d0).days
+        maturities_num = []
+        atm_vols = []
+        print(self.eligible_maturities)
+        for m in self.eligible_maturities:
+            maturities_num.append((m-d0).days)
+            atm_vols.append(keyvols_mdts[m][100]) # atm vol : skrike is 100% spot
+        try:
+            x = np.interp(mdt_1m_num,maturities_num,atm_vols)
+        except Exception as e:
+            print(e)
+            return
+        return x
 
     """ Get Call/Put volatility surface separately"""
     def get_volsurface_squre(self,option_type):
