@@ -62,15 +62,34 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
         bkt_optionset = self.bkt_optionset
         while bkt_optionset.index < len(bkt_optionset.dt_list):
             evalDate = bkt_optionset.eval_date
-            # print(evalDate)
-            # bkt_optionset.get_volsurface_squre('call')
-            atmvol_1m = bkt_optionset.get_atmvols_1M('call')
-            print(evalDate,atmvol_1m)
+
+            iv_call = bkt_optionset.get_atmvols_1M('call')
+            iv_put = bkt_optionset.get_atmvols_1M('put')
+            res.append({
+                'dt_date': evalDate,
+                'id_underlying': 'index_50etf',
+                'cd_option_type': 'call',
+                'cd_mdt': '1M',
+                'cd_moneyness': 0,
+                'pct_implies_vol': iv_call,
+            })
+            res.append({
+                'dt_date': evalDate,
+                'id_underlying': 'index_50etf',
+                'cd_option_type': 'put',
+                'cd_mdt': '1M',
+                'cd_moneyness': 0,
+                'pct_implies_vol': iv_put,
+            })
+            print(evalDate,iv_call)
+            if evalDate == bkt_optionset.end_date:
+                break
             bkt_optionset.next()
+        return res
 
 """Back Test Settings"""
-start_date = datetime.date(2018, 3, 15)
-end_date = datetime.date(2018, 3, 31)
+start_date = datetime.date(2018, 1, 8)
+end_date = datetime.date(2018, 4, 13)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
@@ -88,24 +107,24 @@ df_option_metrics = get_mktdata(start_date, end_date)
 
 bkt = BktStrategyMoneynessVol(df_option_metrics)
 bkt.set_min_ttm(5) # 期权到期时间至少5个工作日
-bkt.get_ivs_keyvols()
+res = bkt.get_ivs_keyvols()
 # res = bkt.get_ivs_mdt1(0)
-# df = pd.DataFrame(res)
-# print(df)
-# for r in res:
-#     query_res = table.select((table.c.id_underlying == r['id_underlying'])
-#                                & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
-#                              & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
-#     if query_res.rowcount > 0:
-#         table.delete((table.c.id_underlying == r['id_underlying'])
-#                                & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
-#                              & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
-#     try:
-#         conn.execute(table.insert(), r)
-#     except Exception as e:
-#         print(e)
-#         print(r)
-#         continue
+df = pd.DataFrame(res)
+print(df)
+for r in res:
+    query_res = table.select((table.c.id_underlying == r['id_underlying'])
+                               & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
+                             & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
+    if query_res.rowcount > 0:
+        table.delete((table.c.id_underlying == r['id_underlying'])
+                               & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
+                             & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
+    try:
+        conn.execute(table.insert(), r)
+    except Exception as e:
+        print(e)
+        print(r)
+        continue
 
 # plt.plot(dates,implied_vols)
 # plt.show()

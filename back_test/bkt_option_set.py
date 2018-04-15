@@ -415,11 +415,11 @@ class BktOptionSet(object):
             for (idx,row) in df.iterrows():
                 strike = row[self.util.col_adj_strike]
                 iv = row[self.util.col_implied_vol]
-                if iv > 0:
-                    strikes.append(float(strike))
-                    vols.append(iv)
-                else:
-                    continue
+                # if iv > 0:
+                strikes.append(float(strike))
+                vols.append(iv)
+                # else:
+                #     continue
             volset = [vols]
             m_list = [[mdt]]
             vol_matrix = ql.Matrix(len(strikes), len(m_list))
@@ -433,8 +433,14 @@ class BktOptionSet(object):
                         ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
                 keyvols_mdt = {}
                 try:
-                    vol_100 = black_var_surface.blackVol(ql_maturities[0],spot)
-                    keyvols_mdt.update({100:vol_100})
+                    if min(strikes) > spot:
+                        s = min(strikes)
+                    elif max(strikes) < spot:
+                        s = max(strikes)
+                    else:
+                        s = spot
+                    vol_100 = black_var_surface.blackVol(ql_maturities[0], s)
+                    keyvols_mdt.update({100: vol_100})
                 except Exception as e:
                     print(e)
                     pass
@@ -472,7 +478,6 @@ class BktOptionSet(object):
         mdt_1m_num = (mdt_1m-d0).days
         maturities_num = []
         atm_vols = []
-        print(self.eligible_maturities)
         for m in self.eligible_maturities:
             maturities_num.append((m-d0).days)
             atm_vols.append(keyvols_mdts[m][100]) # atm vol : skrike is 100% spot
