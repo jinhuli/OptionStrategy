@@ -63,18 +63,18 @@ class BktStrategyEventVol(BktOptionStrategy):
                 'dt_date': evalDate,
                 'price': etf_price,
             }
+            trade_order_dict2 = {
+                'id_instrument': 'index_50etf',
+                'dt_date': evalDate,
+                'price': etf_price}
             if bkt_optionset.index == 0:
                 fund_etf = bkt.cash * (1 - self.option_invest_pct- self.cash_reserve_pct) * (1 - bkt.fee)
                 unit = np.floor(fund_etf / etf_price)
                 trade_order_dict.update({'unit': unit})
                 bkt.open_long(evalDate,trade_order_dict=trade_order_dict)
-                fund_etf2 = bkt.cash * (1 - self.cash_reserve_pct) * (1 - bkt.fee)
+                fund_etf2 = bkt2.cash * (1 - self.cash_reserve_pct) * (1 - bkt2.fee)
                 unit2 = np.floor(fund_etf2 / etf_price)
-                trade_order_dict2 = {
-                    'id_instrument': 'index_50etf',
-                    'dt_date': evalDate,
-                    'price': etf_price,
-                    'unit':unit2 }
+                trade_order_dict2.update({'unit':unit2})
                 bkt2.open_long(evalDate, trade_order_dict=trade_order_dict2)
             else:
                 # TODO:
@@ -133,7 +133,7 @@ class BktStrategyEventVol(BktOptionStrategy):
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate,trade_order_dict=trade_order_dict)
-            bkt2.mkm_update(evalDate,trade_order_dict=trade_order_dict)
+            bkt2.mkm_update(evalDate,trade_order_dict=trade_order_dict2)
             print(evalDate,bkt_optionset.eval_date, ' , ', bkt.npv)  # npv是组合净值，期初为1
             bkt_optionset.next()
             if idx_event >= len(self.df_events) : break
@@ -141,8 +141,8 @@ class BktStrategyEventVol(BktOptionStrategy):
         self.bkt_account2 = bkt2
 
 """Back Test Settings"""
-start_date = datetime.date(2016, 1, 1)
-# start_date = datetime.date(2015, 6, 1)
+# start_date = datetime.date(2016, 1, 1)
+start_date = datetime.date(2015, 6, 1)
 end_date = datetime.date(2017,12, 31)
 calendar = ql.China()
 daycounter = ql.ActualActual()
