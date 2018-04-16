@@ -61,9 +61,9 @@ class BktStrategyEventVol(BktOptionStrategy):
                 'unit':unit
             }
             if bkt_optionset.index == 0:
-                bkt.open_long(evalDate,trade_order_dict)
+                bkt.open_long(evalDate,trade_order_dict=trade_order_dict)
             else:
-                bkt.rebalance_position(evalDate,trade_order_dict)
+                bkt.rebalance_position(evalDate,trade_order_dict=trade_order_dict)
 
             """Option: Open position on event day, close on vol peak day"""
             if evalDate == dt_event:
@@ -88,7 +88,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                     delta0_ratio = row[self.util.unit]
                     margin = bktoption.get_init_margin() # 每手初始保证金
                     fund += margin*delta0_ratio
-                unit = bkt.cash*self.option_invest_pct/fund
+                unit = bkt.cash/fund
                 # delta = 0
                 for (idx, row) in df_open_position.iterrows():
                     bktoption = row[self.util.bktoption]
