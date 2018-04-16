@@ -19,4 +19,6 @@ a = [{'a':1},{'a':2}]
 a.remove({'a':1})
 print(a)
 
-print(type({}))
+b = {'b':2}
+b.update({'c':1})
+print(b)

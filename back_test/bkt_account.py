@@ -69,8 +69,8 @@ class BktAccount(object):
         return mkt_price
 
     def option_long_1(self, trade_order_dict):
-        mkt_price = float(trade_order_dict['price'])
-        unit = float(trade_order_dict['unit'])
+        mkt_price = trade_order_dict['price']
+        unit = trade_order_dict['unit']
         id_instrument = trade_order_dict['id_instrument']
         dt = trade_order_dict['dt_date']
         premium = unit * mkt_price
@@ -256,13 +256,13 @@ class BktAccount(object):
         elif trade_order_dict != None:
             self.rebalance_position_1(dt, trade_order_dict)
 
-    def rebalance_position_1(self, dt, unit, trade_order_dict):
+    def rebalance_position_1(self, dt, trade_order_dict):
         holding_unit = self.trade_order_dict['unit']
         open_price = self.trade_order_dict['price']
         long_short = self.trade_order_dict['long_short']
         id_instrument = self.trade_order_dict['id_instrument']
+        unit = trade_order_dict['unit']
         mkt_price = trade_order_dict['price']
-
         if unit != holding_unit:
             if unit > holding_unit:  # 加仓
                 open_price = ((unit - holding_unit) * mkt_price + holding_unit * open_price) / unit  # 加权开仓价格
@@ -271,7 +271,6 @@ class BktAccount(object):
                 self.trade_order_dict['open_transaction_fee'] += fee
                 self.cash -= long_short * market_value
                 self.total_transaction_cost += fee
-
             else:  # 减仓
                 liquidated_unit = holding_unit - unit
                 market_value = liquidated_unit * mkt_price
@@ -279,11 +278,9 @@ class BktAccount(object):
                 d_fee = self.trade_order_dict['open_transaction_fee'] * liquidated_unit / holding_unit
                 realized_pnl = long_short * (liquidated_unit * mkt_price - market_value) - fee - d_fee
                 self.trade_order_dict['open_transaction_fee'] -= d_fee
-
                 self.realized_pnl += realized_pnl
                 self.cash = self.cash + long_short * market_value + realized_pnl
                 self.total_transaction_cost += fee
-
             self.trade_order_dict['price'] = open_price
             self.trade_order_dict['unit'] = unit
             if long_short == self.util.long:
@@ -430,12 +427,14 @@ class BktAccount(object):
             long_short = self.trade_order_dict['long_short']
             unit = self.trade_order_dict['unit']
             mkt_price = trade_order_dict['price']
-            holdings.append(self.trade_order_dict)
+            # holdings.append(self.trade_order_dict)
             if long_short == self.util.long:
                 mtm_long_positions += mkt_price * unit
+
             else:
                 mtm_short_positions -= mkt_price * unit
-
+        # TODO: ONLY CONSIDER LONG STOCKS/ETFS
+        self.margin_trade_order = mtm_long_positions
         # money_utilization = self.total_margin_capital / (self.total_margin_capital + self.cash)
         self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
         money_utilization = 1- self.cash / self.total_asset
