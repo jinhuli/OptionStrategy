@@ -53,7 +53,8 @@ class BktStrategyEventVol(BktOptionStrategy):
             #         df = self.bkt_optionset.get_straddle(0,mdt_next)
             """ 50ETF仓位: track index """
             etf_price = df_metrics_today.loc[0,self.util.col_underlying_price]
-            unit = np.floor(bkt.cash*(1-self.option_invest_pct)/etf_price)
+            fund_etf = bkt.cash*(1-self.option_invest_pct)*(1-bkt.fee)
+            unit = np.floor(fund_etf/etf_price)
             trade_order_dict = {
                 'id_instrument':'index_50etf',
                 'dt_date':evalDate,

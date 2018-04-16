@@ -385,149 +385,149 @@ class BktAccount(object):
         bktoption.open_price = None
 
 
-def switch_long(self):
-    return None
+    def switch_long(self):
+        return None
 
 
-def switch_short(self):
-    return None
+    def switch_short(self):
+        return None
 
 
-def mkm_update(self, dt, trade_order_dict=None):  # 每日更新
-    unrealized_pnl = 0
-    mtm_portfolio_value = 0
-    mtm_long_positions = 0
-    mtm_short_positions = 0
-    total_premium_paied = 0
-    holdings = []
-    self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
-    port_delta = 0.0
-    for bktoption in self.holdings:
-        if not bktoption.trade_flag_open: continue
-        holdings.append(bktoption)
-        mkt_price = bktoption.option_price
-        unit = bktoption.trade_unit
-        long_short = bktoption.trade_long_short
-        margin_account = bktoption.trade_margin_capital
-        multiplier = bktoption.multiplier
-        premium = bktoption.premium
-        maintain_margin = unit * bktoption.get_maintain_margin()
-        margin_call = maintain_margin - margin_account
-        unrealized_pnl += long_short * (mkt_price * unit * multiplier - premium)
-        if long_short == self.util.long:
-            mtm_long_positions += mkt_price * unit * multiplier
-            total_premium_paied += bktoption.premium
-            port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
-        else:
-            mtm_short_positions -= mkt_price * unit * multiplier
-            port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
-        mtm_portfolio_value += mtm_long_positions + mtm_short_positions
-        bktoption.trade_margin_capital = maintain_margin
-        self.cash -= margin_call
-        self.total_margin_capital += margin_call
+    def mkm_update(self, dt, trade_order_dict=None):  # 每日更新
+        unrealized_pnl = 0
+        mtm_portfolio_value = 0
+        mtm_long_positions = 0
+        mtm_short_positions = 0
+        total_premium_paied = 0
+        holdings = []
+        self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
+        port_delta = 0.0
+        for bktoption in self.holdings:
+            if not bktoption.trade_flag_open: continue
+            holdings.append(bktoption)
+            mkt_price = bktoption.option_price
+            unit = bktoption.trade_unit
+            long_short = bktoption.trade_long_short
+            margin_account = bktoption.trade_margin_capital
+            multiplier = bktoption.multiplier
+            premium = bktoption.premium
+            maintain_margin = unit * bktoption.get_maintain_margin()
+            margin_call = maintain_margin - margin_account
+            unrealized_pnl += long_short * (mkt_price * unit * multiplier - premium)
+            if long_short == self.util.long:
+                mtm_long_positions += mkt_price * unit * multiplier
+                total_premium_paied += bktoption.premium
+                port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+            else:
+                mtm_short_positions -= mkt_price * unit * multiplier
+                port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+            mtm_portfolio_value += mtm_long_positions + mtm_short_positions
+            bktoption.trade_margin_capital = maintain_margin
+            self.cash -= margin_call
+            self.total_margin_capital += margin_call
 
-    if self.trade_order_dict != {}:
-        long_short = self.trade_order_dict['long_short']
-        unit = self.trade_order_dict['unit']
-        mkt_price = trade_order_dict['price']
-        holdings.append(self.trade_order_dict)
-        if long_short == self.util.long:
-            mtm_long_positions += mkt_price * unit
-        else:
-            mtm_short_positions -= mkt_price * unit
+        if self.trade_order_dict != {}:
+            long_short = self.trade_order_dict['long_short']
+            unit = self.trade_order_dict['unit']
+            mkt_price = trade_order_dict['price']
+            holdings.append(self.trade_order_dict)
+            if long_short == self.util.long:
+                mtm_long_positions += mkt_price * unit
+            else:
+                mtm_short_positions -= mkt_price * unit
 
-    # money_utilization = self.total_margin_capital / (self.total_margin_capital + self.cash)
-    self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
-    money_utilization = self.cash / self.total_asset
-    self.npv = self.total_asset / self.init_fund
-    self.holdings = holdings
-    account = pd.DataFrame(data={self.util.dt_date: [dt],
-                                 self.util.nbr_trade: [self.nbr_trade],
-                                 self.util.margin_capital: [self.total_margin_capital],
-                                 self.util.realized_pnl: [self.realized_pnl],
-                                 self.util.unrealized_pnl: [unrealized_pnl],
-                                 self.util.mtm_long_positions: [mtm_long_positions],
-                                 self.util.mtm_short_positions: [mtm_short_positions],
-                                 self.util.cash: [self.cash],
-                                 self.util.money_utilization: [money_utilization],
-                                 self.util.npv: [self.npv],
-                                 self.util.total_asset: [self.total_asset],
-                                 'portfolio delta': [port_delta]
-                                 }
-                           )
-    self.df_account = self.df_account.append(account, ignore_index=True)
-    # npv_last = self.npv
-    self.nbr_trade = 0
-    self.realized_pnl = 0
-
-
-def liquidate_all(self, dt):
-    holdings = self.holdings.copy()
-    for bktoption in holdings:
-        self.close_position(dt, bktoption)
+        # money_utilization = self.total_margin_capital / (self.total_margin_capital + self.cash)
+        self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
+        money_utilization = 1- self.cash / self.total_asset
+        self.npv = self.total_asset / self.init_fund
+        self.holdings = holdings
+        account = pd.DataFrame(data={self.util.dt_date: [dt],
+                                     self.util.nbr_trade: [self.nbr_trade],
+                                     self.util.margin_capital: [self.total_margin_capital],
+                                     self.util.realized_pnl: [self.realized_pnl],
+                                     self.util.unrealized_pnl: [unrealized_pnl],
+                                     self.util.mtm_long_positions: [mtm_long_positions],
+                                     self.util.mtm_short_positions: [mtm_short_positions],
+                                     self.util.cash: [self.cash],
+                                     self.util.money_utilization: [money_utilization],
+                                     self.util.npv: [self.npv],
+                                     self.util.total_asset: [self.total_asset],
+                                     'portfolio delta': [port_delta]
+                                     }
+                               )
+        self.df_account = self.df_account.append(account, ignore_index=True)
+        # npv_last = self.npv
+        self.nbr_trade = 0
+        self.realized_pnl = 0
 
 
-def calculate_drawdown(self):
-    hist_max = 1.0
-    for (idx, row) in self.df_account.iterrows():
-        if idx == 0:
-            drawdown = 0.0
-        else:
-            npv = row[self.util.npv]
-            hist_max = max(npv, hist_max)
-            drawdown = -(hist_max - npv) / hist_max
-        self.df_account.loc[idx, 'drawdown'] = drawdown
+    def liquidate_all(self, dt):
+        holdings = self.holdings.copy()
+        for bktoption in holdings:
+            self.close_position(dt, bktoption)
 
 
-def calculate_max_drawdown(self):
-    self.calculate_drawdown()
-    max_drawdown = None
-    try:
-        drawdown_list = self.df_account['drawdown']
-        max_drawdown = min(drawdown_list)
-    except Exception as e:
-        print(e)
-        pass
-    return max_drawdown
+    def calculate_drawdown(self):
+        hist_max = 1.0
+        for (idx, row) in self.df_account.iterrows():
+            if idx == 0:
+                drawdown = 0.0
+            else:
+                npv = row[self.util.npv]
+                hist_max = max(npv, hist_max)
+                drawdown = -(hist_max - npv) / hist_max
+            self.df_account.loc[idx, 'drawdown'] = drawdown
 
 
-def calculate_annulized_return(self):
-    dt_start = self.df_account.loc[0, self.util.dt_date]
-    dt_end = self.df_account.loc[len(self.df_account) - 1, self.util.dt_date]
-    invest_days = (dt_end - dt_start).days
-    annulized_return = (self.total_asset / self.init_fund) ** (365 / invest_days) - 1
-    self.annualized_return = annulized_return
-    return annulized_return
+    def calculate_max_drawdown(self):
+        self.calculate_drawdown()
+        max_drawdown = None
+        try:
+            drawdown_list = self.df_account['drawdown']
+            max_drawdown = min(drawdown_list)
+        except Exception as e:
+            print(e)
+            pass
+        return max_drawdown
 
 
-def calculate_sharpe_ratio(self):
-    df = self.df_account
-    npvs = df[self.util.npv]
-    std = self.hisvol(npvs, 1)
-    sharp = (self.annualized_return - self.rf) / std
-    return sharp
+    def calculate_annulized_return(self):
+        dt_start = self.df_account.loc[0, self.util.dt_date]
+        dt_end = self.df_account.loc[len(self.df_account) - 1, self.util.dt_date]
+        invest_days = (dt_end - dt_start).days
+        annulized_return = (self.total_asset / self.init_fund) ** (365 / invest_days) - 1
+        self.annualized_return = annulized_return
+        return annulized_return
 
 
-def hisvol(self, data, n):
-    datas = np.log(data)
-    df = datas.diff()
-    vol = df.std() * np.sqrt(252)
-    return vol
+    def calculate_sharpe_ratio(self):
+        df = self.df_account
+        npvs = df[self.util.npv]
+        std = self.hisvol(npvs, 1)
+        sharp = (self.annualized_return - self.rf) / std
+        return sharp
 
 
-def plot_npv(self):
-    fig = plt.figure()
-    host = host_subplot(111)
-    par = host.twinx()
-    host.set_xlabel("日期")
-    x = self.df_account[self.util.dt_date].tolist()
-    npv = self.df_account[self.util.npv].tolist()
-    dd = self.df_account['drawdown'].tolist()
-    host.plot(x, npv, label='npv', color=self.pu.colors[0], linestyle=self.pu.lines[0], linewidth=2)
-    par.fill_between(x, [0] * len(dd), dd, label='drawdown', color=self.pu.colors[1])
-    host.set_ylabel('Net Value')
-    par.set_ylabel('Drawdown')
-    host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-                ncol=3, mode="expand", borderaxespad=0., frameon=False)
-    fig.savefig('../save_figure/npv.png', dpi=300, format='png')
-    plt.show()
+    def hisvol(self, data, n):
+        datas = np.log(data)
+        df = datas.diff()
+        vol = df.std() * np.sqrt(252)
+        return vol
+
+
+    def plot_npv(self):
+        fig = plt.figure()
+        host = host_subplot(111)
+        par = host.twinx()
+        host.set_xlabel("日期")
+        x = self.df_account[self.util.dt_date].tolist()
+        npv = self.df_account[self.util.npv].tolist()
+        dd = self.df_account['drawdown'].tolist()
+        host.plot(x, npv, label='npv', color=self.pu.colors[0], linestyle=self.pu.lines[0], linewidth=2)
+        par.fill_between(x, [0] * len(dd), dd, label='drawdown', color=self.pu.colors[1])
+        host.set_ylabel('Net Value')
+        par.set_ylabel('Drawdown')
+        host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+                    ncol=3, mode="expand", borderaxespad=0., frameon=False)
+        fig.savefig('../save_figure/npv.png', dpi=300, format='png')
+        plt.show()
