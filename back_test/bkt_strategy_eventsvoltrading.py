@@ -6,7 +6,7 @@ import datetime
 from back_test.bkt_util import BktUtil
 from back_test.data_option import get_50option_mktdata as get_mktdata,get_eventsdata,get_50etf_mktdata
 from Utilities.PlotUtil import PlotUtil
-
+import matplotlib.pyplot as plt
 
 class BktStrategyEventVol(BktOptionStrategy):
 
@@ -168,15 +168,15 @@ df1 = bkt_strategy
 # bkt.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
 
 # bkt_strategy.return_analysis()
-print(bkt_strategy.bkt_account.df_trading_records)
+# print(bkt_strategy.bkt_account.df_trading_records)
 
 npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
-npv2 = bkt_strategy.bkt_account2.df_account['npv2'].tolist()
+npv2 = bkt_strategy.bkt_account2.df_account['npv'].tolist()
 
 pu = PlotUtil()
-dates = df_option_metrics['dt_date'].unique()
+dates = bkt_strategy.bkt_account1.df_account['dt_date'].unique()
 f = pu.plot_line_chart(dates, [npv1,npv2], ['1','2'])
-f.show()
+plt.show()
 
 
 
