@@ -11,6 +11,12 @@ import datetime
 # print(df1)
 # print(df1.at[1,'a'])
 # print(df1.iat[1,1])
+#
+# d = datetime.date(2018,1,1)-datetime.date(1999,1,1)
+# print(d.days)
 
-d = datetime.date(2018,1,1)-datetime.date(1999,1,1)
-print(d.days)
+a = [{'a':1},{'a':2}]
+a.remove({'a':1})
+print(a)
+
+print(type({}))

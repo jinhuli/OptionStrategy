@@ -10,15 +10,19 @@ class BktOptionStrategy():
     __metaclass__=ABCMeta
 
 
-    def __init__(self, df_option_metrics, money_utilization=0.2, init_fund=100000000.0, tick_size=0.0001,
-                 fee_rate=2.0 / 10000, nbr_slippage=0, max_money_utilization=0.5,rf = 0.03):
+    def __init__(self, df_option_metrics,cd_open_price='close', cd_close_price='close', money_utilization=0.2,
+                 init_fund=100000000.0, tick_size=0.0001,fee_rate=2.0 / 10000, nbr_slippage=0, max_money_utilization=0.5,rf = 0.03,
+                 leverage=1.0, margin_rate=0.1,contract_multiplier=10000
+                 ):
         self.util = BktUtil()
         self.init_fund = init_fund
         self.money_utl = money_utilization
         # self.holding_period = hp
         self.df_option_metrics = df_option_metrics
         self.calendar = ql.China()
-        self.bkt_account = BktAccount(fee_rate=fee_rate, init_fund=init_fund)
+        self.bkt_account = BktAccount(cd_open_price=cd_open_price,cd_close_price = cd_close_price, leverage=leverage,
+                                      margin_rate=margin_rate, init_fund=init_fund, tick_size=tick_size,
+                                      contract_multiplier=contract_multiplier, fee_rate=fee_rate, nbr_slippage=nbr_slippage,rf = rf)
         self.bkt_optionset = BktOptionSet('daily', df_option_metrics)
         self.option_type = None
         self.min_ttm = 1

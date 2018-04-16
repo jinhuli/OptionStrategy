@@ -185,8 +185,16 @@ class BktOption(object):
         except Exception as e:
             print(e)
             adj_option_price = None
+        try:
+            amt_open = self.current_state[self.util.col_open]
+        except Exception as e:
+            print(e)
+            amt_open = None
         self.option_price = option_price
         self.adj_option_price = adj_option_price
+        self.option_price_open = amt_open
+        self.option_price_open_15min = None
+        self.option_price_close_15min = None
 
 
     def update_underlying(self):

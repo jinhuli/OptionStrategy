@@ -20,6 +20,19 @@ def get_eventsdata(start_date,end_date):
     df_event = pd.read_sql(query.statement, query.session.bind)
     return df_event
 
+def get_50etf_mktdata(start_date,end_date):
+    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    Session = sessionmaker(bind=engine)
+    sess = Session()
+    Index_mkt = dbt.IndexMkt
+
+    query_etf = sess.query(Index_mkt.dt_date, Index_mkt.amt_close,Index_mkt.id_instrument) \
+        .filter(Index_mkt.dt_date >= start_date).filter(Index_mkt.dt_date <= end_date) \
+        .filter(Index_mkt.id_instrument == 'index_50etf')
+    df = pd.read_sql(query_etf.statement,query_etf.session.bind)
+    return df
+
+
 def get_50option_mktdata(start_date,end_date):
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
@@ -29,7 +42,7 @@ def get_50option_mktdata(start_date,end_date):
     options = dbt.Options
     util = BktUtil()
 
-    query_mkt = sess.query(Option_mkt.dt_date, Option_mkt.id_instrument, Option_mkt.code_instrument,
+    query_mkt = sess.query(Option_mkt.dt_date, Option_mkt.id_instrument, Option_mkt.code_instrument,Option_mkt.amt_open,
                            Option_mkt.amt_close, Option_mkt.amt_settlement, Option_mkt.amt_last_settlement,
                            Option_mkt.amt_trading_volume,Option_mkt.pct_implied_vol
                            ) \

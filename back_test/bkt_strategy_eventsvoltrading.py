@@ -3,14 +3,14 @@ import QuantLib as ql
 import numpy as np
 import datetime
 from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata as get_mktdata,get_eventsdata
+from back_test.data_option import get_50option_mktdata as get_mktdata,get_eventsdata,get_50etf_mktdata
 
 class BktStrategyEventVol(BktOptionStrategy):
 
 
-    def __init__(self, df_option_metrics,df_events,option_invest_pct):
+    def __init__(self, df_option_metrics,df_events,option_invest_pct,cd_open_price):
 
-        BktOptionStrategy.__init__(self, df_option_metrics)
+        BktOptionStrategy.__init__(self, df_option_metrics,cd_open_price=cd_open_price)
         self.df_events = df_events.sort_values(by='dt_impact_beg',ascending=True).reset_index()
         self.moneyness = 0
         self.option_invest_pct = option_invest_pct
@@ -36,6 +36,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                 print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
+
             """ 持有期较长或者标的价格大幅变化--可能需要调整Delta中性 """
             # if bkt_optionset.index == 0:
             #     # TODO:
@@ -50,7 +51,19 @@ class BktStrategyEventVol(BktOptionStrategy):
             #         mdts = sorted(self.bkt_optionset.keys())
             #         mdt_next = mdts[mdts.index(self.holdings_mdt)+1]
             #         df = self.bkt_optionset.get_straddle(0,mdt_next)
-            """ 50ETF: track index, option position on 1st day and close on the last day """
+            """ 50ETF仓位: track index """
+            etf_price = df_metrics_today.loc[0,self.util.col_underlying_price]
+            unit = np.floor(bkt.cash*(1-self.option_invest_pct)/etf_price)
+            trade_order_dict = {
+                'id_instrument':'index_50etf',
+                'dt_date':evalDate,
+                'price':etf_price,
+                'unit':unit
+            }
+            if bkt_optionset.index == 0:
+                bkt.open_long(evalDate,trade_order_dict)
+            else:
+                bkt.rebalance_position(evalDate,trade_order_dict)
 
             """Option: Open position on event day, close on vol peak day"""
             if evalDate == dt_event:
@@ -82,7 +95,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                     delta0_ratio = row[self.util.unit]
                     trade_unit = np.floor(delta0_ratio*unit)
                     # delta += bktoption.get_delta()*unit*delta0_ratio
-                    bkt.open_long(evalDate, trade_unit,bktoption=bktoption)
+                    bkt.open_long(evalDate, unit=trade_unit,bktoption=bktoption)
                     self.holdings_mdt = bktoption.maturitydt
                 self.flag_trade = True
 
@@ -96,7 +109,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                 idx_event += 1
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
-            bkt.mkm_update(evalDate, df_metrics_today)
+            bkt.mkm_update(evalDate,trade_order_dict=trade_order_dict)
             print(evalDate,bkt_optionset.eval_date, ' , ', bkt.npv)  # npv是组合净值，期初为1
             bkt_optionset.next()
             if idx_event >= len(self.df_events):return
@@ -114,11 +127,12 @@ util = BktUtil()
 """Collect Mkt Date"""
 
 df_option_metrics = get_mktdata(start_date,end_date)
+# df_etf_metrics = get_50etf_mktdata(start_date,end_date)
 df_events = get_eventsdata(start_date,end_date)
 
 """Run Backtest"""
 
-bkt = BktStrategyEventVol(df_option_metrics,df_events,0.1)
+bkt = BktStrategyEventVol(df_option_metrics,df_events,option_invest_pct=0.1,cd_open_price='open')
 bkt.set_min_ttm(20)
 bkt.run()
 

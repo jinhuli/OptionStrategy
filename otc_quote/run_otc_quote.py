@@ -20,6 +20,8 @@ def otc_quote(evalDate,  spot_price,strike, vol, mdtDate=None, T=None, rf=0.03, 
             maturitydt = calendar.advance(eval_date, ql.Period(2, ql.Months))
         elif T == '3M':
             maturitydt = calendar.advance(eval_date, ql.Period(3, ql.Months))
+        elif T == '6M':
+            maturitydt = calendar.advance(eval_date, ql.Period(6, ql.Months))
         else:
             return '期限不支持！'
     elif mdtDate != None:
@@ -52,7 +54,7 @@ def hisvol(data,n):
 # TODO: CHANGE URL
 url = '../data/'
 # TODO : CHANGE TO TEH LAST TEADING DAY
-end_date = datetime.date(2018, 4, 13)
+end_date = datetime.date(2018, 4, 16)
 evaluation_date = end_date
 
 
@@ -108,9 +110,11 @@ for code in A_shares_codes:
             quote_1M = otc_quote(eval_date, spot_price, strike, vol, T='1M')
             quote_2M = otc_quote(eval_date, spot_price, strike, vol, T='2M')
             quote_3M = otc_quote(eval_date, spot_price, strike, vol, T='3M')
+            quote_6M = otc_quote(eval_date, spot_price, strike, vol, T='6M')
             option_price1 = 100*quote_1M/spot_price
             option_price2 = 100*quote_2M/spot_price
             option_price3 = 100*quote_3M/spot_price
+            option_price4 = 100*quote_6M/spot_price
             res_quote.append({
                 '1 code':code,
                 '2 eval date':eval_date,
@@ -119,7 +123,8 @@ for code in A_shares_codes:
                 '5 spot price':spot_price,
                 '6 option price 1M (%)':option_price1,
                 '7 option price 2M (%)':option_price2,
-                '8 option price 3M (%)':option_price3
+                '8 option price 3M (%)':option_price3,
+                '9 option price 6M (%)': option_price4
             })
             # print('%20s %20s %20s %20s %20s %20s %20s %20s' %(code,eval_date,cont,round(vol,4),spot_price,round(option_price1,4),round(option_price2,4),round(option_price3,4)))
     except Exception as e:
