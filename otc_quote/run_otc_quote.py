@@ -54,7 +54,7 @@ def hisvol(data,n):
 # TODO: CHANGE URL
 url = '../data/'
 # TODO : CHANGE TO TEH LAST TEADING DAY
-end_date = datetime.date(2018, 4, 16)
+end_date = datetime.date(2018, 4, 17)
 evaluation_date = end_date
 
 

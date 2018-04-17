@@ -27,7 +27,7 @@ dc = DataCollection()
 
 # beg_date = datetime.date(2018, 4, 4)
 # end_date = datetime.date(2018, 4, 10)
-date = '2018-04-16'
+date = '2018-04-17'
 
 # date_range = w.tdays(beg_date, end_date, "").Data[0]
 ##################### CONTRACT INFO #########################################
