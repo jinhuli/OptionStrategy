@@ -40,7 +40,7 @@ options_mktdata = Table('options_mktdata', metadata, autoload=True)
 query_mkt = sess.query(options_mktdata) \
     .filter(options_mktdata.c.datasource == 'wind')\
     .filter(options_mktdata.c.id_underlying == 'index_50etf')\
-    # .filter(options_mktdata.c.dt_date >= beg_date).filter(options_mktdata.c.dt_date <= end_date)
+    .filter(options_mktdata.c.dt_date >= beg_date).filter(options_mktdata.c.dt_date <= end_date)
 
 
 dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
