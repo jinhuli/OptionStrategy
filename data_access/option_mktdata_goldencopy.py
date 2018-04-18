@@ -89,10 +89,11 @@ for date in dates:
                 df.loc[index,'amt_open'] = row['amt_settlement']
                 df.loc[index,'amt_close'] = row['amt_settlement']
                 df.loc[index,'cd_remark'] = 'no trading volume'
-
-    for r in df.iterrows():
-        try:
-            r.to_sql('options_mktdata_goldencopy', engine_metrics, if_exists='append',index=False)
-        except:
-            continue
+    dict = df.to_dict()
+    # for (idx,r) in df.iterrows():
+    #     try:
+    #         r.to_d
+    #     except Exception as e:
+    #         print(e)
+    #         continue
     print(date,'inserted into database')
