@@ -92,6 +92,9 @@ for date in dates:
 
     # print(df)
     # date = date + datetime.timedelta(days=1)
-    df.to_sql('options_mktdata_goldencopy', engine_metrics, if_exists='append',index=False)
+    try:
+        df.to_sql('options_mktdata_goldencopy', engine_metrics, if_exists='append',index=False)
+    except:
+        continue
     print(date,'inserted into database')
 # print(cnt)
