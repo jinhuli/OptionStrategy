@@ -90,11 +90,9 @@ for date in dates:
                 df.loc[index,'amt_close'] = row['amt_settlement']
                 df.loc[index,'cd_remark'] = 'no trading volume'
 
-    # print(df)
-    # date = date + datetime.timedelta(days=1)
-    try:
-        df.to_sql('options_mktdata_goldencopy', engine_metrics, if_exists='append',index=False)
-    except:
-        continue
+    for r in df.iterrows():
+        try:
+            r.to_sql('options_mktdata_goldencopy', engine_metrics, if_exists='append',index=False)
+        except:
+            continue
     print(date,'inserted into database')
-# print(cnt)
