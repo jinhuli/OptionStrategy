@@ -25,9 +25,10 @@ conn_intraday = engine_intraday.connect()
 metadata_intraday = MetaData(engine_intraday)
 equity_index_intraday = Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
 option_mktdata_intraday = Table('option_mktdata_intraday', metadata_intraday, autoload=True)
-option_tick_data = Table('option_tick_data', metadata_intraday, autoload=True)
-future_tick_data = Table('future_tick_data', metadata_intraday, autoload=True)
+# option_tick_data = Table('option_tick_data', metadata_intraday, autoload=True)
+# future_tick_data = Table('future_tick_data', metadata_intraday, autoload=True)
 index_daily = Table('indexes_mktdata', metadata, autoload=True)
+
 dc = DataCollection()
 #####################################################################################
 beg_date = datetime.date(2018, 1, 19)
