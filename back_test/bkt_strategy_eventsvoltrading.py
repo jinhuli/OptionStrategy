@@ -4,16 +4,16 @@ import QuantLib as ql
 import numpy as np
 import datetime
 from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata as get_mktdata,get_eventsdata,get_50etf_mktdata
+from back_test.data_option import get_50option_mktdata2 as get_mktdata,get_eventsdata,get_50etf_mktdata
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
 
 class BktStrategyEventVol(BktOptionStrategy):
 
 
-    def __init__(self, df_option_metrics,df_events,option_invest_pct,cd_open_price):
+    def __init__(self, df_option_metrics,df_events,option_invest_pct=0.1):
 
-        BktOptionStrategy.__init__(self, df_option_metrics,cd_open_price=cd_open_price)
+        BktOptionStrategy.__init__(self, df_option_metrics)
         self.df_events = df_events.sort_values(by='dt_impact_beg',ascending=True).reset_index()
         self.moneyness = 0
         self.option_invest_pct = option_invest_pct
@@ -29,6 +29,7 @@ class BktStrategyEventVol(BktOptionStrategy):
             dt_event = self.df_events.loc[idx_event,'dt_impact_beg']
             dt_volpeak = self.df_events.loc[idx_event,'dt_vol_peak']
             cd_trade_deriction = self.df_events.loc[idx_event,'cd_trade_direction']
+            cd_open_position_time = self.df_events.loc[idx_event,'cd_open_position_time']
             evalDate = bkt_optionset.eval_date
 
             df_metrics_today = bkt_optionset.df_daily_state
@@ -52,7 +53,7 @@ class BktStrategyEventVol(BktOptionStrategy):
 
                 """Option: Select Strategy and Open Position"""
                 mdt1 = self.get_1st_eligible_maturity(evalDate)
-                mdt2=self.get_2nd_eligible_maturity(evalDate)
+                mdt2 = self.get_2nd_eligible_maturity(evalDate)
                 if cd_trade_deriction == -1:
                     df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness,mdt1,mdt2,option_type=self.util.type_put)
                 elif cd_trade_deriction == 1:
@@ -72,8 +73,12 @@ class BktStrategyEventVol(BktOptionStrategy):
                     delta0_ratio = row[self.util.unit]
                     trade_unit = np.floor(delta0_ratio*unit)
                     # delta += bktoption.get_delta()*unit*delta0_ratio
-                    bkt.open_long(evalDate, unit=trade_unit,bktoption=bktoption)
-                    self.holdings_mdt = bktoption.maturitydt
+                    if trade_unit > 0:
+                        bkt.open_long(evalDate, unit=trade_unit,bktoption=bktoption)
+                    else:
+                        bkt.open_short(evalDate, unit=-trade_unit,bktoption=bktoption)
+
+                    # self.holdings_mdt = bktoption.maturitydt
                 self.flag_trade = True
 
             """Option: Close position """
@@ -105,9 +110,11 @@ class BktStrategyEventVol(BktOptionStrategy):
             dt_event = self.df_events.loc[idx_event,'dt_impact_beg']
             dt_volpeak = self.df_events.loc[idx_event,'dt_vol_peak']
             cd_trade_deriction = self.df_events.loc[idx_event,'cd_trade_direction']
+            cd_open_position_time = self.df_events.loc[idx_event,'cd_open_position_time']
+
             evalDate = bkt_optionset.eval_date
 
-            df_metrics_today = bkt_optionset.df_daily_state
+            # df_metrics_today = bkt_optionset.df_daily_state
 
             """ 回测期最后一天全部清仓 """
             if evalDate == bkt_optionset.end_date:
@@ -146,7 +153,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                     delta0_ratio = row[self.util.unit]
                     trade_unit = np.floor(delta0_ratio*unit)
                     # delta += bktoption.get_delta()*unit*delta0_ratio
-                    bkt.open_long(evalDate, unit=trade_unit,bktoption=bktoption)
+                    bkt.open_long(evalDate, unit=trade_unit,bktoption=bktoption,cd_open_by_price=cd_open_position_time)
                     self.holdings_mdt = bktoption.maturitydt
                 self.flag_trade = True
 
@@ -277,9 +284,8 @@ class BktStrategyEventVol(BktOptionStrategy):
         self.bkt_account2 = bkt2
 
 """Back Test Settings"""
-start_date = datetime.date(2016, 1, 1)
-# start_date = datetime.date(2015, 8, 1)
-end_date = datetime.date(2016,9, 18)
+start_date = datetime.date(2015, 8, 1)
+end_date = datetime.date(2018, 4, 17)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
@@ -293,7 +299,7 @@ df_option_metrics = get_mktdata(start_date,end_date)
 
 """Run Backtest"""
 
-bkt_strategy = BktStrategyEventVol(df_option_metrics,df_events,option_invest_pct=0.2,cd_open_price='close')
+bkt_strategy = BktStrategyEventVol(df_option_metrics,df_events,option_invest_pct=0.2)
 bkt_strategy.set_min_holding_days(20)
 
 # bkt_strategy.etf_enhanced_by_options()
@@ -305,8 +311,8 @@ bkt_strategy.set_min_holding_days(20)
 # f = pu.plot_line_chart(dates, [npv1,npv2], ['80% 50etf & 20% option','50etf'])
 # plt.show()
 
-# bkt_strategy.options_straddle()
-bkt_strategy.options_calendar_spread()
+bkt_strategy.options_straddle()
+# bkt_strategy.options_calendar_spread()
 
 
 # bkt.bkt_account.df_account.to_csv('../save_results/df_account.csv')

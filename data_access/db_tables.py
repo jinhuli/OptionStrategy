@@ -47,6 +47,62 @@ class DataBaseTables():
                     self.amt_bid,self.amt_ask,self.amt_delta,self.amt_gamma,self.amt_vega,self.amt_theta,self.amt_rho,self.pct_implied_vol,self.amt_settlement,
                     self.amt_trading_volume,self.amt_trading_value,self.amt_holding_volume,self.amt_exercised,self.cd_exchange,self.timestamp)
 
+    class OptionMktGolden(Base):
+        __tablename__ = 'options_mktdata_goldencopy'
+        dt_date = Column(Date, nullable=True ,primary_key=True)
+        id_instrument = Column(VARCHAR(45), nullable=True , primary_key=True)
+        flag_night = Column(INT, nullable=True, primary_key=True)
+        datasource = Column(VARCHAR(45), nullable=True , primary_key=True)
+        code_instrument = Column(VARCHAR(45))
+        name_code = Column(VARCHAR(45))
+        id_underlying = Column(VARCHAR(45))
+        amt_strike = Column(DECIMAL(10, 4))
+        cd_option_type = Column(VARCHAR(10))
+        amt_last_close = Column(DECIMAL(18, 4))
+        amt_last_settlement = Column(DECIMAL(18, 4))
+        amt_open = Column(DECIMAL(18, 4))
+        amt_high = Column(DECIMAL(18, 4))
+        amt_low = Column(DECIMAL(18, 4))
+        amt_close = Column(DECIMAL(18, 4))
+        amt_bid = Column(DECIMAL(18, 4))
+        amt_ask = Column(DECIMAL(18, 4))
+        amt_delta = Column(DECIMAL(10, 6))
+        amt_gamma = Column(DECIMAL(10, 6))
+        amt_vega = Column(DECIMAL(10, 6))
+        amt_theta = Column(DECIMAL(10, 6))
+        amt_rho = Column(DECIMAL(10, 6))
+
+        amt_morning_open_15min = Column(DECIMAL(18, 4))
+        amt_morning_close_15min = Column(DECIMAL(18, 4))
+        amt_afternoon_open_15min = Column(DECIMAL(18, 4))
+        amt_afternoon_close_15min = Column(DECIMAL(18, 4))
+        amt_daily_avg = Column(DECIMAL(18, 4))
+        amt_morning_avg = Column(DECIMAL(18, 4))
+        amt_afternoon_avg = Column(DECIMAL(18, 4))
+
+        pct_implied_vol = Column(DECIMAL(10, 6))
+        amt_settlement = Column(DECIMAL(18, 4))
+        amt_trading_volume = Column(DECIMAL(18, 4))
+        amt_trading_value = Column(DECIMAL(18, 4))
+        amt_holding_volume = Column(DECIMAL(18, 4))
+        amt_exercised = Column(DECIMAL(18, 4))
+        cd_exchange = Column(VARCHAR(10))
+        cd_remark = Column(VARCHAR(10))
+        timestamp = Column(TIMESTAMP)
+
+        def __repr__(self):
+            return "<OptionMktGolden(dt_date='%s', id_instrument='%s',flag_night='%s',datasource='%s',code_instrument='%s',name_code='%s',id_underlying='%s'," \
+                   "amt_strike='%s',cd_option_type='%s',amt_last_close='%s',amt_last_settlement='%s',amt_open='%s',amt_high='%s',amt_low='%s',amt_close='%s'," \
+                   "amt_bid='%s',amt_ask='%s',amt_delta='%s',amt_gamma='%s',amt_vega='%s',amt_theta='%s',amt_rho='%s',pct_implied_vol='%s',amt_settlement='%s'," \
+                   "amt_morning_open_15min='%s',amt_morning_close_15min='%s',amt_afternoon_open_15min='%s',amt_afternoon_close_15min='%s',amt_daily_avg='%s',amt_morning_avg='%s',amt_afternoon_avg='%s'," \
+                   "amt_trading_volume='%s',amt_trading_value='%s',amt_holding_volume='%s',amt_exercised='%s',cd_exchange='%s',timestamp='%s')" % \
+                   (self.dt_date,self.id_instrument,self.flag_night,self.datasource,self.code_instrument,self.name_code,self.id_underlying,
+                    self.amt_strike,self.cd_option_type,self.amt_last_close,self.amt_last_settlement,self.amt_open, self.amt_high,self.amt_low,self.amt_close,
+                    self.amt_bid,self.amt_ask,self.amt_delta,self.amt_gamma,self.amt_vega,self.amt_theta,self.amt_rho,self.pct_implied_vol,self.amt_settlement,
+                    self.amt_morning_open_15min,self.amt_morning_close_15min,self.amt_afternoon_open_15min,self.amt_afternoon_close_15min,self.amt_daily_avg,self.amt_morning_avg,self.amt_afternoon_avg,
+                    self.amt_trading_volume,self.amt_trading_value,self.amt_holding_volume,self.amt_exercised,self.cd_exchange,self.timestamp)
+
+
     class FutureMkt(Base):
         __tablename__ = 'futures_mktdata'
         dt_date = Column(Date, nullable=False , primary_key=True)

@@ -36,18 +36,13 @@ class BktAccount(object):
         self.pu = PlotUtil()
         self.trade_order_dict = {}
 
-    def open_long(self, dt, unit=None, bktoption=None, trade_order_dict=None):
-        if bktoption != None:
-            self.open_long_option(dt, bktoption, unit)
-        if trade_order_dict != None:
-            self.option_long_1(trade_order_dict)
 
-    def get_open_position_price(self, bktoption):
-        if self.cd_open_by_price == 'open':
+    def get_open_position_price(self, bktoption,cd_open_by_price):
+        if cd_open_by_price == 'open':
             mkt_price = bktoption.option_price_open
-        elif self.cd_open_by_price == 'close':
+        elif cd_open_by_price == 'close':
             mkt_price = bktoption.option_price
-        elif self.cd_open_by_price == 'morning_open_15min':
+        elif cd_open_by_price == 'morning_open_15min':
             if bktoption.option_morning_open_15min != -999.0:
                 mkt_price = bktoption.option_morning_open_15min
             elif bktoption.option_morning_avg != -999.0:
@@ -58,14 +53,14 @@ class BktAccount(object):
                 print(bktoption.id_instrument,'No volume to open position')
                 mkt_price = bktoption.option_price
 
-        elif self.cd_open_by_price == 'afternoon_close_15min':
+        elif cd_open_by_price == 'afternoon_close_15min':
             if bktoption.option_afternoon_close_15min != -999.0:
                 mkt_price = bktoption.option_afternoon_close_15min
             else:
                 print(bktoption.id_instrument,'No volume to open position')
                 mkt_price = bktoption.option_price
 
-        elif self.cd_open_by_price == 'daily_avg':
+        elif cd_open_by_price == 'daily_avg':
             if bktoption.option_daily_avg != 999.0:
                 mkt_price = bktoption.option_daily_avg
             else:
@@ -74,14 +69,20 @@ class BktAccount(object):
             mkt_price = bktoption.option_price
         return mkt_price
 
-    def get_close_position_price(self, bktoption):
-        if self.cd_open_by_price == 'open':
+    def get_close_position_price(self, bktoption,cd_close_by_price):
+        if cd_close_by_price == 'open':
             mkt_price = bktoption.option_price_open
-        elif self.cd_open_by_price == 'close':
+        elif cd_close_by_price == 'close':
             mkt_price = bktoption.option_price
         else:
             mkt_price = bktoption.option_price
         return mkt_price
+
+    def open_long(self, dt, unit=None, bktoption=None, trade_order_dict=None,cd_open_by_price=None):
+        if bktoption != None:
+            self.open_long_option(dt, bktoption, unit,cd_open_by_price)
+        if trade_order_dict != None:
+            self.option_long_1(trade_order_dict)
 
     def option_long_1(self, trade_order_dict):
         mkt_price = trade_order_dict['price']
@@ -109,11 +110,11 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         self.trade_order_dict = trade_order_dict
 
-    def open_long_option(self, dt, bktoption, unit):  # 多开
+    def open_long_option(self, dt, bktoption, unit,cd_open_by_price):  # 多开
         bktoption.trade_dt_open = dt
         bktoption.trade_long_short = self.util.long
         id_instrument = bktoption.id_instrument
-        mkt_price = self.get_open_position_price(bktoption)
+        mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
         multiplier = bktoption.multiplier
         trade_type = '多开'
         fee = unit * mkt_price * self.fee * multiplier
@@ -140,11 +141,11 @@ class BktAccount(object):
                                     })
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
-    def open_short(self, dt, bktoption, unit):
+    def open_short(self, dt, bktoption, unit,cd_open_by_price):
         bktoption.trade_dt_open = dt
         bktoption.trade_long_short = self.util.short
         id_instrument = bktoption.id_instrument
-        mkt_price = self.get_open_position_price(bktoption)
+        mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
         multiplier = bktoption.multiplier
         trade_type = '空开'
         fee = unit * mkt_price * self.fee * multiplier
@@ -156,7 +157,7 @@ class BktAccount(object):
         bktoption.trade_margin_capital = margin_capital
         bktoption.transaction_fee = fee
         bktoption.trade_flag_open = True
-        if bktoption not in self.holdings: self.holdings.append(bktoption)
+        if bktoption not in self.holdings : self.holdings.append(bktoption)
         self.cash = self.cash + premium - margin_capital
         self.total_margin_capital += margin_capital
         self.total_transaction_cost += fee
@@ -173,9 +174,9 @@ class BktAccount(object):
                                     })
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
-    def close_position(self, dt, position_obj):
+    def close_position(self, dt, position_obj,cd_close_by_price=None):
         if position_obj != dict:
-            self.close_position_option(dt, position_obj)
+            self.close_position_option(dt, position_obj,cd_close_by_price)
         else:
             self.close_position_1(position_obj)
 
@@ -213,10 +214,10 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         self.trade_order_dict = {}
 
-    def close_position_option(self, dt, bktoption):  # 多空平仓
+    def close_position_option(self, dt, bktoption,cd_close_by_price):  # 多空平仓
         if bktoption.trade_flag_open:
             id_instrument = bktoption.id_instrument
-            mkt_price = self.get_close_position_price(bktoption)
+            mkt_price = self.get_close_position_price(bktoption,cd_close_by_price)
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_capital = bktoption.trade_margin_capital

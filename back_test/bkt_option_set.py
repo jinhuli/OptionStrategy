@@ -310,7 +310,7 @@ class BktOptionSet(object):
                  self.util.unit: 1,
                  self.util.bktoption: option_mdt2},
                 {self.util.id_instrument: option_mdt1.id_instrument,
-                 self.util.unit: - delta_mdt2 / delta_mdt1,
+                 self.util.unit: -1,
                  self.util.bktoption: option_mdt1}
             ]
             df_delta0 = pd.DataFrame(res)
@@ -327,13 +327,13 @@ class BktOptionSet(object):
                     self.util.unit: 1,
                     self.util.bktoption: call_mdt2},
                    {self.util.id_instrument: call_mdt1.id_instrument,
-                    self.util.unit: - delta_call_mdt2 / delta_call_mdt1,
+                    self.util.unit: -1,
                     self.util.bktoption: call_mdt1},
                    {self.util.id_instrument: put_mdt2.id_instrument,
                     self.util.unit: 1,
                     self.util.bktoption: put_mdt2},
                    {self.util.id_instrument: put_mdt1.id_instrument,
-                    self.util.unit: - delta_put_mdt2 / delta_put_mdt1,
+                    self.util.unit: -1,
                     self.util.bktoption: put_mdt1}]
             df_delta0 = pd.DataFrame(res)
         return df_delta0

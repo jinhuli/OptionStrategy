@@ -10,26 +10,25 @@ import numpy as np
 
 
 class BktOption(object):
-
     """
     Contain metrics and trading position info as attributes
 
     """
 
-    def __init__(self,cd_frequency,df_daily_metrics,flag_calculate_iv,df_intraday_metrics=None,id_instrument='',
-                 pricing_type = 'OptionPlainEuropean',engine_type = 'AnalyticEuropeanEngine'):
+    def __init__(self, cd_frequency, df_daily_metrics, flag_calculate_iv, df_intraday_metrics=None, id_instrument='',
+                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
         self.util = BktUtil()
         self.frequency = cd_frequency
         self.id_instrument = id_instrument
         self.flag_calculate_iv = flag_calculate_iv
-        self.df_daily_metrics = df_daily_metrics # Sorted ascending by date/datetime
+        self.df_daily_metrics = df_daily_metrics  # Sorted ascending by date/datetime
         if self.frequency in self.util.cd_frequency_low:
             self.df_metrics = df_daily_metrics
         else:
             self.df_metrics = df_intraday_metrics
         self.start_index = 0
         self.nbr_index = len(df_daily_metrics)
-        self.last_index = len(df_daily_metrics)-1
+        self.last_index = len(df_daily_metrics) - 1
         self.dt_list = sorted(self.df_metrics[self.util.col_date].unique())
         self.pricing_type = pricing_type
         self.engine_type = engine_type
@@ -45,16 +44,12 @@ class BktOption(object):
         self.set_option_basics()
         self.update_pricing_metrics()
 
-
-
-
     def next(self):
         # self.current_index = min(self.current_index+1,self.last_index)
-        self.current_index = self.current_index+1
+        self.current_index = self.current_index + 1
         self.implied_vol = None
         self.update_current_state()
         self.update_pricing_metrics()
-
 
     def update_current_state(self):
         self.current_state = self.df_metrics.loc[self.current_index]
@@ -79,12 +74,10 @@ class BktOption(object):
                 self.current_daily_state = self.df_daily_metrics.loc[idx_today]
                 self.update_evaluation()
 
-
     def update_evaluation(self):
         ql_evalDate = ql.Date(self.dt_date.day, self.dt_date.month, self.dt_date.year)
         evaluation = Evaluation(ql_evalDate, self.daycounter, self.calendar)
         self.evaluation = evaluation
-
 
     def update_current_datetime(self):
         try:
@@ -93,15 +86,12 @@ class BktOption(object):
             dt_datetime = None
         self.dt_datetime = dt_datetime
 
-
-
     def set_option_basics(self):
         self.update_option_type()
         self.update_strike()
         self.update_maturitydt()
         self.update_code_instrument()
         self.update_multiplier()
-
 
     def update_pricing_metrics(self):
         self.update_rf()
@@ -118,7 +108,7 @@ class BktOption(object):
             else:
                 print('No option type!')
                 return
-            option = OptionPlainEuropean(self.strike,ql_maturitydt,ql_optiontype)
+            option = OptionPlainEuropean(self.strike, ql_maturitydt, ql_optiontype)
         else:
             print('Unsupported Option Type !')
             option = None
@@ -139,7 +129,6 @@ class BktOption(object):
         self.strike = strike
         self.adj_strike = adj_strike
 
-
     def update_maturitydt(self):
         try:
             maturitydt = self.current_daily_state[self.util.col_maturitydt]
@@ -148,7 +137,6 @@ class BktOption(object):
             print(self.current_daily_state)
             maturitydt = None
         self.maturitydt = maturitydt
-
 
     def update_option_type(self):
         try:
@@ -175,7 +163,7 @@ class BktOption(object):
             elif settle != -999.0:
                 option_price = settle
             else:
-                print(self.id_instrument,' : amt_close and amt_settlement are null!',)
+                print(self.id_instrument, ' : amt_close and amt_settlement are null!', )
                 option_price = None
         except Exception as e:
             print(e)
@@ -190,17 +178,39 @@ class BktOption(object):
         except Exception as e:
             print(e)
             amt_open = None
+
         self.option_price = option_price
         self.adj_option_price = adj_option_price
         self.option_price_open = amt_open
-        self.option_morning_open_15min = None
-        self.option_morning_close_15min = None
-        self.option_afternoon_open_15min = None
-        self.option_afternoon_close_15min = None
-        self.option_morning_avg = None
-        self.option_afternoon_avg = None
-        self.option_daily_avg = None
 
+        try:
+            self.option_morning_open_15min = self.current_state['amt_morning_open_15min']
+        except:
+            self.option_morning_open_15min = None
+        try:
+            self.option_morning_close_15min = self.current_state['amt_morning_close_15min']
+        except:
+            self.option_morning_close_15min = None
+        try:
+            self.option_afternoon_open_15min = self.current_state['amt_afternoon_open_15min']
+        except:
+            self.option_afternoon_open_15min = None
+        try:
+            self.option_afternoon_close_15min = self.current_state['amt_afternoon_close_15min']
+        except:
+            self.option_afternoon_close_15min = None
+        try:
+            self.option_morning_avg = self.current_state['amt_morning_avg']
+        except:
+            self.option_morning_avg = None
+        try:
+            self.option_afternoon_avg = self.current_state['amt_afternoon_avg']
+        except:
+            self.option_afternoon_avg = None
+        try:
+            self.option_daily_avg = self.current_state['amt_daily_avg']
+        except:
+            self.option_daily_avg = None
 
     def update_underlying(self):
         try:
@@ -212,7 +222,6 @@ class BktOption(object):
             id_underlying = None
         self.underlying_price = underlying_price
         self.id_underlying = id_underlying
-
 
     def update_rf(self):
         try:
@@ -227,10 +236,11 @@ class BktOption(object):
             self.update_underlying()
             self.update_option_price()
             if self.flag_calculate_iv:
-                implied_vol = self.pricing_metrics.implied_vol(self.evaluation,self.rf,
-                                        self.underlying_price, self.option_price,self.engine_type)
+                implied_vol = self.pricing_metrics.implied_vol(self.evaluation, self.rf,
+                                                               self.underlying_price, self.option_price,
+                                                               self.engine_type)
             else:
-                implied_vol = self.get_implied_vol_given()/100.0
+                implied_vol = self.get_implied_vol_given() / 100.0
         except Exception as e:
             print(e)
             implied_vol = None
@@ -243,7 +253,6 @@ class BktOption(object):
             print(e)
             multiplier = None
         self.multiplier = multiplier
-
 
     def get_holding_volume(self):
         try:
@@ -260,7 +269,6 @@ class BktOption(object):
             print(e)
             trading_volume = None
         return trading_volume
-
 
     def get_implied_vol_given(self):
         try:
@@ -326,103 +334,98 @@ class BktOption(object):
         idx_date = self.dt_list.index(self.dt_date)
         if idx_date == 0:
             return self.current_daily_state[self.util.col_close]
-        df_last_state = self.df_daily_metrics.loc[idx_date-1]
+        df_last_state = self.df_daily_metrics.loc[idx_date - 1]
         amt_pre_close = df_last_state[self.util.col_close]
         return amt_pre_close
 
     def get_implied_vol(self):
-        if self.implied_vol == None : self.update_implied_vol()
+        if self.implied_vol == None: self.update_implied_vol()
         return self.implied_vol
 
     def get_delta(self):
         try:
             if self.implied_vol == None: self.update_implied_vol()
-            delta = self.pricing_metrics.delta(self.evaluation, self.rf,self.underlying_price,
-                                               self.underlying_price,self.engine_type,self.implied_vol)
+            delta = self.pricing_metrics.delta(self.evaluation, self.rf, self.underlying_price,
+                                               self.underlying_price, self.engine_type, self.implied_vol)
         except Exception as e:
             print(e)
             delta = None
         return delta
 
-
     def get_theta(self):
         try:
             if self.implied_vol == None: self.update_implied_vol()
-            theta = self.pricing_metrics.theta(self.evaluation, self.rf,self.underlying_price,
-                                               self.underlying_price,self.engine_type,self.implied_vol)
+            theta = self.pricing_metrics.theta(self.evaluation, self.rf, self.underlying_price,
+                                               self.underlying_price, self.engine_type, self.implied_vol)
         except Exception as e:
             print(e)
             theta = None
         return theta
 
-
     def get_vega(self):
-        if self.implied_vol == None : self.update_implied_vol()
+        if self.implied_vol == None: self.update_implied_vol()
         try:
-            vega = self.pricing_metrics.vega(self.evaluation, self.rf,self.underlying_price,
-                                               self.underlying_price,self.engine_type,self.implied_vol)
+            vega = self.pricing_metrics.vega(self.evaluation, self.rf, self.underlying_price,
+                                             self.underlying_price, self.engine_type, self.implied_vol)
         except Exception as e:
             print(e)
             vega = None
         return vega
 
     def get_rho(self):
-        if self.implied_vol == None : self.update_implied_vol()
+        if self.implied_vol == None: self.update_implied_vol()
         try:
-            rho = self.pricing_metrics.rho(self.evaluation, self.rf,self.underlying_price,
-                                               self.underlying_price,self.engine_type,self.implied_vol)
+            rho = self.pricing_metrics.rho(self.evaluation, self.rf, self.underlying_price,
+                                           self.underlying_price, self.engine_type, self.implied_vol)
         except Exception as e:
             print(e)
             rho = None
         return rho
 
     def get_gamma(self):
-        if self.implied_vol == None : self.update_implied_vol()
+        if self.implied_vol == None: self.update_implied_vol()
         try:
-            gamma = self.pricing_metrics.gamma(self.evaluation, self.rf,self.underlying_price,
-                                               self.underlying_price,self.engine_type,self.implied_vol)
+            gamma = self.pricing_metrics.gamma(self.evaluation, self.rf, self.underlying_price,
+                                               self.underlying_price, self.engine_type, self.implied_vol)
         except Exception as e:
             print(e)
             gamma = None
         return gamma
 
     def get_vomma(self):
-        if self.implied_vol == None : self.update_implied_vol()
+        if self.implied_vol == None: self.update_implied_vol()
         try:
-            vomma = self.pricing_metrics.vomma(self.evaluation, self.rf,self.underlying_price,
-                                               self.underlying_price,self.engine_type,self.implied_vol)
+            vomma = self.pricing_metrics.vomma(self.evaluation, self.rf, self.underlying_price,
+                                               self.underlying_price, self.engine_type, self.implied_vol)
         except Exception as e:
             print(e)
             vomma = None
         return vomma
 
-
-    def get_iv_roll_down(self,black_var_surface,dt): # iv(tao-1)-iv(tao), tao:maturity
-        if self.implied_vol == None : self.update_implied_vol()
+    def get_iv_roll_down(self, black_var_surface, dt):  # iv(tao-1)-iv(tao), tao:maturity
+        if self.implied_vol == None: self.update_implied_vol()
         mdt = self.maturitydt
         evalDate = self.dt_date
-        ttm = (mdt-evalDate).days/365.0
+        ttm = (mdt - evalDate).days / 365.0
         black_var_surface.enableExtrapolation()
-        implied_vol_t1 = black_var_surface.blackVol(ttm-dt, self.strike)
+        implied_vol_t1 = black_var_surface.blackVol(ttm - dt, self.strike)
         iv_roll_down = implied_vol_t1 - self.implied_vol
         return iv_roll_down
 
-
-    def get_carry(self,bvs,hp):
-        dt = hp/250.0
-        ttm = (self.maturitydt-self.dt_date).days/365.0
-        if ttm-dt <= 0:
-            return None,None,None,None
-        iv_roll_down = self.get_iv_roll_down(bvs,dt)
-        if np.isnan(iv_roll_down): iv_roll_down =0.0
+    def get_carry(self, bvs, hp):
+        dt = hp / 250.0
+        ttm = (self.maturitydt - self.dt_date).days / 365.0
+        if ttm - dt <= 0:
+            return None, None, None, None
+        iv_roll_down = self.get_iv_roll_down(bvs, dt)
+        if np.isnan(iv_roll_down): iv_roll_down = 0.0
         vega = self.get_vega()
         theta = self.get_theta()
         try:
-            option_carry = (vega*iv_roll_down-theta*dt)/self.option_price-self.rf
+            option_carry = (vega * iv_roll_down - theta * dt) / self.option_price - self.rf
         except:
-            option_carry= None
-        return option_carry,theta,vega,iv_roll_down
-
+            option_carry = None
+        return option_carry, theta, vega, iv_roll_down
 
     def get_init_margin(self):
         if self.trade_long_short == self.util.long: return 0.0
@@ -432,14 +435,14 @@ class BktOption(object):
         #                               7 %×行权价格），行权价格] ×合约单位
         amt_last_settle = self.get_last_settlement()
         amt_underlying_last_close = self.get_underlying_last_close()
-        if self.option_type =='call':
-            otm = max(0,self.strike-self.underlying_price)
-            init_margin = (amt_last_settle+max(0.12*amt_underlying_last_close-otm,
-                                              0.07*amt_underlying_last_close))*self.multiplier
+        if self.option_type == 'call':
+            otm = max(0, self.strike - self.underlying_price)
+            init_margin = (amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
+                                                 0.07 * amt_underlying_last_close)) * self.multiplier
         else:
-            otm = max(0,self.underlying_price-self.strike)
-            init_margin = min(amt_last_settle+max(0.12*amt_underlying_last_close-otm,
-                                                  0.07*self.strike),self.strike)*self.multiplier
+            otm = max(0, self.underlying_price - self.strike)
+            init_margin = min(amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
+                                                    0.07 * self.strike), self.strike) * self.multiplier
         return init_margin
 
     def get_maintain_margin(self):
@@ -452,15 +455,15 @@ class BktOption(object):
         #                               行权价格]×合约单位
         amt_settle = self.get_settlement()
         amt_underlying_close = self.get_underlying_close()
-        if self.option_type =='call':
-            otm = max(0,self.strike-self.underlying_price)
-            maintain_margin = (amt_settle+max(0.12*amt_underlying_close-otm,
-                                              0.07*amt_underlying_close))*self.multiplier
+        if self.option_type == 'call':
+            otm = max(0, self.strike - self.underlying_price)
+            maintain_margin = (amt_settle + max(0.12 * amt_underlying_close - otm,
+                                                0.07 * amt_underlying_close)) * self.multiplier
 
         else:
-            otm = max(0,self.underlying_price-self.strike)
-            maintain_margin = min(amt_settle+max(0.12*amt_underlying_close-otm,
-                                                 0.07*self.strike),self.strike)*self.multiplier
+            otm = max(0, self.underlying_price - self.strike)
+            maintain_margin = min(amt_settle + max(0.12 * amt_underlying_close - otm,
+                                                   0.07 * self.strike), self.strike) * self.multiplier
         return maintain_margin
 
     def price_limit(self):
@@ -470,44 +473,7 @@ class BktOption(object):
         # 认沽期权最大跌幅＝合约标的前收盘价×10％
         return None
 
-    def get_unit_by_mtmv(self,mtm_value):
-        unit = np.floor(mtm_value/(self.option_price*self.multiplier))
+    def get_unit_by_mtmv(self, mtm_value):
+        unit = np.floor(mtm_value / (self.option_price * self.multiplier))
         # unit = mtm_value/(self.option_price*self.multiplier)
         return unit
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
