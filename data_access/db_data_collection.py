@@ -1014,6 +1014,37 @@ class DataCollection():
                 print(datestr, ' , ', id_instrument)
             return db_data
 
+        def wind_data_50etf_option_intraday2(self, datestr, windcode,id_instrument):
+            db_data = []
+            datasource = 'wind'
+            data = w.wsi(windcode, "close,volume,amt", datestr + " 09:00:00", datestr + " 15:01:00", "Fill=Previous")
+            datetimes = data.Times
+            try:
+                prices = data.Data[0]
+                volumes = data.Data[1]
+                trading_values = data.Data[2]
+                for idx, dt in enumerate(datetimes):
+                    price = prices[idx]
+                    volume = volumes[idx]
+                    trading_value = trading_values[idx]
+                    if math.isnan(price): continue
+                    if math.isnan(volume): volume = 0.0
+                    if math.isnan(trading_value): trading_value = 0.0
+                    db_row = {'dt_datetime': dt,
+                              'id_instrument': id_instrument,
+                              'datasource': datasource,
+                              'code_instrument': windcode,
+                              'amt_close': price,
+                              'amt_trading_volume': volume,
+                              'amt_trading_value': trading_value,
+                              'timestamp': datetime.datetime.today()
+                              }
+                    db_data.append(db_row)
+            except Exception as e:
+                print(e)
+                print(datestr, ' , ', id_instrument)
+            return db_data
+
     class table_option_tick():
 
         def wind_50etf_option_tick(self, datestr, df_optionchain_row):
