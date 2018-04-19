@@ -47,10 +47,29 @@ class BktAccount(object):
             mkt_price = bktoption.option_price_open
         elif self.cd_open_by_price == 'close':
             mkt_price = bktoption.option_price
-        elif self.cd_open_by_price == 'open_15min':
-            mkt_price = bktoption.option_price_open_15min
-        elif self.cd_open_by_price == 'close_15min':
-            mkt_price = bktoption.option_price_close_15min
+        elif self.cd_open_by_price == 'morning_open_15min':
+            if bktoption.option_morning_open_15min != -999.0:
+                mkt_price = bktoption.option_morning_open_15min
+            elif bktoption.option_morning_avg != -999.0:
+                mkt_price = bktoption.option_morning_avg
+            elif bktoption.option_daily_avg != -999.0:
+                mkt_price = bktoption.option_daily_avg
+            else:
+                print(bktoption.id_instrument,'No volume to open position')
+                mkt_price = bktoption.option_price
+
+        elif self.cd_open_by_price == 'afternoon_close_15min':
+            if bktoption.option_afternoon_close_15min != -999.0:
+                mkt_price = bktoption.option_afternoon_close_15min
+            else:
+                print(bktoption.id_instrument,'No volume to open position')
+                mkt_price = bktoption.option_price
+
+        elif self.cd_open_by_price == 'daily_avg':
+            if bktoption.option_daily_avg != 999.0:
+                mkt_price = bktoption.option_daily_avg
+            else:
+                mkt_price = bktoption.option_price
         else:
             mkt_price = bktoption.option_price
         return mkt_price
@@ -60,10 +79,6 @@ class BktAccount(object):
             mkt_price = bktoption.option_price_open
         elif self.cd_open_by_price == 'close':
             mkt_price = bktoption.option_price
-        elif self.cd_open_by_price == 'open_15min':
-            mkt_price = bktoption.option_price_open_15min
-        elif self.cd_open_by_price == 'close_15min':
-            mkt_price = bktoption.option_price_close_15min
         else:
             mkt_price = bktoption.option_price
         return mkt_price
@@ -402,7 +417,11 @@ class BktAccount(object):
         for bktoption in self.holdings:
             if not bktoption.trade_flag_open: continue
             holdings.append(bktoption)
-            mkt_price = bktoption.option_price
+            # mkt_price = bktoption.option_price
+            if bktoption.get_settlement != -999.0:
+                mkt_price = bktoption.get_settlement() # 优先用结算价计算每日净值
+            else:
+                mkt_price = bktoption.option_price
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_account = bktoption.trade_margin_capital
@@ -423,7 +442,7 @@ class BktAccount(object):
             self.cash -= margin_call
             self.total_margin_capital += margin_call
 
-        if self.trade_order_dict != {}:
+        if self.trade_order_dict != {} and trade_order_dict != None:
             long_short = self.trade_order_dict['long_short']
             unit = self.trade_order_dict['unit']
             mkt_price = trade_order_dict['price']

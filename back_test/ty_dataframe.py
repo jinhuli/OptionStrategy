@@ -14,11 +14,15 @@ import datetime
 #
 # d = datetime.date(2018,1,1)-datetime.date(1999,1,1)
 # print(d.days)
+#
+# a = [{'a':1},{'a':2}]
+# a.remove({'a':1})
+# print(a)
+#
+# b = {'b':2}
+# b.update({'c':1})
+# print(b)
 
-a = [{'a':1},{'a':2}]
-a.remove({'a':1})
-print(a)
-
-b = {'b':2}
-b.update({'c':1})
-print(b)
+a = [1,2,3,4,5]
+print(a.index(2))
+print(a[a.index(2):])

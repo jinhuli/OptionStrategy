@@ -25,18 +25,18 @@ class BktOptionStrategy():
                                       contract_multiplier=contract_multiplier, fee_rate=fee_rate, nbr_slippage=nbr_slippage,rf = rf)
         self.bkt_optionset = BktOptionSet('daily', df_option_metrics)
         self.option_type = None
-        self.min_ttm = 1
-        self.max_ttm = 252
+        self.min_holding_days = 1
+        self.max_holding_days = 252
         self.moneyness_type = None
         self.trade_type = None
         self.min_volume = None
         self.flag_trade = False
 
-    def set_min_ttm(self, min_ttm):
-        self.min_ttm = min_ttm
+    def set_min_holding_days(self, min_holding_days):
+        self.min_holding_days = min_holding_days
 
-    def set_max_ttm(self, max_ttm):
-        self.max_ttm = max_ttm
+    def set_max_holding_days(self, max_holding_days):
+        self.max_holding_days = max_holding_days
 
     def set_min_trading_volume(self, min_volume):
         self.min_volume = min_volume
@@ -53,19 +53,19 @@ class BktOptionStrategy():
     def get_candidate_set(self, eval_date, option_set):
         candidate_set = option_set.copy()
 
-        if self.min_ttm != None:
+        if self.min_holding_days != None:
             for option in option_set:
                 if option not in candidate_set: continue
                 min_maturity = self.util.to_dt_date(
-                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
+                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
                 if option.maturitydt < min_maturity:
                     candidate_set.remove(option)
 
-        if self.max_ttm != None:
+        if self.max_holding_days != None:
             for option in option_set:
                 if option not in candidate_set: continue
                 max_maturity = self.util.to_dt_date(
-                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.max_ttm, ql.Days)))
+                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.max_holding_days, ql.Days)))
                 if option.maturitydt > max_maturity:
                     candidate_set.remove(option)
 
@@ -89,7 +89,7 @@ class BktOptionStrategy():
         candidate_set = option_set.copy()
         maturities = sorted(self.bkt_optionset.eligible_maturities)
         min_maturity = self.util.to_dt_date(
-            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
+            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
         mdt = maturities[0]
         for mdt in maturities:
             if mdt > min_maturity: break
@@ -102,10 +102,21 @@ class BktOptionStrategy():
     def get_1st_eligible_maturity(self,eval_date):
         maturities = sorted(self.bkt_optionset.eligible_maturities)
         min_maturity = self.util.to_dt_date(
-            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_ttm, ql.Days)))
+            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
         mdt = None
         for mdt in maturities:
-            if mdt > min_maturity: break
+            if mdt >= min_maturity: break
+        return mdt
+
+    def get_2nd_eligible_maturity(self,eval_date):
+        maturities = sorted(self.bkt_optionset.eligible_maturities)
+        min_maturity = self.util.to_dt_date(
+            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
+        mdt = None
+        for mdt in maturities:
+            if mdt >= min_maturity: break
+        maturities_new = maturities[maturities.index(mdt):]
+        mdt = maturities_new[1]
         return mdt
 
     """Construct a delta neutral long straddle strategy, 

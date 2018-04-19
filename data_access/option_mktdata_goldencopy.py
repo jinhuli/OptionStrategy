@@ -3,11 +3,6 @@ import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from data_access.db_data_collection import DataCollection
-from WindPy import w
-
-# username = 'root'
-# password = 'liz1128'
-# host = '101.132.148.152'
 
 
 def average(df):
@@ -18,15 +13,9 @@ def average(df):
         return sum / vol
     return -999.0
 
-# w.start()
-# mktdataEngine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata')
-# mktdataEngine = create_engine('mysql+pymysql://{}:{}@{}/{}'.format(username, password, host, 'mktdata'))
-# mktdataIntradayEngine = create_engine(
-#     'mysql+pymysql://{}:{}@{}/{}'.format(username, password, host, 'mktdata_intraday'))
-
 beg_date = datetime.date(2015, 3, 1)
 end_date = datetime.date(2015, 5, 15)
-dc = DataCollection()
+# dc = DataCollection()
 engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
 engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
 Session = sessionmaker(bind=engine)
@@ -63,9 +52,6 @@ for date in dates:
             .filter(option_mktdata_intraday.c.id_instrument == id) \
             .filter(option_mktdata_intraday.c.dt_datetime >= date) \
             .filter(option_mktdata_intraday.c.dt_datetime <= next_day)
-        # daily_df1 = pd.read_sql_query(
-        #     'SELECT * FROM option_mktdata_intraday where id_instrument=\'{}\' and dt_datetime>=\'{}\' and dt_datetime<\'{}\''.format(
-        #         id, date, next_day), mktdataIntradayEngine)
         daily_df = pd.read_sql_query(query_intraday.statement,query_intraday.session.bind)
         if len(daily_df) < 240:
             print('intraday data length shorted : ',date,id,len(daily_df))

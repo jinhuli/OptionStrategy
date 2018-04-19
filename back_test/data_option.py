@@ -14,8 +14,8 @@ def get_eventsdata(start_date,end_date):
     query = sess.query(events.c.id_event,events.c.name_event,events.c.dt_impact_beg,
                        events.c.cd_trade_direction,
                        events.c.dt_impact_end,events.c.dt_vol_peak)\
-        .filter(events.c.dt_impact_beg >= start_date)\
-        .filter(events.c.dt_impact_end <= end_date)\
+        .filter(events.c.dt_date >= start_date)\
+        .filter(events.c.dt_date <= end_date)\
         .filter(events.c.flag_impact == 1)
     df_event = pd.read_sql(query.statement, query.session.bind)
     return df_event

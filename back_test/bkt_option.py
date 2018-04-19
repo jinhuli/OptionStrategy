@@ -193,8 +193,13 @@ class BktOption(object):
         self.option_price = option_price
         self.adj_option_price = adj_option_price
         self.option_price_open = amt_open
-        self.option_price_open_15min = None
-        self.option_price_close_15min = None
+        self.option_morning_open_15min = None
+        self.option_morning_close_15min = None
+        self.option_afternoon_open_15min = None
+        self.option_afternoon_close_15min = None
+        self.option_morning_avg = None
+        self.option_afternoon_avg = None
+        self.option_daily_avg = None
 
 
     def update_underlying(self):
