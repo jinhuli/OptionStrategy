@@ -37,7 +37,7 @@ class BktStrategyEventVol(BktOptionStrategy):
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
                 bkt.liquidate_all(evalDate)
-                bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
+                bkt.mkm_update(evalDate)
                 print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
@@ -77,13 +77,15 @@ class BktStrategyEventVol(BktOptionStrategy):
                 self.flag_trade = True
 
             """Option: Close position """
-            if evalDate == dt_volpeak and self.flag_trade:
-                print(idx_event,' ',evalDate,' close position')
-
-                self.flag_trade = False
-                for bktoption in bkt.holdings:
-                    bkt.close_position(evalDate,bktoption)
+            if evalDate == dt_volpeak:
                 idx_event += 1
+                if self.flag_trade:
+                    print(idx_event,' ',evalDate,' close position')
+
+                    self.flag_trade = False
+                    for bktoption in bkt.holdings:
+                        bkt.close_position(evalDate,bktoption)
+
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate)
@@ -111,7 +113,7 @@ class BktStrategyEventVol(BktOptionStrategy):
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
                 bkt.liquidate_all(evalDate)
-                bkt.mkm_update(evalDate, df_metrics_today, self.util.col_close)
+                bkt.mkm_update(evalDate)
                 print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
                 break
 
@@ -149,13 +151,14 @@ class BktStrategyEventVol(BktOptionStrategy):
                 self.flag_trade = True
 
             """Option: Close position """
-            if evalDate == dt_volpeak and self.flag_trade:
-                print(idx_event,' ',evalDate,' close position')
-
-                self.flag_trade = False
-                for bktoption in bkt.holdings:
-                    bkt.close_position(evalDate,bktoption)
+            if evalDate == dt_volpeak:
                 idx_event += 1
+                if self.flag_trade:
+                    print(idx_event,' ',evalDate,' close position')
+
+                    self.flag_trade = False
+                    for bktoption in bkt.holdings:
+                        bkt.close_position(evalDate,bktoption)
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate)
@@ -256,13 +259,13 @@ class BktStrategyEventVol(BktOptionStrategy):
                 self.flag_trade = True
 
             """Option: Close position """
-            if evalDate == dt_volpeak and self.flag_trade:
-                print(idx_event,' ',evalDate,' close position')
-
-                self.flag_trade = False
-                for bktoption in bkt.holdings:
-                    bkt.close_position(evalDate,bktoption)
+            if evalDate == dt_volpeak:
                 idx_event += 1
+                if self.flag_trade:
+                    print(idx_event,' ',evalDate,' close position')
+                    self.flag_trade = False
+                    for bktoption in bkt.holdings:
+                        bkt.close_position(evalDate,bktoption)
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate,trade_order_dict=trade_order_dict)
