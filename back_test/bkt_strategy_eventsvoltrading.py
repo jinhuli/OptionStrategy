@@ -103,7 +103,7 @@ class BktStrategyEventVol(BktOptionStrategy):
     def options_straddle(self):
         bkt_optionset = self.bkt_optionset
         bkt = self.bkt_account
-        bkt2 = BktAccount()
+        # bkt2 = BktAccount()
         idx_event = 0
         print(self.df_events)
         while bkt_optionset.index < len(bkt_optionset.dt_list):
@@ -169,12 +169,12 @@ class BktStrategyEventVol(BktOptionStrategy):
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt.mkm_update(evalDate)
-            bkt2.mkm_update(evalDate)
+            # bkt2.mkm_update(evalDate)
             print(evalDate,bkt_optionset.eval_date, ' , ', bkt.npv)  # npv是组合净值，期初为1
             bkt_optionset.next()
             if idx_event >= len(self.df_events) : break
-        self.bkt_account1 = bkt
-        self.bkt_account2 = bkt2
+        # self.bkt_account1 = bkt
+        # self.bkt_account2 = bkt2
 
 
     def etf_enhanced_by_options(self):
@@ -284,7 +284,7 @@ class BktStrategyEventVol(BktOptionStrategy):
         self.bkt_account2 = bkt2
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 8, 1)
+start_date = datetime.date(2016, 8, 1)
 end_date = datetime.date(2018, 4, 17)
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -315,9 +315,9 @@ bkt_strategy.options_straddle()
 # bkt_strategy.options_calendar_spread()
 
 
-# bkt.bkt_account.df_account.to_csv('../save_results/df_account.csv')
-# bkt.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')
-# bkt.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
+bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account.csv')
+bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')
+bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
 
 # print(bkt_strategy.bkt_account.df_trading_records)
 

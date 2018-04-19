@@ -61,7 +61,7 @@ class BktAccount(object):
                 mkt_price = bktoption.option_price
 
         elif cd_open_by_price == 'daily_avg':
-            if bktoption.option_daily_avg != 999.0:
+            if bktoption.option_daily_avg != -999.0:
                 mkt_price = bktoption.option_daily_avg
             else:
                 mkt_price = bktoption.option_price

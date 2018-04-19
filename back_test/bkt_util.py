@@ -11,6 +11,7 @@ class BktUtil():
         self.short = -1
         self.long_top = 1
         self.long_bottom = -1
+        self.nan_value = -999.0
         self.type_call = 'call'
         self.type_put = 'put'
         self.type_all = 'all'
