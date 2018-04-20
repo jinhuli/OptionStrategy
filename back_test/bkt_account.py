@@ -69,7 +69,7 @@ class BktAccount(object):
             mkt_price = bktoption.option_price
         return mkt_price
 
-    def get_close_position_price(self, bktoption,cd_close_by_price):
+    def get_close_position_price(self, bktoption,cd_close_by_price=None):
         if cd_close_by_price == 'open':
             mkt_price = bktoption.option_price_open
         elif cd_close_by_price == 'close':
@@ -247,6 +247,7 @@ class BktAccount(object):
             position[self.util.days_holding] = (dt - dt_open).days
             position[self.util.close_price] = mkt_price
             position[self.util.realized_pnl] = realized_pnl
+
             self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
             self.cash = self.cash + margin_capital + realized_pnl + premium_to_cash
             self.total_margin_capital -= margin_capital
