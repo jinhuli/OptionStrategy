@@ -2,7 +2,6 @@ import pandas as pd
 import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
-from data_access.db_data_collection import DataCollection
 
 
 def average(df):
@@ -13,8 +12,8 @@ def average(df):
         return sum / vol
     return -999.0
 
-beg_date = datetime.date(2015, 3, 1)
-end_date = datetime.date(2015, 5, 15)
+beg_date = datetime.date(2018, 4, 17)
+end_date = datetime.date(2018, 4, 20)
 # dc = DataCollection()
 engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
 engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
@@ -34,7 +33,7 @@ query_mkt = sess.query(options_mktdata) \
     .filter(options_mktdata.c.datasource == 'wind')\
     .filter(options_mktdata.c.id_underlying == 'index_50etf')\
     .filter(options_mktdata.c.dt_date >= beg_date)\
-    # .filter(options_mktdata.c.dt_date <= end_date)
+    .filter(options_mktdata.c.dt_date <= end_date)
 
 dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
 dates = dataset['dt_date'].unique()

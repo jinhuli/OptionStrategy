@@ -4,7 +4,7 @@ from back_test.bkt_util import BktUtil
 import QuantLib as ql
 import numpy as np
 import datetime
-
+from back_test.OptionPortfolio import *
 
 class BktOptionSet(object):
     """
@@ -280,18 +280,21 @@ class BktOptionSet(object):
             self.update_options_by_moneyness()
         option_call = self.options_by_moneyness[mdt][self.util.type_call][moneyness_rank]
         option_put = self.options_by_moneyness[mdt][self.util.type_put][moneyness_rank]
-        delta_call = option_call.get_delta()
-        delta_put = option_put.get_delta()
-        res = [
-            {self.util.id_instrument: option_call.id_instrument,
-             self.util.unit: 1,
-             self.util.bktoption: option_call},
-            {self.util.id_instrument: option_put.id_instrument,
-             self.util.unit: -delta_call / delta_put,
-             self.util.bktoption: option_put}
-        ]
-        df_delta0 = pd.DataFrame(res)
-        return df_delta0
+        # delta_call = option_call.get_delta()
+        # delta_put = option_put.get_delta()
+        # res = [
+        #     {self.util.id_instrument: option_call.id_instrument,
+        #      self.util.unit: 1,
+        #      self.util.bktoption: option_call},
+        #     {self.util.id_instrument: option_put.id_instrument,
+        #      self.util.unit: -delta_call / delta_put,
+        #      self.util.bktoption: option_put}
+        # ]
+        # df_delta0 = pd.DataFrame(res)
+        straddle = Straddle(self.eval_date,option_call,option_put)
+        return straddle
+
+
 
     """Long far month and short near month;'option_type=None' means both call and put are included"""
     def get_calendar_spread_long(self, moneyness_rank, mdt1, mdt2, option_type=None):
@@ -352,14 +355,15 @@ class BktOptionSet(object):
         if moneyness_rank not in res_dict.keys():
             print('bkt_option_set--get_call failed,given moneyness rank not exit!')
             return pd.DataFrame()
-        option_atm_put = res_dict[moneyness_rank]
-        res = [
-            {self.util.id_instrument: option_atm_put.id_instrument,
-             self.util.unit: 1,
-             self.util.bktoption: option_atm_put}
-        ]
-        df_delta0 = pd.DataFrame(res)
-        return df_delta0
+        option_put = res_dict[moneyness_rank]
+        portfolio = Puts(self.eval_date,[option_put])
+        # res = [
+        #     {self.util.id_instrument: option_atm_put.id_instrument,
+        #      self.util.unit: 1,
+        #      self.util.bktoption: option_atm_put}
+        # ]
+        # df_delta0 = pd.DataFrame(res)
+        return portfolio
 
     def get_call(self, moneyness_rank, mdt):
         # moneyness_rank：
@@ -375,14 +379,15 @@ class BktOptionSet(object):
         if moneyness_rank not in res_dict.keys():
             print('bkt_option_set--get_call failed,given moneyness rank not exit!')
             return pd.DataFrame()
-        option_atm_call = res_dict[moneyness_rank]
-        res = [
-            {self.util.id_instrument: option_atm_call.id_instrument,
-             self.util.unit: 1,
-             self.util.bktoption: option_atm_call}
-        ]
-        df_delta0 = pd.DataFrame(res)
-        return df_delta0
+        option_call = res_dict[moneyness_rank]
+        portfolio = Calls(self.eval_date,[option_call])
+        # res = [
+        #     {self.util.id_instrument: option_atm_call.id_instrument,
+        #      self.util.unit: 1,
+        #      self.util.bktoption: option_atm_call}
+        # ]
+        # df_delta0 = pd.DataFrame(res)
+        return portfolio
 
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
 

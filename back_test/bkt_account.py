@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 from Utilities.PlotUtil import PlotUtil
 import numpy as np
+from back_test.bkt_option import BktOption
+from back_test.OptionPortfolio import *
 
 
 class BktAccount(object):
@@ -35,6 +37,7 @@ class BktAccount(object):
         self.holdings = []  # 当前持仓
         self.pu = PlotUtil()
         self.trade_order_dict = {}
+        self.total_premiums_long = 0.0
 
 
     def get_open_position_price(self, bktoption,cd_open_by_price):
@@ -74,17 +77,65 @@ class BktAccount(object):
             mkt_price = bktoption.option_price_open
         elif cd_close_by_price == 'close':
             mkt_price = bktoption.option_price
+        elif cd_close_by_price == 'afternoon_close_15min':
+            if bktoption.option_afternoon_close_15min != -999.0:
+                mkt_price = bktoption.option_afternoon_close_15min
+            else:
+                print(bktoption.id_instrument,'No volume to open position')
+                mkt_price = bktoption.option_price
         else:
             mkt_price = bktoption.option_price
         return mkt_price
 
-    def open_long(self, dt, unit=None, bktoption=None, trade_order_dict=None,cd_open_by_price=None):
-        if bktoption != None:
-            self.open_long_option(dt, bktoption, unit,cd_open_by_price)
-        if trade_order_dict != None:
-            self.option_long_1(trade_order_dict)
+    def update_invest_units(self,option_port,cd_long_short,cd_open_by_price=None, fund=None):
+        if isinstance(option_port,Straddle):
+            option_port.delta_neutral_rebalancing()
+            option_call = option_port.option_call
+            option_put = option_port.option_put
+            price_call = self.get_open_position_price(option_call, cd_open_by_price)
+            price_put = self.get_open_position_price(option_put, cd_open_by_price)
+            if fund == None:
+                fund = price_call*option_call.multiplier*option_port.unit_call + \
+                       price_put*option_put.multiplier*option_port.unit_put
+            if cd_long_short == self.util.long:
+                fund0 = price_call*option_call.multiplier*option_port.invest_ratio_call+ \
+                       price_put*option_put.multiplier*option_port.invest_ratio_put
+                unit_straddle = fund / fund0
+            else:
+                fund_straddle = option_call.get_init_margin()*option_call.multiplier*option_port.invest_ratio_call + \
+                       option_put.get_init_margin()*option_put.multiplier*option_port.invest_ratio_put
+                unit_straddle = fund / fund_straddle
+            option_port.unit_portfolio = unit_straddle
+            option_port.unit_call = unit_straddle*option_port.invest_ratio_call
+            option_port.unit_put = unit_straddle*option_port.invest_ratio_put
+        elif isinstance(option_port,Calls) or isinstance(option_port,Puts):
+            if option_port.cd_weighted == 'equal_unit':
+                if fund == None:
+                    fund = 0
+                    for (idx,option) in enumerate(option_port.optionset):
+                        price = self.get_open_position_price(option, cd_open_by_price)
+                        fund += price*option.multiplier*option_port.unit_portfolio[idx]
+                fund0 = 0
+                for option in option_port.optionset: # equal weighted by mkt value
+                    price = self.get_open_position_price(option, cd_open_by_price)
+                    fund0 += price*option.multiplier
+                unit_calls = fund/fund0
+                option_port.unit_portfolio = [unit_calls]*len(option_port.optionset)
 
-    def option_long_1(self, trade_order_dict):
+
+    def open_long(self, dt, portfolio,unit=None, cd_open_by_price=None):
+        if isinstance(portfolio,BktOption):
+            self.open_long_option(dt, portfolio, unit,cd_open_by_price)
+        elif type(portfolio) == dict:
+            self.option_long_dict(portfolio)
+        elif isinstance(portfolio,Straddle):
+            self.open_long_option(dt,portfolio.option_call,portfolio.unit_call,cd_open_by_price)
+            self.open_long_option(dt,portfolio.option_put,portfolio.unit_put,cd_open_by_price)
+        elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
+            for option in portfolio.optionset:
+                self.open_long_option(dt,option,portfolio.unit_portfolio[0],cd_open_by_price)
+
+    def option_long_dict(self, trade_order_dict):
         mkt_price = trade_order_dict['price']
         unit = trade_order_dict['unit']
         id_instrument = trade_order_dict['id_instrument']
@@ -267,11 +318,11 @@ class BktAccount(object):
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.liquidate_option(bktoption=bktoption)
 
-    def rebalance_position(self, dt, unit=None, bktoption=None, trade_order_dict=None):
-        if bktoption != None:
-            self.rebalance_position_option(dt, bktoption, unit)
-        elif trade_order_dict != None:
-            self.rebalance_position_1(dt, trade_order_dict)
+    # def rebalance_position(self, dt, unit=None, bktoption=None, trade_order_dict=None):
+    #     if bktoption != None:
+    #         self.rebalance_position_option(dt, bktoption, unit)
+    #     elif trade_order_dict != None:
+    #         self.rebalance_position_1(dt, trade_order_dict)
 
     def rebalance_position_1(self, dt, trade_order_dict):
         holding_unit = self.trade_order_dict['unit']
@@ -286,17 +337,17 @@ class BktAccount(object):
                 market_value = (unit - holding_unit) * mkt_price
                 fee = market_value * self.fee
                 self.trade_order_dict['open_transaction_fee'] += fee
-                self.cash -= long_short * market_value
+                self.cash = self.cash - long_short * market_value - fee
                 self.total_transaction_cost += fee
             else:  # 减仓
                 liquidated_unit = holding_unit - unit
                 market_value = liquidated_unit * mkt_price
                 fee = market_value * self.fee
                 d_fee = self.trade_order_dict['open_transaction_fee'] * liquidated_unit / holding_unit
-                realized_pnl = long_short * (liquidated_unit * mkt_price - market_value) - fee - d_fee
+                realized_pnl = long_short * liquidated_unit * (mkt_price - open_price) - fee - d_fee
                 self.trade_order_dict['open_transaction_fee'] -= d_fee
                 self.realized_pnl += realized_pnl
-                self.cash = self.cash + long_short * market_value + realized_pnl
+                self.cash = self.cash + long_short * market_value - fee
                 self.total_transaction_cost += fee
             self.trade_order_dict['price'] = open_price
             self.trade_order_dict['unit'] = unit
@@ -323,7 +374,7 @@ class BktAccount(object):
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.nbr_trade += 1
 
-    def rebalance_position_option(self, dt, unit, bktoption):
+    def rebalance_position_option(self, dt, bktoption,unit):
 
         id_instrument = bktoption.id_instrument
         mkt_price = self.get_close_position_price(bktoption)
@@ -342,22 +393,22 @@ class BktAccount(object):
                 bktoption.trade_margin_capital += margin_add
                 premium += premium_add
                 premium_paid = long_short * premium_add
-                self.cash = self.cash - margin_add - premium_paid
+                self.cash = self.cash - margin_add - premium_paid - fee
                 self.total_margin_capital += margin_add
                 self.total_transaction_cost += fee
             else:  # 减仓
                 liquidated_unit = holding_unit - unit
                 margin_returned = liquidated_unit * bktoption.trade_margin_capital / bktoption.trade_unit
-                premium_liquidated = liquidated_unit * mkt_price * multiplier
-                fee = premium_liquidated * self.fee
-                d_fee = bktoption.transaction_fee * liquidated_unit / holding_unit
-                realized_pnl = long_short * (liquidated_unit * multiplier * mkt_price
-                                             - premium_liquidated) - fee - d_fee
-                premium -= premium_liquidated
-                premium_paid = -long_short * premium_liquidated
+                premium_lqdt_init_v = liquidated_unit * open_price * multiplier # 减仓部分的初始开仓价值
+                premium_lqdt_mkt_v = liquidated_unit * mkt_price * multiplier # 减仓部分的现值
+                fee = premium_lqdt_mkt_v * self.fee  # 卖出liquidated_unit的交易费用
+                d_fee = bktoption.transaction_fee * liquidated_unit / holding_unit  # 持仓总交易费用按比例扣减
                 bktoption.transaction_fee -= d_fee
+                realized_pnl = long_short * (premium_lqdt_mkt_v - premium_lqdt_init_v) - fee - d_fee
+                premium -= premium_lqdt_mkt_v
+                premium_paid = -long_short * (premium_lqdt_mkt_v - premium_lqdt_init_v)
                 self.realized_pnl += realized_pnl
-                self.cash = self.cash + margin_returned + realized_pnl
+                self.cash = self.cash + margin_returned + premium_lqdt_mkt_v - fee - d_fee
                 self.total_margin_capital -= margin_returned
                 self.total_transaction_cost += fee
             bktoption.trade_unit = unit
@@ -386,6 +437,19 @@ class BktAccount(object):
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.nbr_trade += 1
 
+    def rebalance_position(self, dt, portfolio,unit=None):
+        if isinstance(portfolio,BktOption):
+            self.rebalance_position_option(dt, portfolio, unit)
+        elif type(portfolio) == dict:
+            self.rebalance_position_1(dt, portfolio)
+        elif isinstance(portfolio,Straddle):
+            self.rebalance_position_option(dt,portfolio.option_call,portfolio.unit_call)
+            self.rebalance_position_option(dt,portfolio.option_put,portfolio.unit_put)
+        elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
+            for option in portfolio.optionset:
+                self.open_long_option(dt,option,portfolio.unit_portfolio[0])
+
+
     def liquidate_option(self, bktoption=None, trade_order_dict=None):
 
         bktoption.trade_flag_open = False
@@ -408,18 +472,19 @@ class BktAccount(object):
 
 
     def mkm_update(self, dt, trade_order_dict=None):  # 每日更新
-        unrealized_pnl = 0
-        mtm_portfolio_value = 0
-        mtm_long_positions = 0
-        mtm_short_positions = 0
-        total_premium_paied = 0
+        unrealized_pnl = 0.0
+        mtm_portfolio_value = 0.0
+        mtm_long_positions = 0.0
+        mtm_short_positions = 0.0
+        total_premium_paied = 0.0
+        short_positions_pnl = 0.0
+
         holdings = []
         self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
         port_delta = 0.0
         for bktoption in self.holdings:
             if not bktoption.trade_flag_open: continue
             holdings.append(bktoption)
-            # mkt_price = bktoption.option_price
             if bktoption.get_settlement != -999.0:
                 mkt_price = bktoption.get_settlement() # 优先用结算价计算每日净值
             else:
@@ -428,10 +493,9 @@ class BktAccount(object):
             long_short = bktoption.trade_long_short
             margin_account = bktoption.trade_margin_capital
             multiplier = bktoption.multiplier
-            premium = bktoption.premium
             maintain_margin = unit * bktoption.get_maintain_margin()
             margin_call = maintain_margin - margin_account
-            unrealized_pnl += long_short * (mkt_price * unit * multiplier - premium)
+            unrealized_pnl += long_short * (mkt_price-bktoption.trade_open_price) * unit * multiplier
             if long_short == self.util.long:
                 mtm_long_positions += mkt_price * unit * multiplier
                 total_premium_paied += bktoption.premium
@@ -439,25 +503,28 @@ class BktAccount(object):
             else:
                 mtm_short_positions -= mkt_price * unit * multiplier
                 port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+                short_positions_pnl += (bktoption.open_price-mkt_price)*unit*multiplier
             mtm_portfolio_value += mtm_long_positions + mtm_short_positions
             bktoption.trade_margin_capital = maintain_margin
             self.cash -= margin_call
             self.total_margin_capital += margin_call
 
+        trade_order_mktv = 0.0
         if self.trade_order_dict != {} and trade_order_dict != None:
             long_short = self.trade_order_dict['long_short']
             unit = self.trade_order_dict['unit']
             mkt_price = trade_order_dict['price']
             # holdings.append(self.trade_order_dict)
-            if long_short == self.util.long:
-                mtm_long_positions += mkt_price * unit
+            trade_order_mktv += mkt_price * unit
 
-            else:
-                mtm_short_positions -= mkt_price * unit
         # TODO: ONLY CONSIDER LONG STOCKS/ETFS
-        self.margin_trade_order = mtm_long_positions
+        self.trade_order_mktv = trade_order_mktv
         # money_utilization = self.total_margin_capital / (self.total_margin_capital + self.cash)
-        self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
+        # self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions
+        """ For long positions only, total_asset = cash + mtm_long_positions(i.e., total premiums);
+            For short positions only, total_asset = cash + margin_capital + short posiitons pnl(unrealized)"""
+        self.total_premiums_long = mtm_long_positions
+        self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + short_positions_pnl + trade_order_mktv
         money_utilization = 1- self.cash / self.total_asset
         self.npv = self.total_asset / self.init_fund
         self.holdings = holdings
@@ -516,16 +583,35 @@ class BktAccount(object):
         dt_end = self.df_account.loc[len(self.df_account) - 1, self.util.dt_date]
         invest_days = (dt_end - dt_start).days
         annulized_return = (self.total_asset / self.init_fund) ** (365 / invest_days) - 1
-        self.annualized_return = annulized_return
-        return annulized_return
+        print('annulized_return',annulized_return)
+        netvalue = self.df_account[self.util.npv]
+        tradeslen = len(netvalue)
+        # 累计收益率
+        totalreturn = netvalue.iloc[-1] - 1
+        # 年化收益率
+        return_yr = (1 + totalreturn) ** (252.0 / tradeslen) - 1
+        self.annualized_return = return_yr
+        return return_yr
 
 
     def calculate_sharpe_ratio(self):
         df = self.df_account
-        npvs = df[self.util.npv]
-        std = self.hisvol(npvs, 1)
-        sharp = (self.annualized_return - self.rf) / std
-        return sharp
+        netvalue = df[self.util.npv]
+        tradeslen = len(netvalue)
+        tmp = netvalue.shift()
+        tmp[0] = 1
+        returns = netvalue / tmp - 1
+        # 累计收益率
+        totalreturn = netvalue.iloc[-1] - 1
+        # 年化收益率
+        return_yr = (1 + totalreturn) ** (252.0 / tradeslen) - 1
+        # 年化波动率
+        volatility_yr = np.std(returns, ddof=0) * np.sqrt(252.0)
+        print('volatility_yr',volatility_yr)
+
+        # 夏普比率
+        sharpe = (return_yr - 0.024) / volatility_yr
+        return sharpe
 
 
     def hisvol(self, data, n):

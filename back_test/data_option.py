@@ -13,7 +13,8 @@ def get_eventsdata(start_date, end_date):
     events = Table('events', metadata, autoload=True)
     query = sess.query(events.c.id_event, events.c.name_event, events.c.dt_impact_beg,
                        events.c.cd_trade_direction,
-                       events.c.dt_impact_end, events.c.dt_vol_peak,events.c.cd_open_position_time) \
+                       events.c.dt_impact_end, events.c.dt_vol_peak,events.c.cd_open_position_time,
+                       events.c.cd_close_position_time) \
         .filter(events.c.dt_date >= start_date) \
         .filter(events.c.dt_date <= end_date) \
         .filter(events.c.flag_impact == 1)
