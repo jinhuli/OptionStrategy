@@ -5,19 +5,20 @@ from data_access.db_tables import DataBaseTables as dbt
 from back_test.bkt_util import BktUtil
 
 
-def get_eventsdata(start_date, end_date):
+def get_eventsdata(start_date, end_date,flag_impact):
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
     metadata = MetaData(engine)
     events = Table('events', metadata, autoload=True)
     query = sess.query(events.c.id_event, events.c.name_event, events.c.dt_impact_beg,
-                       events.c.cd_trade_direction,
+                       events.c.cd_trade_direction, events.c.dt_test,events.c.dt_test2,
                        events.c.dt_impact_end, events.c.dt_vol_peak,events.c.cd_open_position_time,
                        events.c.cd_close_position_time) \
         .filter(events.c.dt_date >= start_date) \
         .filter(events.c.dt_date <= end_date) \
-        .filter(events.c.flag_impact == 1)
+        .filter(events.c.flag_impact == flag_impact)\
+        .filter(events.c.cd_occurrence == 'e')
     df_event = pd.read_sql(query.statement, query.session.bind)
     return df_event
 

@@ -32,7 +32,8 @@ class Straddle(OptionPortfolio):
         delta_call = self.option_call.get_delta()
         delta_put = self.option_put.get_delta()
         self.invest_ratio_call = 1.0
-        if np.isnan(delta_put) or np.isnan(delta_call) or delta_call == None or delta_put == None:
+        if np.isnan(delta_put) or np.isnan(delta_call) \
+                or delta_call == None or delta_put == None or delta_put ==0.0 or delta_call == 0.0:
             if self.invest_ratio_put == None:
                 self.invest_ratio_put = 1.0
         else:

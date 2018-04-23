@@ -13,7 +13,7 @@ from back_test.OptionPortfolio import *
 class BktAccount(object):
     def __init__(self, cd_open_price='close', cd_close_price='close', leverage=1.0, margin_rate=0.1,
                  init_fund=1000000.0, tick_size=0.0001,
-                 contract_multiplier=10000, fee_rate=2.0 / 10000, nbr_slippage=0, rf=0.03):
+                 contract_multiplier=10000, fee_rate=2.0 / 10000, nbr_slippage=0, rf=0.0):
 
         self.util = BktUtil()
         self.init_fund = init_fund
@@ -80,6 +80,16 @@ class BktAccount(object):
         elif cd_close_by_price == 'afternoon_close_15min':
             if bktoption.option_afternoon_close_15min != -999.0:
                 mkt_price = bktoption.option_afternoon_close_15min
+            else:
+                print(bktoption.id_instrument,'No volume to open position')
+                mkt_price = bktoption.option_price
+        elif cd_close_by_price == 'morning_open_15min':
+            if bktoption.option_morning_open_15min != -999.0:
+                mkt_price = bktoption.option_morning_open_15min
+            elif bktoption.option_morning_avg != -999.0:
+                mkt_price = bktoption.option_morning_avg
+            elif bktoption.option_daily_avg != -999.0:
+                mkt_price = bktoption.option_daily_avg
             else:
                 print(bktoption.id_instrument,'No volume to open position')
                 mkt_price = bktoption.option_price

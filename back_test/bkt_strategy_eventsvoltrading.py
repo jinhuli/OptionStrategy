@@ -14,7 +14,7 @@ class BktStrategyEventVol(BktOptionStrategy):
 
     def __init__(self, df_option_metrics, df_events, option_invest_pct=0.1):
 
-        BktOptionStrategy.__init__(self, df_option_metrics)
+        BktOptionStrategy.__init__(self, df_option_metrics,rf = 0.0)
         self.df_events = df_events.sort_values(by='dt_impact_beg', ascending=True).reset_index()
         self.moneyness = 0
         self.option_invest_pct = option_invest_pct
@@ -109,14 +109,19 @@ class BktStrategyEventVol(BktOptionStrategy):
         idx_event = 0
         print(self.df_events)
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-            dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
-            dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
+            # dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
+            dt_event = self.df_events.loc[idx_event, 'dt_test']
+            # dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
+            dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
             cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
             cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
+            # cd_close_position_time = None
 
             evalDate = bkt_optionset.eval_date
 
+            if evalDate == datetime.date(2016,12,27):
+                print(evalDate)
             """ 回测期最后一天全部清仓 """
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
@@ -388,14 +393,14 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 8, 1)
-end_date = datetime.date(2018, 4, 18)
+start_date = datetime.date(2017, 6, 13)
+end_date = datetime.date(2017, 8, 30)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
 
 """Collect Mkt Date"""
-df_events = get_eventsdata(start_date, end_date)
+df_events = get_eventsdata(start_date, end_date,1)
 
 df_option_metrics = get_mktdata(start_date, end_date)
 # df_etf_metrics = get_50etf_mktdata(start_date,end_date)
@@ -405,21 +410,21 @@ df_option_metrics = get_mktdata(start_date, end_date)
 bkt_strategy = BktStrategyEventVol(df_option_metrics, df_events, option_invest_pct=0.2)
 bkt_strategy.set_min_holding_days(20)
 
-bkt_strategy.options_straddle_etf()
-npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
-npv2 = bkt_strategy.bkt_account2.df_account['npv'].tolist()
+# bkt_strategy.options_straddle_etf()
+# npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
+# npv2 = bkt_strategy.bkt_account2.df_account['npv'].tolist()
+#
+# pu = PlotUtil()
+# dates = bkt_strategy.bkt_account1.df_account['dt_date'].unique()
+# f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
+# plt.show()
 
-pu = PlotUtil()
-dates = bkt_strategy.bkt_account1.df_account['dt_date'].unique()
-f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
-plt.show()
-
-# bkt_strategy.options_straddle()
+bkt_strategy.options_straddle()
 # # bkt_strategy.options_calendar_spread()
 #
 #
-# bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account.csv')
-# bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')
-# bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
+bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account.csv')
+bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')
+bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
 
-bkt_strategy.return_analysis()
+# bkt_strategy.return_analysis()

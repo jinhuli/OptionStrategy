@@ -373,7 +373,7 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
     # fig2.savefig('../save_figure/sr_iv_surface_' + str(evalDate) + '.png', dpi=300, format='png')
 
 """历史隐含波动率"""
-def hist_atm_ivs(evalDate,w,nameCode,exchangeCode,contracts,df_future):
+def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_future):
     pu = PlotUtil()
     engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
                            echo=False)
@@ -394,7 +394,7 @@ def hist_atm_ivs(evalDate,w,nameCode,exchangeCode,contracts,df_future):
     query_sro = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
                             optionMetrics.amt_strike,
                            optionMetrics.cd_option_type,optionMetrics.pct_implied_vol)\
-        .filter(optionMetrics.name_code == nameCode)
+        .filter(optionMetrics.name_code == nameCode).filter(optionMetrics.dt_date>=dt_last_week)
 
     query_mdt = sess.query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
         .filter(options_table.cd_exchange == exchangeCode)
@@ -595,20 +595,20 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 ############################################################################################
 # Eval Settings
 
-dt_date = datetime.date(2018, 4, 13)  # Set as Friday
-dt_last_week = datetime.date(2018, 4, 4)
-# current_core_underlying = 'sr_1809'
-# namecode = 'sr'
-# exchange_code = 'czce'
-current_core_underlying = 'm_1809'
-namecode = 'm'
-exchange_code = 'dce'
+dt_date = datetime.date(2018, 4, 20)  # Set as Friday
+dt_last_week = datetime.date(2018, 4, 13)
+current_core_underlying = 'sr_1809'
+namecode = 'sr'
+exchange_code = 'czce'
+# current_core_underlying = 'm_1809'
+# namecode = 'm'
+# exchange_code = 'dce'
 contracts = ['1809', '1901', '1905','1909']
 
 ############################################################################################
 w.start()
 endDate = dt_date
-evalDate = endDate.strftime("%Y-%m-%d")  # Set as Friday
+evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
 startDate = datetime.date(2017, 1, 1)
 hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
 bd_1m = 21
@@ -650,7 +650,7 @@ hist_vol(df_underlying_core)
 
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
-hist_atm_ivs(evalDate,w,namecode,exchange_code,contracts,df_srf)
+hist_atm_ivs(dt_date,dt_last_week,w,namecode,exchange_code,contracts,df_srf)
 print('Part [历史隐含波动率] completed')
 trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
 print('Part [当日成交持仓量] completed')
