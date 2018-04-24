@@ -131,6 +131,12 @@ class BktAccount(object):
                     fund0 += price*option.multiplier
                 unit_calls = fund/fund0
                 option_port.unit_portfolio = [unit_calls]*len(option_port.optionset)
+        elif isinstance(option_port,CalandarSpread):
+            p1 = self.get_open_position_price(option_port.option_mdt1, cd_open_by_price)
+            p2 = self.get_open_position_price(option_port.option_mdt2, cd_open_by_price)
+            fund0 = p1+p2
+            unit = fund / fund0
+            option_port.unit_portfolio = unit
 
 
     def open_long(self, dt, portfolio,unit=None, cd_open_by_price=None):
@@ -144,6 +150,9 @@ class BktAccount(object):
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
             for option in portfolio.optionset:
                 self.open_long_option(dt,option,portfolio.unit_portfolio[0],cd_open_by_price)
+        elif isinstance(portfolio,CalandarSpread):
+            self.open_long_option(dt, portfolio.option_mdt1, portfolio.unit_portfolio, cd_open_by_price)
+            self.open_long_option(dt, portfolio.option_mdt2, portfolio.unit_portfolio, cd_open_by_price)
 
     def option_long_dict(self, trade_order_dict):
         mkt_price = trade_order_dict['price']

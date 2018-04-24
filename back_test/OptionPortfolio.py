@@ -59,6 +59,7 @@ class CalandarSpread(OptionPortfolio):
 
     def __init__(self,open_date,option_mdt1,option_mdt2,cd_call_put):
         OptionPortfolio.__init__(self,open_date)
+        self.option_set = [option_mdt1,option_mdt2]
         self.option_mdt1 = option_mdt1
         self.option_mdt2 = option_mdt2
         self.cd_call_put = cd_call_put

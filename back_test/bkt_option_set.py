@@ -306,40 +306,41 @@ class BktOptionSet(object):
         if option_type != None:
             option_mdt1 = self.options_by_moneyness[mdt1][option_type][moneyness_rank]  # short
             option_mdt2 = self.options_by_moneyness[mdt2][option_type][moneyness_rank]  # long
-            delta_mdt1 = option_mdt1.get_delta()
-            delta_mdt2 = option_mdt2.get_delta()
-            res = [
-                {self.util.id_instrument: option_mdt2.id_instrument,
-                 self.util.unit: 1,
-                 self.util.bktoption: option_mdt2},
-                {self.util.id_instrument: option_mdt1.id_instrument,
-                 self.util.unit: -1,
-                 self.util.bktoption: option_mdt1}
-            ]
-            df_delta0 = pd.DataFrame(res)
-        else:  # 2 calls and 2 puts
-            call_mdt1 = self.options_by_moneyness[mdt1][self.util.type_call][moneyness_rank]  # short
-            call_mdt2 = self.options_by_moneyness[mdt2][self.util.type_call][moneyness_rank]  # long
-            delta_call_mdt1 = call_mdt1.get_delta()
-            delta_call_mdt2 = call_mdt2.get_delta()
-            put_mdt1 = self.options_by_moneyness[mdt1][self.util.type_put][moneyness_rank]  # short
-            put_mdt2 = self.options_by_moneyness[mdt2][self.util.type_put][moneyness_rank]  # long
-            delta_put_mdt1 = put_mdt1.get_delta()
-            delta_put_mdt2 = put_mdt2.get_delta()
-            res = [{self.util.id_instrument: call_mdt2.id_instrument,
-                    self.util.unit: 1,
-                    self.util.bktoption: call_mdt2},
-                   {self.util.id_instrument: call_mdt1.id_instrument,
-                    self.util.unit: -1,
-                    self.util.bktoption: call_mdt1},
-                   {self.util.id_instrument: put_mdt2.id_instrument,
-                    self.util.unit: 1,
-                    self.util.bktoption: put_mdt2},
-                   {self.util.id_instrument: put_mdt1.id_instrument,
-                    self.util.unit: -1,
-                    self.util.bktoption: put_mdt1}]
-            df_delta0 = pd.DataFrame(res)
-        return df_delta0
+            # delta_mdt1 = option_mdt1.get_delta()
+            # delta_mdt2 = option_mdt2.get_delta()
+            # res = [
+            #     {self.util.id_instrument: option_mdt2.id_instrument,
+            #      self.util.unit: 1,
+            #      self.util.bktoption: option_mdt2},
+            #     {self.util.id_instrument: option_mdt1.id_instrument,
+            #      self.util.unit: -1,
+            #      self.util.bktoption: option_mdt1}
+            # ]
+            # df_delta0 = pd.DataFrame(res)
+            cs = CalandarSpread(self.eval_date,option_mdt1,option_mdt2,option_type)
+            return cs
+        # else:  # 2 calls and 2 puts
+        #     call_mdt1 = self.options_by_moneyness[mdt1][self.util.type_call][moneyness_rank]  # short
+        #     call_mdt2 = self.options_by_moneyness[mdt2][self.util.type_call][moneyness_rank]  # long
+        #     delta_call_mdt1 = call_mdt1.get_delta()
+        #     delta_call_mdt2 = call_mdt2.get_delta()
+        #     put_mdt1 = self.options_by_moneyness[mdt1][self.util.type_put][moneyness_rank]  # short
+        #     put_mdt2 = self.options_by_moneyness[mdt2][self.util.type_put][moneyness_rank]  # long
+        #     delta_put_mdt1 = put_mdt1.get_delta()
+        #     delta_put_mdt2 = put_mdt2.get_delta()
+        #     res = [{self.util.id_instrument: call_mdt2.id_instrument,
+        #             self.util.unit: 1,
+        #             self.util.bktoption: call_mdt2},
+        #            {self.util.id_instrument: call_mdt1.id_instrument,
+        #             self.util.unit: -1,
+        #             self.util.bktoption: call_mdt1},
+        #            {self.util.id_instrument: put_mdt2.id_instrument,
+        #             self.util.unit: 1,
+        #             self.util.bktoption: put_mdt2},
+        #            {self.util.id_instrument: put_mdt1.id_instrument,
+        #             self.util.unit: -1,
+        #             self.util.bktoption: put_mdt1}]
+        #     df_delta0 = pd.DataFrame(res)
 
     def get_put(self, moneyness_rank, mdt):
         # moneyness_rank：

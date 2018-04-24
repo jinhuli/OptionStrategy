@@ -45,7 +45,7 @@ class OptionMetrics:
         engine = util.get_engine(process, engineType)
         option.setPricingEngine(engine)
         try:
-            implied_vol = option.impliedVolatility(option_price, process, 1.0e-3, 300, 0.05, 1.0)
+            implied_vol = option.impliedVolatility(option_price, process, 1.0e-3, 300, 0.05, 5.0)
         except RuntimeError as e:
             implied_vol = 0.0
         option = None

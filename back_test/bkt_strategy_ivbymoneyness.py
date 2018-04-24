@@ -81,15 +81,15 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
                 'cd_moneyness': 0,
                 'pct_implies_vol': iv_put,
             })
-            print(evalDate,iv_call)
+            print(evalDate,iv_call,iv_put)
             if evalDate == bkt_optionset.end_date:
                 break
             bkt_optionset.next()
         return res
 
 """Back Test Settings"""
-start_date = datetime.date(2018, 4, 1)
-end_date = datetime.date(2018, 4, 17)
+start_date = datetime.date(2015, 8, 11)
+end_date = datetime.date(2015, 9, 26)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
@@ -106,7 +106,7 @@ df_option_metrics = get_mktdata(start_date, end_date)
 """Run Backtest"""
 
 bkt = BktStrategyMoneynessVol(df_option_metrics)
-bkt.set_min_ttm(5) # 期权到期时间至少5个工作日
+bkt.set_min_holding_days(5) # 期权到期时间至少5个工作日
 res = bkt.get_ivs_keyvols()
 # res = bkt.get_ivs_mdt1(0)
 df = pd.DataFrame(res)
