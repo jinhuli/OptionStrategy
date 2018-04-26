@@ -400,8 +400,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2018, 2, 6)
-end_date = datetime.date(2018, 2, 13)
+start_date = datetime.date(2015, 2, 6)
+end_date = datetime.date(2018, 4, 20)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
