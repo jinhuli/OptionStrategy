@@ -116,7 +116,8 @@ class BktStrategyEventVol(BktOptionStrategy):
             cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
             cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
-            # cd_close_position_time = None
+            cd_open_position_time = 'morning_open_15min'
+            cd_close_position_time = 'afternoon_close_15min'
 
             evalDate = bkt_optionset.eval_date
 
@@ -150,6 +151,8 @@ class BktStrategyEventVol(BktOptionStrategy):
                 #                                                        self.get_1st_eligible_maturity(evalDate))
                 portfolio = self.bkt_optionset.get_straddle(self.moneyness,
                                                             self.get_1st_eligible_maturity(evalDate))
+                # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
+                print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
                 # self.delta_neutral = True
                 self.portfolio = portfolio
                 self.bkt_account.update_invest_units(portfolio, self.util.long, cd_open_position_time,
@@ -393,8 +396,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2017, 6, 13)
-end_date = datetime.date(2017, 8, 30)
+start_date = datetime.date(2017, 5, 13)
+end_date = datetime.date(2017, 9, 30)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()

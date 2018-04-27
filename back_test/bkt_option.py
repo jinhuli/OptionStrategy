@@ -7,6 +7,7 @@ from back_test.bkt_util import BktUtil
 import datetime
 import QuantLib as ql
 import numpy as np
+import pandas as pd
 
 
 class BktOption(object):
@@ -36,16 +37,18 @@ class BktOption(object):
         self.trade_long_short = None
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
-        # self.start()
+        self.start()
 
     def start(self):
         self.current_index = self.start_index
+        self.last_state = pd.Series()
         self.update_current_state()
         self.set_option_basics()
         self.update_pricing_metrics()
 
     def next(self):
         # self.current_index = min(self.current_index+1,self.last_index)
+        self.last_state = self.current_state
         self.current_index = self.current_index + 1
         self.implied_vol = None
         self.update_current_state()
@@ -220,8 +223,25 @@ class BktOption(object):
             print(e)
             underlying_price = None
             id_underlying = None
+
+        try:
+            if not self.last_state.empty:
+                underlying_last_price = self.last_state[self.util.col_underlying_price]
+            else:
+                underlying_last_price = self.current_state[self.util.col_underlying_open_price]
+        except Exception as e:
+            print(e)
+            underlying_last_price = None
+        try:
+            underlying_open_price = self.current_state[self.util.col_underlying_open_price]
+        except Exception as e:
+            print(e)
+            underlying_open_price = underlying_last_price
+
         self.underlying_price = underlying_price
         self.id_underlying = id_underlying
+        self.underlying_last_price = underlying_last_price
+        self.underlying_open_price = underlying_open_price
 
     def update_rf(self):
         try:

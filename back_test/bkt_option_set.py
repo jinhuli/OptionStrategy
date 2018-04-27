@@ -294,8 +294,6 @@ class BktOptionSet(object):
         straddle = Straddle(self.eval_date,option_call,option_put)
         return straddle
 
-
-
     """Long far month and short near month;'option_type=None' means both call and put are included"""
     def get_calendar_spread_long(self, moneyness_rank, mdt1, mdt2, option_type=None):
         if mdt1 > mdt2:
@@ -402,7 +400,8 @@ class BktOptionSet(object):
             res_put = {}
             atm_call = 1000
             atm_put = -1000
-            spot = optionset_mdt[0].underlying_price
+            # Use underlying OPEN close as spot
+            spot = optionset_mdt[0].underlying_open_price
             m_call = []
             m_put = []
             for option in optionset_mdt:
