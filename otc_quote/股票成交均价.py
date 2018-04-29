@@ -105,5 +105,5 @@ def obtain_code(stockcode,df,i):
 	elif len(code)==5:
 	    code='0'+code
 	elif len(code)==6:
-	code=df[df['code']==code]['windcode']
+		code=df[df['code']==code]['windcode']
 	return code
