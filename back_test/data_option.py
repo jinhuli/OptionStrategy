@@ -99,15 +99,16 @@ def get_50option_mktdata2(start_date, end_date):
                               options.dt_maturity, options.nbr_multiplier) \
         .filter(and_(options.dt_listed <= end_date, options.dt_maturity >= start_date))
 
-    query_etf = sess.query(Index_mkt.dt_date, Index_mkt.amt_close,
-                           Index_mkt.id_instrument.label(util.col_id_underlying)) \
+    query_etf = sess.query(Index_mkt.dt_date, Index_mkt.amt_close,Index_mkt.amt_open,
+                           Index_mkt.id_instrument.label(util.col_id_underlying),
+                           ) \
         .filter(Index_mkt.dt_date >= start_date).filter(Index_mkt.dt_date <= end_date) \
         .filter(Index_mkt.id_instrument == 'index_50etf')
 
     df_mkt = pd.read_sql(query_mkt.statement, query_mkt.session.bind)
     df_contract = pd.read_sql(query_option.statement, query_option.session.bind)
     df_50etf = pd.read_sql(query_etf.statement, query_etf.session.bind).rename(
-        columns={'amt_close': util.col_underlying_price})
+        columns={'amt_close': util.col_underlying_price,'amt_open':util.col_underlying_open_price})
     df_option = df_mkt.join(df_contract.set_index('id_instrument'), how='left', on='id_instrument')
 
     df_option_metrics = df_option.join(df_50etf.set_index('dt_date'), how='left', on='dt_date')

@@ -36,6 +36,7 @@ class BktUtil():
         self.col_adj_option_price = 'amt_adj_option_price'
         self.col_option_price = 'amt_option_price'
         self.col_underlying_price = 'amt_underlying_price'
+        self.col_underlying_open_price = 'amt_underlying_open_price'
         self.col_settlement = 'amt_settlement'
         self.col_last_settlement = 'amt_last_settlement'
         self.col_last_close = 'amt_last_close'
