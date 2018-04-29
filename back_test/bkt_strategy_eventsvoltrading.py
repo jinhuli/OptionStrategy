@@ -119,10 +119,14 @@ class BktStrategyEventVol(BktOptionStrategy):
             cd_open_position_time = 'morning_open_15min'
             cd_close_position_time = 'afternoon_close_15min'
 
+            # cd_close_position_time = 'daily_avg'
+            # cd_close_position_time = None
+
+
             evalDate = bkt_optionset.eval_date
 
-            if evalDate == datetime.date(2016,12,27):
-                print(evalDate)
+            # if evalDate == datetime.date(2016,12,27):
+            #     print(evalDate)
             """ 回测期最后一天全部清仓 """
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
@@ -149,10 +153,16 @@ class BktStrategyEventVol(BktOptionStrategy):
                 # else:
                 #     portfolio = self.bkt_optionset.get_straddle(self.moneyness,
                 #                                                        self.get_1st_eligible_maturity(evalDate))
+
+
                 portfolio = self.bkt_optionset.get_straddle(self.moneyness,
                                                             self.get_1st_eligible_maturity(evalDate))
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
                 print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
+                # mdt1 = self.get_1st_eligible_maturity(evalDate)
+                # mdt2 = self.get_2nd_eligible_maturity(evalDate)
+                # portfolio = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
+                #                                                                option_type=self.util.type_put)
                 # self.delta_neutral = True
                 self.portfolio = portfolio
                 self.bkt_account.update_invest_units(portfolio, self.util.long, cd_open_position_time,
@@ -166,7 +176,7 @@ class BktStrategyEventVol(BktOptionStrategy):
                         self.bkt_account.update_invest_units(self.portfolio, self.util.long)
                         bkt.rebalance_position(evalDate, self.portfolio)
 
-            if evalDate == dt_volpeak:
+            if evalDate >= dt_volpeak:
                 idx_event += 1
                 if self.flag_trade:
                     print(idx_event, ' ', evalDate, ' close position')
@@ -398,6 +408,7 @@ class BktStrategyEventVol(BktOptionStrategy):
 """Back Test Settings"""
 start_date = datetime.date(2017, 5, 13)
 end_date = datetime.date(2017, 9, 30)
+
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
