@@ -17,8 +17,9 @@ class BktOption(object):
     """
 
     def __init__(self, cd_frequency, df_daily_metrics, flag_calculate_iv, df_intraday_metrics=None, id_instrument='',
-                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
+                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine',rf = 0.03):
         self.util = BktUtil()
+        self.rf = rf
         self.frequency = cd_frequency
         self.id_instrument = id_instrument
         self.flag_calculate_iv = flag_calculate_iv
@@ -34,7 +35,6 @@ class BktOption(object):
         self.pricing_type = pricing_type
         self.engine_type = engine_type
         self.trade_unit = 0
-        self.trade_long_short = None
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
         self.start()
@@ -45,6 +45,16 @@ class BktOption(object):
         self.update_current_state()
         self.set_option_basics()
         self.update_pricing_metrics()
+        self.trade_long_short = None
+        self.trade_flag_open = False
+        self.trade_unit = None
+        self.trade_dt_open = None
+        self.trade_long_short = None
+        self.premium = None
+        self.trade_open_price = None
+        self.trade_margin_capital = None
+        self.transaction_fee = None
+        self.open_price = None
 
     def next(self):
         # self.current_index = min(self.current_index+1,self.last_index)
@@ -97,7 +107,6 @@ class BktOption(object):
         self.update_multiplier()
 
     def update_pricing_metrics(self):
-        self.update_rf()
         self.update_option_price()
         self.update_underlying()
         if self.pricing_type == 'OptionPlainEuropean':
@@ -243,16 +252,16 @@ class BktOption(object):
         self.underlying_last_price = underlying_last_price
         self.underlying_open_price = underlying_open_price
 
-    def update_rf(self):
-        try:
-            rf = self.current_daily_state[self.util.col_rf]
-        except Exception as e:
-            rf = 0.03
-        self.rf = rf
+    # def update_rf(self):
+    #     try:
+    #         rf = self.current_daily_state[self.util.col_rf]
+    #     except Exception as e:
+    #         rf = 0.03
+    #     self.rf = rf
 
     def update_implied_vol(self):
         try:
-            self.update_rf()
+            # self.update_rf()
             self.update_underlying()
             self.update_option_price()
             if self.flag_calculate_iv:
@@ -362,11 +371,15 @@ class BktOption(object):
         if self.implied_vol == None: self.update_implied_vol()
         return self.implied_vol
 
-    def get_delta(self):
+    def get_delta(self,iv=None):
         try:
-            if self.implied_vol == None: self.update_implied_vol()
-            delta = self.pricing_metrics.delta(self.evaluation, self.rf, self.underlying_price,
-                                               self.underlying_price, self.engine_type, self.implied_vol)
+            if iv == None:
+                if self.implied_vol == None: self.update_implied_vol()
+                delta = self.pricing_metrics.delta(self.evaluation, self.rf, self.underlying_price,
+                                                   self.underlying_price, self.engine_type, self.implied_vol)
+            else:
+                delta = self.pricing_metrics.delta(self.evaluation, self.rf, self.underlying_price,
+                                                   self.underlying_price, self.engine_type, iv)
         except Exception as e:
             print(e)
             delta = None

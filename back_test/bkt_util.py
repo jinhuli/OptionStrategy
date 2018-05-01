@@ -121,6 +121,7 @@ class BktUtil():
                            self.flag_open]
 
         self.account_columns = [self.dt_date,
+                                self.npv,
                                 self.nbr_trade,
                                 self.margin_capital,
                                 self.realized_pnl,
@@ -130,7 +131,6 @@ class BktUtil():
                                 self.cash,
                                 self.money_utilization,
                                 self.total_asset,
-                                self.npv
                                 ]
 
         self.record_columns = [self.dt_trade,

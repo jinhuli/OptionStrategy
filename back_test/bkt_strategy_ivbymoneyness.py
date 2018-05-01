@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
 from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata as get_mktdata
+from back_test.data_option import get_50option_mktdata2 as get_mktdata
 
 
 class BktStrategyMoneynessVol(BktOptionStrategy):

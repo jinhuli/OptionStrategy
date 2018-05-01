@@ -8,6 +8,7 @@ from back_test.data_option import get_50option_mktdata2 as get_mktdata, get_even
 from back_test.OptionPortfolio import *
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class BktStrategyEventVol(BktOptionStrategy):
@@ -22,87 +23,8 @@ class BktStrategyEventVol(BktOptionStrategy):
         self.delta_neutral = False
         self.portfolio = None
 
-    def options_calendar_spread(self):
-        bkt_optionset = self.bkt_optionset
-        bkt = self.bkt_account
-        idx_event = 0
-        print(self.df_events)
-        while bkt_optionset.index < len(bkt_optionset.dt_list):
-            dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
-            dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
-            cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
-            cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
-            evalDate = bkt_optionset.eval_date
 
-            df_metrics_today = bkt_optionset.df_daily_state
-
-            """ 回测期最后一天全部清仓 """
-            if evalDate == bkt_optionset.end_date:
-                print(' Liquidate all positions !!! ')
-                bkt.liquidate_all(evalDate)
-                bkt.mkm_update(evalDate)
-                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
-                break
-
-            """Option: Open position on event day, close on vol peak day"""
-            cash_for_option = (1 - self.cash_reserve_pct) * bkt.cash
-            if evalDate == dt_event:
-                print(idx_event, ' ', evalDate, ' open position')
-
-                if self.flag_trade:
-                    print(evalDate, ' Trying to open position before previous one closed!')
-                    return
-
-                """Option: Select Strategy and Open Position"""
-                mdt1 = self.get_1st_eligible_maturity(evalDate)
-                mdt2 = self.get_2nd_eligible_maturity(evalDate)
-                if cd_trade_deriction == -1:
-                    df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
-                                                                                   option_type=self.util.type_put)
-                elif cd_trade_deriction == 1:
-                    df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
-                                                                                   option_type=self.util.type_call)
-                else:
-                    df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2)
-                fund = 0
-                for (idx, row) in df_open_position.iterrows():
-                    bktoption = row[self.util.bktoption]
-                    delta0_ratio = row[self.util.unit]
-                    margin = bktoption.get_init_margin()  # 每手初始保证金
-                    fund += margin * delta0_ratio
-                unit = cash_for_option / fund
-                # delta = 0
-                for (idx, row) in df_open_position.iterrows():
-                    bktoption = row[self.util.bktoption]
-                    delta0_ratio = row[self.util.unit]
-                    trade_unit = np.floor(delta0_ratio * unit)
-                    # delta += bktoption.get_delta()*unit*delta0_ratio
-                    if trade_unit > 0:
-                        bkt.open_long(evalDate, unit=trade_unit, bktoption=bktoption)
-                    else:
-                        bkt.open_short(evalDate, unit=-trade_unit, bktoption=bktoption)
-
-                    # self.holdings_mdt = bktoption.maturitydt
-                self.flag_trade = True
-
-            """Option: Close position """
-            if evalDate == dt_volpeak:
-                idx_event += 1
-                if self.flag_trade:
-                    print(idx_event, ' ', evalDate, ' close position')
-
-                    self.flag_trade = False
-                    for bktoption in bkt.holdings:
-                        bkt.close_position(evalDate, bktoption)
-
-            """按当日价格调整保证金，计算投资组合盯市价值"""
-            bkt.mkm_update(evalDate)
-            print(evalDate, bkt_optionset.eval_date, ' , ', bkt.npv)  # npv是组合净值，期初为1
-            bkt_optionset.next()
-            if idx_event >= len(self.df_events): break
-        self.bkt_account1 = bkt
-
-    def options_straddle(self):
+    def options_run(self):
         bkt_optionset = self.bkt_optionset
         bkt = self.bkt_account
         # bkt2 = BktAccount()
@@ -115,9 +37,9 @@ class BktStrategyEventVol(BktOptionStrategy):
             dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
             cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
-            cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
-            cd_open_position_time = 'morning_open_15min'
-            cd_close_position_time = 'afternoon_close_15min'
+            # cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
+            # cd_open_position_time = 'morning_open_15min'
+            cd_close_position_time = 'close'
 
             # cd_close_position_time = 'daily_avg'
             # cd_close_position_time = None
@@ -125,8 +47,6 @@ class BktStrategyEventVol(BktOptionStrategy):
 
             evalDate = bkt_optionset.eval_date
 
-            # if evalDate == datetime.date(2016,12,27):
-            #     print(evalDate)
             """ 回测期最后一天全部清仓 """
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
@@ -155,9 +75,14 @@ class BktStrategyEventVol(BktOptionStrategy):
                 #                                                        self.get_1st_eligible_maturity(evalDate))
 
 
-                portfolio = self.bkt_optionset.get_straddle(self.moneyness,
-                                                            self.get_1st_eligible_maturity(evalDate))
+                # portfolio = self.bkt_optionset.get_straddle(self.moneyness,
+                #                                             self.get_1st_eligible_maturity(evalDate))
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
+                if cd_trade_deriction == 1:
+                    option_type = self.util.type_call
+                else:
+                    option_type = self.util.type_put
+                portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),0,-2)
                 print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
                 # mdt1 = self.get_1st_eligible_maturity(evalDate)
                 # mdt2 = self.get_2nd_eligible_maturity(evalDate)
@@ -167,14 +92,18 @@ class BktStrategyEventVol(BktOptionStrategy):
                 self.portfolio = portfolio
                 self.bkt_account.update_invest_units(portfolio, self.util.long, cd_open_position_time,
                                                      fund=cash_for_option)
-                bkt.open_long(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
+                self.bkt_account.open_position(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
                 self.flag_trade = True
             elif evalDate != dt_volpeak:
-                if self.flag_trade:
-                    if isinstance(self.portfolio, Straddle):  # DELTA NEUTRAL REBALANCING
-                        """ Rebalance Straddle on delta neutral """
+                if self.flag_trade and self.bkt_account.holdings != []:
+                    if isinstance(self.portfolio, Straddle) or isinstance(self.portfolio, BackSpread):
+                        """ Delta neutral rebalancing """
                         self.bkt_account.update_invest_units(self.portfolio, self.util.long)
-                        bkt.rebalance_position(evalDate, self.portfolio)
+                        self.bkt_account.rebalance_position(evalDate, self.portfolio)
+
+            if self.flag_trade and self.bkt_account.holdings != []:
+                if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
+                    print("hello")
 
             if evalDate >= dt_volpeak:
                 idx_event += 1
@@ -182,15 +111,59 @@ class BktStrategyEventVol(BktOptionStrategy):
                     print(idx_event, ' ', evalDate, ' close position')
                     """ Close position"""
                     self.flag_trade = False
-                    self.delta_neutral = False
                     for bktoption in bkt.holdings:
-                        bkt.close_position(evalDate, bktoption, cd_close_by_price=cd_close_position_time)
+                        self.bkt_account.close_position(evalDate, bktoption, cd_close_by_price=cd_close_position_time)
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
-            bkt.mkm_update(evalDate)
-            print(evalDate, bkt_optionset.eval_date, ' , ', bkt.npv)  # npv是组合净值，期初为1
+            self.bkt_account.mkm_update(evalDate)
+
+            if self.flag_trade and self.bkt_account.holdings != []:
+                if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
+                    print("hello")
+            print(evalDate, bkt_optionset.eval_date, ' , ', bkt.npv)
             bkt_optionset.next()
             if idx_event >= len(self.df_events): break
+
+    def ivs_run(self):
+        bkt_optionset = self.bkt_optionset
+        bkt = self.bkt_account
+        # bkt2 = BktAccount()
+        idx_event = 0
+        print(self.df_events)
+        df_ivs = pd.DataFrame()
+        while bkt_optionset.index < len(bkt_optionset.dt_list)-1:
+
+            evalDate = bkt_optionset.eval_date
+            call_atm = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            try:
+                call_itm = self.bkt_optionset.get_call(2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            except:
+                call_itm = np.nan
+            try:
+                call_otm = self.bkt_optionset.get_call(-2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            except:
+                call_otm = np.nan
+            put_atm = self.bkt_optionset.get_put(0, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            try:
+                put_itm = self.bkt_optionset.get_put(2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            except:
+                put_itm = np.nan
+            try:
+                put_otm = self.bkt_optionset.get_put(-2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            except:
+                put_otm = np.nan
+            iv = pd.DataFrame(data={'dt': [evalDate],
+                                    'call_atm': [call_atm],
+                                    'call_itm': [call_itm],
+                                    'call_otm': [call_otm],
+                                    'put_atm': [put_atm],
+                                    'put_itm': [put_itm],
+                                    'put_otm': [put_otm]
+                                    })
+            print(iv)
+            df_ivs = df_ivs.append(iv,ignore_index=True)
+            bkt_optionset.next()
+        df_ivs.to_csv('../save_results/df_ivs_total.csv')
 
     def options_straddle_etf(self):
         bkt_optionset = self.bkt_optionset
@@ -294,6 +267,86 @@ class BktStrategyEventVol(BktOptionStrategy):
             if idx_event >= len(self.df_events): break
             self.bkt_account1 = bkt
             self.bkt_account2 = bkt2
+
+    def options_calendar_spread(self):
+        bkt_optionset = self.bkt_optionset
+        bkt = self.bkt_account
+        idx_event = 0
+        print(self.df_events)
+        while bkt_optionset.index < len(bkt_optionset.dt_list):
+            dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
+            dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
+            cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
+            cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
+            evalDate = bkt_optionset.eval_date
+
+            df_metrics_today = bkt_optionset.df_daily_state
+
+            """ 回测期最后一天全部清仓 """
+            if evalDate == bkt_optionset.end_date:
+                print(' Liquidate all positions !!! ')
+                bkt.liquidate_all(evalDate)
+                bkt.mkm_update(evalDate)
+                print(evalDate, ' , ', bkt.npv)  # npv是组合净值，期初为1
+                break
+
+            """Option: Open position on event day, close on vol peak day"""
+            cash_for_option = (1 - self.cash_reserve_pct) * bkt.cash
+            if evalDate == dt_event:
+                print(idx_event, ' ', evalDate, ' open position')
+
+                if self.flag_trade:
+                    print(evalDate, ' Trying to open position before previous one closed!')
+                    return
+
+                """Option: Select Strategy and Open Position"""
+                mdt1 = self.get_1st_eligible_maturity(evalDate)
+                mdt2 = self.get_2nd_eligible_maturity(evalDate)
+                if cd_trade_deriction == -1:
+                    df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
+                                                                                   option_type=self.util.type_put)
+                elif cd_trade_deriction == 1:
+                    df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
+                                                                                   option_type=self.util.type_call)
+                else:
+                    df_open_position = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2)
+                fund = 0
+                for (idx, row) in df_open_position.iterrows():
+                    bktoption = row[self.util.bktoption]
+                    delta0_ratio = row[self.util.unit]
+                    margin = bktoption.get_init_margin()  # 每手初始保证金
+                    fund += margin * delta0_ratio
+                unit = cash_for_option / fund
+                # delta = 0
+                for (idx, row) in df_open_position.iterrows():
+                    bktoption = row[self.util.bktoption]
+                    delta0_ratio = row[self.util.unit]
+                    trade_unit = np.floor(delta0_ratio * unit)
+                    # delta += bktoption.get_delta()*unit*delta0_ratio
+                    if trade_unit > 0:
+                        bkt.open_long(evalDate, unit=trade_unit, bktoption=bktoption)
+                    else:
+                        bkt.open_short(evalDate, unit=-trade_unit, bktoption=bktoption)
+
+                    # self.holdings_mdt = bktoption.maturitydt
+                self.flag_trade = True
+
+            """Option: Close position """
+            if evalDate == dt_volpeak:
+                idx_event += 1
+                if self.flag_trade:
+                    print(idx_event, ' ', evalDate, ' close position')
+
+                    self.flag_trade = False
+                    for bktoption in bkt.holdings:
+                        bkt.close_position(evalDate, bktoption)
+
+            """按当日价格调整保证金，计算投资组合盯市价值"""
+            bkt.mkm_update(evalDate)
+            print(evalDate, bkt_optionset.eval_date, ' , ', bkt.npv)  # npv是组合净值，期初为1
+            bkt_optionset.next()
+            if idx_event >= len(self.df_events): break
+        self.bkt_account1 = bkt
 
     def etf_enhanced_by_options(self):
         bkt_optionset = self.bkt_optionset
@@ -406,12 +459,11 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2017, 5, 13)
-end_date = datetime.date(2017, 9, 30)
+start_date = datetime.date(2018, 3, 20)
+end_date = datetime.date(2018, 12, 31)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
-util = BktUtil()
 
 """Collect Mkt Date"""
 df_events = get_eventsdata(start_date, end_date,1)
@@ -422,7 +474,7 @@ df_option_metrics = get_mktdata(start_date, end_date)
 """Run Backtest"""
 
 bkt_strategy = BktStrategyEventVol(df_option_metrics, df_events, option_invest_pct=0.2)
-bkt_strategy.set_min_holding_days(20)
+bkt_strategy.set_min_holding_days(5)
 
 # bkt_strategy.options_straddle_etf()
 # npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
@@ -433,12 +485,16 @@ bkt_strategy.set_min_holding_days(20)
 # f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
 # plt.show()
 
-bkt_strategy.options_straddle()
-# # bkt_strategy.options_calendar_spread()
-#
-#
-bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account.csv')
-bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book.csv')
-bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records.csv')
+bkt_strategy.options_run()
+# bkt_strategy.options_calendar_spread()
 
-# bkt_strategy.return_analysis()
+
+bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account1.csv')
+bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book1.csv')
+bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records1.csv')
+bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/df_ivs1.csv')
+
+bkt_strategy.return_analysis()
+
+# bkt_strategy.ivs_run()
+
