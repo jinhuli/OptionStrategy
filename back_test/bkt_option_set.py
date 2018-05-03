@@ -225,12 +225,12 @@ class BktOptionSet(object):
     def add_bktoption_column(self):
         self.df_data[self.util.bktoption] = pd.Series(np.zeros(len(self.df_data)),index=self.df_data.index)
 
-    def get_put(self, moneyness_rank, mdt):
+    def get_put(self, moneyness_rank, mdt, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness()
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         res_dict = options_by_moneyness[mdt][self.util.type_put]
         if res_dict == {}:
             print('bkt_option_set--get put failed,option dict is empty!')
@@ -242,12 +242,12 @@ class BktOptionSet(object):
         portfolio = Puts(self.eval_date,[option_put])
         return portfolio
 
-    def get_call(self, moneyness_rank, mdt):
+    def get_call(self, moneyness_rank, mdt, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness()
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         res_dict = options_by_moneyness[mdt][self.util.type_call]
         if res_dict == {}:
             print('bkt_option_set--get_call failed,option dict is empty!')
@@ -260,30 +260,30 @@ class BktOptionSet(object):
         return portfolio
 
     """moneyness =0 : 跨式策略，moneyness = -1/-2 : 宽跨式策略"""
-    def get_straddle(self, moneyness_rank, mdt):
+    def get_straddle(self, moneyness_rank, mdt, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值行权价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness()
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         option_call = options_by_moneyness[mdt][self.util.type_call][moneyness_rank]
         option_put = options_by_moneyness[mdt][self.util.type_put][moneyness_rank]
         straddle = Straddle(self.eval_date,option_call,option_put)
         return straddle
 
     """Calendar Spread: Long far month and short near month;'option_type=None' means both call and put are included"""
-    def get_calendar_spread_long(self, moneyness_rank, mdt1, mdt2, option_type):
+    def get_calendar_spread_long(self, moneyness_rank, mdt1, mdt2, option_type,cd_underlying_price='open'):
         if mdt1 > mdt2:
             print('get_calendar_spread_call : mdt1 > mdt2')
             return
-        options_by_moneyness = self.update_options_by_moneyness()
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         option_mdt1 = options_by_moneyness[mdt1][option_type][moneyness_rank]  # short
         option_mdt2 = options_by_moneyness[mdt2][option_type][moneyness_rank]  # long
         cs = CalandarSpread(self.eval_date,option_mdt1,option_mdt2,option_type)
         return cs
 
     """Back Spread: Long small delta(atm), short large delta(otm)"""
-    def get_backspread(self,option_type,mdt,moneyness1=0,moneyness2=-2):
+    def get_backspread(self,option_type,mdt,moneyness1=0,moneyness2=-2,cd_underlying_price='open'):
         options_by_moneyness = self.update_options_by_moneyness()
         option_long = options_by_moneyness[mdt][option_type][moneyness2]
         option_short = options_by_moneyness[mdt][option_type][moneyness1]
@@ -291,7 +291,7 @@ class BktOptionSet(object):
         return bs
 
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
-    def update_options_by_moneyness(self):
+    def update_options_by_moneyness(self,cd_underlying_price='open'):
         df = self.get_duplicate_strikes_dropped(self.df_daily_state)
         options_by_moneyness = {}
         for mdt in self.eligible_maturities:
@@ -305,7 +305,11 @@ class BktOptionSet(object):
             res_put = {}
             atm_call = 1000
             atm_put = -1000
-            spot = optionset_call[0].underlying_open_price # Use underlying OPEN close as spot
+            if cd_underlying_price == 'close':
+                spot = optionset_call[0].underlying_price # Use underlying OPEN close as spot
+            else:
+                spot = optionset_call[0].underlying_open_price # Use underlying OPEN close as spot
+
             m_call = []
             m_put = []
             for option in optionset_call:

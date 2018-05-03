@@ -696,7 +696,7 @@ class DataCollection():
                 pct_change_limit = df['change_limit']
                 dt_listed = df['contract_issue_date'].date()
                 dt_maturity = df['last_trade_date'].date()
-                dt_settlement = df['last_delivery_mouth'].date()
+                # dt_settlement = df['last_delivery_mouth'].date()
                 id_instrument = name_code + '_' + name_contract_month
 
                 db_row = {'id_instrument': id_instrument,
@@ -708,7 +708,7 @@ class DataCollection():
                           'pct_change_limit': pct_change_limit,
                           'dt_listed': dt_listed,
                           'dt_maturity': dt_maturity,
-                          'dt_settlement': dt_settlement,
+                          # 'dt_settlement': dt_settlement,
                           'nbr_multiplier': nbr_multiplier,
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()

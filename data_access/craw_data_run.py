@@ -12,7 +12,7 @@ from back_test.bkt_option_set import BktOptionSet
 
 w.start()
 
-date = datetime.date(2018, 4, 25)
+date = datetime.date(2018, 4, 27)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
