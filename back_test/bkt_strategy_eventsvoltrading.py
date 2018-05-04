@@ -23,7 +23,6 @@ class BktStrategyEventVol(BktOptionStrategy):
         self.delta_neutral = False
         self.portfolio = None
 
-
     def options_run(self):
         bkt_optionset = self.bkt_optionset
         bkt = self.bkt_account
@@ -73,16 +72,19 @@ class BktStrategyEventVol(BktOptionStrategy):
                 # else:
                 #     portfolio = self.bkt_optionset.get_straddle(self.moneyness,
                 #                                                        self.get_1st_eligible_maturity(evalDate))
-
-
-                # portfolio = self.bkt_optionset.get_straddle(self.moneyness,
-                #                                             self.get_1st_eligible_maturity(evalDate))
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
-                if cd_trade_deriction == 1:
-                    option_type = self.util.type_call
-                else:
-                    option_type = self.util.type_put
-                portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),0,-1)
+
+                cd_underlying_price = 'open'
+                portfolio = self.bkt_optionset.get_straddle(
+                    self.moneyness,self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
+                # if cd_trade_deriction == 1:
+                #     option_type = self.util.type_call
+                # else:
+                #     option_type = self.util.type_put
+                # option_type = self.util.type_put
+                # portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),
+                #     cd_underlying_price=cd_underlying_price,moneyness1=0,moneyness2=-2)
+
                 print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
                 # mdt1 = self.get_1st_eligible_maturity(evalDate)
                 # mdt2 = self.get_2nd_eligible_maturity(evalDate)
@@ -134,39 +136,40 @@ class BktStrategyEventVol(BktOptionStrategy):
         while bkt_optionset.index < len(bkt_optionset.dt_list)-1:
 
             evalDate = bkt_optionset.eval_date
-            call_atm = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
-            put_atm = self.bkt_optionset.get_put(0, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+            cd_underlying_price = 'close'
+            call_atm = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            put_atm = self.bkt_optionset.get_put(0, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
 
             try:
-                call_itm = self.bkt_optionset.get_call(2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                call_itm = self.bkt_optionset.get_call(2, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 call_itm = np.nan
             try:
-                call_itm1 = self.bkt_optionset.get_call(1, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                call_itm1 = self.bkt_optionset.get_call(1, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 call_itm1 = np.nan
             try:
-                call_otm = self.bkt_optionset.get_call(-2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                call_otm = self.bkt_optionset.get_call(-2, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 call_otm = np.nan
             try:
-                call_otm1 = self.bkt_optionset.get_call(-1, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                call_otm1 = self.bkt_optionset.get_call(-1, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 call_otm1 = np.nan
             try:
-                put_itm = self.bkt_optionset.get_put(2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                put_itm = self.bkt_optionset.get_put(2, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 put_itm = np.nan
             try:
-                put_itm1 = self.bkt_optionset.get_put(1, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                put_itm1 = self.bkt_optionset.get_put(1, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 put_itm1 = np.nan
             try:
-                put_otm = self.bkt_optionset.get_put(-2, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                put_otm = self.bkt_optionset.get_put(-2, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 put_otm = np.nan
             try:
-                put_otm1 = self.bkt_optionset.get_put(-1, self.get_1st_eligible_maturity(evalDate)).optionset[0].get_implied_vol()
+                put_otm1 = self.bkt_optionset.get_put(-1, self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             except:
                 put_otm1 = np.nan
             iv = pd.DataFrame(data={'dt': [evalDate],
@@ -480,8 +483,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2017, 6, 15)
-end_date = datetime.date(2017, 7, 1)
+start_date = datetime.date(2015, 8, 3)
+end_date = datetime.date(2018, 4, 20)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -495,7 +498,7 @@ df_option_metrics = get_mktdata(start_date, end_date)
 """Run Backtest"""
 
 bkt_strategy = BktStrategyEventVol(df_option_metrics, df_events, option_invest_pct=0.2)
-bkt_strategy.set_min_holding_days(15)
+bkt_strategy.set_min_holding_days(10)
 
 # bkt_strategy.options_straddle_etf()
 # npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
@@ -506,16 +509,16 @@ bkt_strategy.set_min_holding_days(15)
 # f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
 # plt.show()
 
-bkt_strategy.options_run()
-# bkt_strategy.options_calendar_spread()
+# bkt_strategy.options_run()
+# # bkt_strategy.options_calendar_spread()
+#
+#
+# bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account1.csv')
+# bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book1.csv')
+# bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records1.csv')
+# bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/df_ivs1.csv')
+#
+# # bkt_strategy.return_analysis()
 
-
-bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account1.csv')
-bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book1.csv')
-bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records1.csv')
-bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/df_ivs1.csv')
-
-# bkt_strategy.return_analysis()
-
-# bkt_strategy.ivs_run()
+bkt_strategy.ivs_run()
 

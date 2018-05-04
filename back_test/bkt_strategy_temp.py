@@ -31,8 +31,7 @@ class BktStrategyVolsurfae(BktOptionStrategy):
         while bkt_optionset.index < len(bkt_optionset.dt_list):
 
             evalDate = bkt_optionset.eval_date
-            strikes = bkt_optionset.df_daily_state['amt_strike'].tolist()
-            black_var_surface = bkt_optionset.get_volsurface_squre('put')
+            black_var_surface = bkt_optionset.get_volsurface_squre('call')
 
             plt.rcParams['font.sans-serif'] = ['STKaiti']
             plt.rcParams.update({'font.size': 13})
@@ -58,8 +57,8 @@ class BktStrategyVolsurfae(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 8, 6)
-end_date = datetime.date(2015, 8, 13)
+start_date = datetime.date(2015, 12, 20)
+end_date = datetime.date(2015, 12, 25)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
