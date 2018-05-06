@@ -34,13 +34,14 @@ class BktStrategyEvent(object):
         dt_close_2d = dates[nbr_edate + 1]
         dt_close_1d = dates[nbr_edate]
         dt_close_b1d = dates[nbr_edate -1]
+        dt_close_b2d = dates[nbr_edate -2]
         dt_beg = dates[nbr_edate - 6]
         dt_end = dates[nbr_edate + 6]
         self.df_metrics = df_option_metrics[(df_option_metrics['dt_date'] >= dt_beg) &
                                             (df_option_metrics['dt_date'] <= dt_end)].reset_index().drop('index',1)
 
         self.dt_opens = [dt_open_1d, dt_open_2d, dt_open_3d, dt_open_5d]
-        self.dt_closes = [dt_close_b1d,dt_close_1d, dt_close_2d, dt_close_3d, dt_close_5d]
+        self.dt_closes = [dt_close_b2d,dt_close_b1d,dt_close_1d, dt_close_2d, dt_close_3d, dt_close_5d]
 
     def events_run(self):
         df_res = pd.DataFrame()
@@ -67,7 +68,7 @@ class BktStrategyEvent(object):
             dt_volpeak = dt_close
             cd_trade_deriction = event['cd_trade_direction']
             cd_open_position_time = event['cd_open_position_time']
-            cd_close_position_time = 'close'
+            cd_close_position_time = event['cd_close_position_time']
 
             evalDate = bkt_optionset.eval_date
 
@@ -99,7 +100,7 @@ class BktStrategyEvent(object):
                 #                                                        self.get_1st_eligible_maturity(evalDate))
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
 
-                cd_underlying_price = 'close'
+                cd_underlying_price = 'open'
                 portfolio = bkt_optionset.get_straddle(
                     self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
                 # if cd_trade_deriction == 1:
@@ -153,8 +154,8 @@ class BktStrategyEvent(object):
         return bkt_account.npv
 
 """Back Test Settings"""
-start_date = datetime.date(2016, 11, 1)
-end_date = datetime.date(2016, 11, 30)
+start_date = datetime.date(2016, 10, 20)
+end_date = datetime.date(2016, 11, 20)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()

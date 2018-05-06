@@ -12,8 +12,8 @@ def average(df):
         return sum / vol
     return -999.0
 
-beg_date = datetime.date(2018, 4, 17)
-end_date = datetime.date(2018, 4, 20)
+beg_date = datetime.date(2015, 3, 1)
+end_date = datetime.date(2018, 4, 28)
 # dc = DataCollection()
 engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
 engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
@@ -54,18 +54,6 @@ for date in dates:
         daily_df = pd.read_sql_query(query_intraday.statement,query_intraday.session.bind)
         if len(daily_df) < 240:
             print('intraday data length shorted : ',date,id,len(daily_df))
-            # dt_date = date.strftime("%Y-%m-%d")
-            # if len(df)>0:
-            #     option_mktdata_intraday.delete(
-            #         (option_mktdata_intraday.c.dt_datetime >= dt_date + " 09:30:00")&
-            #         (option_mktdata_intraday.c.dt_datetime <= dt_date + " 15:00:00")&
-            #         (option_mktdata_intraday.c.id_instrument == id)).execute()
-            # db_data = dc.table_option_intraday().wind_data_50etf_option_intraday2(dt_date, windcode,id)
-            # try:
-            #     conn_intraday.execute(option_mktdata_intraday.insert(), db_data)
-            #     print('option_mktdata_intraday -- inserted into data base succefully')
-            # except Exception as e:
-            #     print(e)
 
         df_morning_open_15min = daily_df.loc[lambda df: (df.dt_datetime >= datetime.datetime(cur.year, cur.month, cur.day, 9, 30, 0))&
                            (df.dt_datetime <= datetime.datetime(cur.year,cur.month,cur.day,9,45,0)),:]
@@ -104,7 +92,7 @@ for date in dates:
                 df.loc[index,'amt_close'] = row['amt_settlement']
                 df.loc[index,'cd_remark'] = 'no trade volume'
     try:
-        df.to_sql(name='options_mktdata_goldencopy', con=engine_metrics, if_exists = 'append', index=False)
+        df.to_sql(name='options_mktdata_goldencopy2', con=engine_metrics, if_exists = 'append', index=False)
         print(date,'inserted into database')
     except Exception as e:
         print(e)

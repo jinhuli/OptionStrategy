@@ -36,9 +36,9 @@ class BktStrategyEventVol(BktOptionStrategy):
             dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
             cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
-            # cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
+            cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
             # cd_open_position_time = 'morning_open_15min'
-            cd_close_position_time = 'close'
+            # cd_close_position_time = 'close'
 
             # cd_close_position_time = 'daily_avg'
             # cd_close_position_time = None
@@ -75,17 +75,18 @@ class BktStrategyEventVol(BktOptionStrategy):
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
 
                 cd_underlying_price = 'open'
-                portfolio = self.bkt_optionset.get_straddle(
-                    self.moneyness,self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
+                # portfolio = self.bkt_optionset.get_straddle(
+                #     self.moneyness,self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
                 # else:
                 #     option_type = self.util.type_put
-                # option_type = self.util.type_put
-                # portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),
-                #     cd_underlying_price=cd_underlying_price,moneyness1=0,moneyness2=-2)
+                option_type = self.util.type_put
+                portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),
+                    cd_underlying_price=cd_underlying_price,moneyness1=0,moneyness2=-2)
 
                 print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
+                print(portfolio.optionset[1].id_instrument,portfolio.optionset[1].dt_date,portfolio.optionset[1].underlying_price)
                 # mdt1 = self.get_1st_eligible_maturity(evalDate)
                 # mdt2 = self.get_2nd_eligible_maturity(evalDate)
                 # portfolio = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
@@ -483,8 +484,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 8, 3)
-end_date = datetime.date(2018, 4, 20)
+start_date = datetime.date(2017, 10, 25)
+end_date = datetime.date(2017, 12, 2)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -509,16 +510,16 @@ bkt_strategy.set_min_holding_days(10)
 # f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
 # plt.show()
 
-# bkt_strategy.options_run()
+bkt_strategy.options_run()
 # # bkt_strategy.options_calendar_spread()
 #
 #
-# bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account1.csv')
-# bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book1.csv')
-# bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records1.csv')
-# bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/df_ivs1.csv')
+bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account1.csv')
+bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book1.csv')
+bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records1.csv')
+bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/df_ivs1.csv')
 #
 # # bkt_strategy.return_analysis()
 
-bkt_strategy.ivs_run()
+# bkt_strategy.ivs_run()
 

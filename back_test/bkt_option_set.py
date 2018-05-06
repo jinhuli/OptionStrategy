@@ -290,6 +290,7 @@ class BktOptionSet(object):
         bs = BackSpread(self.eval_date,option_long,option_short,option_type)
         return bs
 
+
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
     def update_options_by_moneyness(self,cd_underlying_price='open'):
         df = self.get_duplicate_strikes_dropped(self.df_daily_state)
