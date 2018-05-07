@@ -15,7 +15,7 @@ class BktStrategyEventVol(BktOptionStrategy):
 
     def __init__(self, df_option_metrics, df_events, option_invest_pct=0.1):
 
-        BktOptionStrategy.__init__(self, df_option_metrics,rf = 0.0)
+        BktOptionStrategy.__init__(self, df_option_metrics,rf = 0.03)
         self.df_events = df_events.sort_values(by='dt_impact_beg', ascending=True).reset_index()
         self.moneyness = 0
         self.option_invest_pct = option_invest_pct
@@ -30,13 +30,14 @@ class BktStrategyEventVol(BktOptionStrategy):
         idx_event = 0
         print(self.df_events)
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-            # dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
-            dt_event = self.df_events.loc[idx_event, 'dt_test']
-            # dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
-            dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
+            dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
+            # dt_event = self.df_events.loc[idx_event, 'dt_test']
+            dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
+            # dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
             cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
             cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
+            cd_event = self.df_events.loc[idx_event, 'cd_occurrence']
             # cd_open_position_time = 'morning_open_15min'
             # cd_close_position_time = 'close'
 
@@ -75,15 +76,16 @@ class BktStrategyEventVol(BktOptionStrategy):
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
 
                 cd_underlying_price = 'open'
-                # portfolio = self.bkt_optionset.get_straddle(
-                #     self.moneyness,self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
+                if cd_close_position_time == 'afternoon_close_15min':cd_underlying_price = 'close'
+                portfolio = self.bkt_optionset.get_straddle(
+                    self.moneyness,self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
                 # else:
                 #     option_type = self.util.type_put
-                option_type = self.util.type_put
-                portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),
-                    cd_underlying_price=cd_underlying_price,moneyness1=0,moneyness2=-2)
+                # option_type = self.util.type_put
+                # portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),
+                #     cd_underlying_price=cd_underlying_price,moneyness1=0,moneyness2=-2)
 
                 print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
                 print(portfolio.optionset[1].id_instrument,portfolio.optionset[1].dt_date,portfolio.optionset[1].underlying_price)
@@ -100,9 +102,21 @@ class BktStrategyEventVol(BktOptionStrategy):
             elif evalDate != dt_volpeak:
                 if self.flag_trade and self.bkt_account.holdings != []:
                     if isinstance(self.portfolio, Straddle) or isinstance(self.portfolio, BackSpread):
-                        """ Delta neutral rebalancing """
-                        self.bkt_account.update_invest_units(self.portfolio, self.util.long)
-                        self.bkt_account.rebalance_position(evalDate, self.portfolio)
+                        morming_npv = self.bkt_account.calculate_nvp(evalDate)
+                        if cd_event == 's' and (morming_npv -self.bkt_account.npv)/self.bkt_account.npv <= -0.02:
+                            idx_event += 1
+                            if self.flag_trade:
+                                print(idx_event, ' ', evalDate, ' close position by NPV')
+                                """ Close position by NPV"""
+                                self.flag_trade = False
+                                cd_close_position_time = 'amt_afternoon_avg'
+                                for bktoption in bkt.holdings:
+                                    self.bkt_account.close_position(evalDate, bktoption,
+                                                                    cd_close_by_price=cd_close_position_time)
+                        else:
+                            """ Delta neutral rebalancing """
+                            self.bkt_account.update_invest_units(self.portfolio, self.util.long)
+                            self.bkt_account.rebalance_position(evalDate, self.portfolio)
 
             if self.flag_trade and self.bkt_account.holdings != []:
                 if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
@@ -484,8 +498,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2017, 10, 25)
-end_date = datetime.date(2017, 12, 2)
+start_date = datetime.date(2015, 8, 1)
+end_date = datetime.date(2018, 5, 5)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -499,7 +513,7 @@ df_option_metrics = get_mktdata(start_date, end_date)
 """Run Backtest"""
 
 bkt_strategy = BktStrategyEventVol(df_option_metrics, df_events, option_invest_pct=0.2)
-bkt_strategy.set_min_holding_days(10)
+bkt_strategy.set_min_holding_days(15)
 
 # bkt_strategy.options_straddle_etf()
 # npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
@@ -514,12 +528,12 @@ bkt_strategy.options_run()
 # # bkt_strategy.options_calendar_spread()
 #
 #
-bkt_strategy.bkt_account.df_account.to_csv('../save_results/df_account1.csv')
-bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/df_trading_book1.csv')
-bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/df_trading_records1.csv')
-bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/df_ivs1.csv')
+bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
+bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/bkt_df_trading_book.csv')
+bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/bkt_df_trading_records.csv')
+bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/bkt_df_ivs.csv')
 #
-# # bkt_strategy.return_analysis()
+bkt_strategy.return_analysis()
 
 # bkt_strategy.ivs_run()
 

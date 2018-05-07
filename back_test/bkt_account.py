@@ -584,6 +584,46 @@ class BktAccount(object):
         self.nbr_trade = 0
         self.realized_pnl = 0
 
+    def calculate_nvp(self, dt, cd_timeperiod = 'amt_morning_avg',trade_order_dict=None):  # 每日更新
+        total_margin_capital = self.total_margin_capital
+        cash = self.cash
+        unrealized_pnl = 0.0
+        mtm_long_positions = 0.0
+        mtm_short_positions = 0.0
+        port_delta = 0.0
+        for bktoption in self.holdings:
+            if not bktoption.trade_flag_open: continue
+            if bktoption.maturitydt == dt:
+                print('close option position on maturity date : ', bktoption.id_instrument)
+                continue
+            mkt_price = self.get_close_position_price(bktoption,cd_timeperiod)
+            unit = bktoption.trade_unit
+            long_short = bktoption.trade_long_short
+            margin_account = bktoption.trade_margin_capital
+            multiplier = bktoption.multiplier
+            maintain_margin = unit * bktoption.get_maintain_margin()
+            margin_call = maintain_margin - margin_account
+            unrealized_pnl += long_short * (mkt_price - bktoption.trade_open_price) * unit * multiplier
+            if long_short == self.util.long:
+                mtm_long_positions += mkt_price * unit * multiplier
+                port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+            else:
+                mtm_short_positions -= mkt_price * unit * multiplier
+                port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+            cash -= margin_call
+            total_margin_capital += margin_call
+
+        """trade_order_dict : Only Contains LONG underlying positions"""
+        trade_order_mktv = 0.0
+        if self.trade_order_dict != {} and trade_order_dict != None:
+            unit = self.trade_order_dict['unit']
+            mkt_price = trade_order_dict['price']
+            trade_order_mktv += mkt_price * unit
+
+        total_asset = cash + total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
+        npv = total_asset / self.init_fund
+        return npv
+
     def liquidate_all(self, dt):
         holdings = self.holdings.copy()
         for bktoption in holdings:
@@ -626,8 +666,8 @@ class BktAccount(object):
         dt_start = self.df_account.loc[0, self.util.dt_date]
         dt_end = self.df_account.loc[len(self.df_account) - 1, self.util.dt_date]
         invest_days = (dt_end - dt_start).days
-        annulized_return = (self.total_asset / self.init_fund) ** (365 / invest_days) - 1
-        print('annulized_return',annulized_return)
+        # annulized_return = (self.total_asset / self.init_fund) ** (365 / invest_days) - 1
+        # print('annulized_return',annulized_return)
         netvalue = self.df_account[self.util.npv]
         tradeslen = len(netvalue)
         # 累计收益率
@@ -650,7 +690,7 @@ class BktAccount(object):
         return_yr = (1 + totalreturn) ** (252.0 / tradeslen) - 1
         # 年化波动率
         volatility_yr = np.std(returns, ddof=0) * np.sqrt(252.0)
-        print('volatility_yr',volatility_yr)
+        # print('volatility_yr',volatility_yr)
 
         # 夏普比率
         sharpe = (return_yr - 0.024) / volatility_yr
