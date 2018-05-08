@@ -364,7 +364,7 @@ class BktOption(object):
         if idx_date == 0:
             return self.current_daily_state[self.util.col_close]
         df_last_state = self.df_daily_metrics.loc[idx_date - 1]
-        amt_pre_close = df_last_state[self.util.col_close]
+        amt_pre_close = df_last_state[self.util.col_underlying_price]
         return amt_pre_close
 
     def get_implied_vol(self):
@@ -470,12 +470,14 @@ class BktOption(object):
         amt_underlying_last_close = self.get_underlying_last_close()
         if self.option_type == 'call':
             otm = max(0, self.strike - self.underlying_price)
-            init_margin = (amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
-                                                 0.07 * amt_underlying_last_close)) * self.multiplier
+            tmp = amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
+                                                 0.07 * amt_underlying_last_close)
+            init_margin = tmp * self.multiplier
         else:
             otm = max(0, self.underlying_price - self.strike)
-            init_margin = min(amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
-                                                    0.07 * self.strike), self.strike) * self.multiplier
+            tmp = min(amt_last_settle + max(0.12 * amt_underlying_last_close - otm,0.07 * self.strike),
+                      self.strike)
+            init_margin = tmp * self.multiplier
         return init_margin
 
     def get_maintain_margin(self):

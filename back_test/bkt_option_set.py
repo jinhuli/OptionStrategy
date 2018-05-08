@@ -225,7 +225,7 @@ class BktOptionSet(object):
     def add_bktoption_column(self):
         self.df_data[self.util.bktoption] = pd.Series(np.zeros(len(self.df_data)),index=self.df_data.index)
 
-    def get_put(self, moneyness_rank, mdt, cd_underlying_price='open'):
+    def get_put(self, moneyness_rank, mdt,cd_long_short, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
@@ -239,10 +239,10 @@ class BktOptionSet(object):
             print('bkt_option_set--get put failed,given moneyness rank not exit!')
             return pd.DataFrame()
         option_put = res_dict[moneyness_rank]
-        portfolio = Puts(self.eval_date,[option_put])
+        portfolio = Puts(self.eval_date,[option_put], cd_long_short)
         return portfolio
 
-    def get_call(self, moneyness_rank, mdt, cd_underlying_price='open'):
+    def get_call(self, moneyness_rank, mdt, cd_long_short, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
@@ -256,11 +256,11 @@ class BktOptionSet(object):
             print('bkt_option_set--get_call failed,given moneyness rank not exit!')
             return pd.DataFrame()
         option_call = res_dict[moneyness_rank]
-        portfolio = Calls(self.eval_date,[option_call])
+        portfolio = Calls(self.eval_date,[option_call], cd_long_short)
         return portfolio
 
     """moneyness =0 : 跨式策略，moneyness = -1/-2 : 宽跨式策略"""
-    def get_straddle(self, moneyness_rank, mdt, cd_underlying_price='open'):
+    def get_straddle(self, moneyness_rank, mdt, delta_exposure, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
@@ -268,7 +268,7 @@ class BktOptionSet(object):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         option_call = options_by_moneyness[mdt][self.util.type_call][moneyness_rank]
         option_put = options_by_moneyness[mdt][self.util.type_put][moneyness_rank]
-        straddle = Straddle(self.eval_date,option_call,option_put)
+        straddle = Straddle(self.eval_date, option_call, option_put, delta_exposure)
         return straddle
 
     """Calendar Spread: Long far month and short near month;'option_type=None' means both call and put are included"""

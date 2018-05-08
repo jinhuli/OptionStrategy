@@ -104,13 +104,14 @@ class BktAccount(object):
             mkt_price = bktoption.option_price
         return mkt_price
 
-    def update_invest_units(self,option_port,cd_long_short,cd_open_by_price=None, fund=None):
+    def update_invest_units(self,option_port,cd_long_short,delta_exposure,cd_open_by_price=None, fund=None):
         if isinstance(option_port,BackSpread):
             option_long = option_port.option_long
             option_short = option_port.option_short
             plong = self.get_open_position_price(option_long,cd_open_by_price)
             pshort = self.get_open_position_price(option_short,cd_open_by_price)
-            option_port.delta_neutral_rebalancing()
+
+            option_port.rebalancing(delta_exposure)
 
             if fund == None:
                 fund = plong*option_long.multiplier*option_port.unit_long + \
@@ -132,7 +133,8 @@ class BktAccount(object):
             if fund == None:
                 fund = price_call*option_call.multiplier*option_port.unit_call + \
                        price_put*option_put.multiplier*option_port.unit_put
-            option_port.delta_neutral_rebalancing()
+            option_port.rebalancing(delta_exposure)
+
             if cd_long_short == self.util.long:
                 fund0 = price_call*option_call.multiplier*option_port.invest_ratio_call + \
                        price_put*option_put.multiplier*option_port.invest_ratio_put
@@ -145,18 +147,31 @@ class BktAccount(object):
             option_port.unit_call = unit_straddle*option_port.invest_ratio_call
             option_port.unit_put = unit_straddle*option_port.invest_ratio_put
         elif isinstance(option_port,Calls) or isinstance(option_port,Puts):
-            if option_port.cd_weighted == 'equal_unit':
+            if option_port.cd_long_short == self.util.long:
+                if option_port.cd_weighted == 'equal_unit':
+                    if fund == None:
+                        fund = 0
+                        for (idx,option) in enumerate(option_port.optionset):
+                            price = self.get_open_position_price(option, cd_open_by_price)
+                            fund += price*option.multiplier*option_port.unit_portfolio[idx]
+                    fund0 = 0
+                    for option in option_port.optionset: # equal weighted by mkt value
+                        price = self.get_open_position_price(option, cd_open_by_price)
+                        fund0 += price*option.multiplier
+                    unit_calls = fund/fund0
+                    option_port.unit_portfolio = [unit_calls]*len(option_port.optionset)
+            else:
                 if fund == None:
                     fund = 0
-                    for (idx,option) in enumerate(option_port.optionset):
+                    for (idx, option) in enumerate(option_port.optionset):
                         price = self.get_open_position_price(option, cd_open_by_price)
-                        fund += price*option.multiplier*option_port.unit_portfolio[idx]
+                        fund += (option.get_maintain_margin()-price*option.multiplier)*option_port.unit_portfolio[idx]
                 fund0 = 0
-                for option in option_port.optionset: # equal weighted by mkt value
+                for (idx,option) in enumerate(option_port.optionset):  # equal weighted by mkt value
                     price = self.get_open_position_price(option, cd_open_by_price)
-                    fund0 += price*option.multiplier
-                unit_calls = fund/fund0
-                option_port.unit_portfolio = [unit_calls]*len(option_port.optionset)
+                    fund0 += option.get_init_margin()-price*option.multiplier
+                unit_calls = fund / fund0
+                option_port.unit_portfolio = [unit_calls] * len(option_port.optionset)
         elif isinstance(option_port,CalandarSpread):
             p1 = self.get_open_position_price(option_port.option_mdt1, cd_open_by_price)
             p2 = self.get_open_position_price(option_port.option_mdt2, cd_open_by_price)
@@ -173,8 +188,12 @@ class BktAccount(object):
             self.open_long_option(dt,portfolio.option_call,portfolio.unit_call,cd_open_by_price)
             self.open_long_option(dt,portfolio.option_put,portfolio.unit_put,cd_open_by_price)
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
-            for option in portfolio.optionset:
-                self.open_long_option(dt,option,portfolio.unit_portfolio[0],cd_open_by_price)
+            if portfolio.cd_long_short == self.util.long:
+                for option in portfolio.optionset:
+                    self.open_long_option(dt,option,portfolio.unit_portfolio[0],cd_open_by_price)
+            else:
+                for option in portfolio.optionset:
+                    self.open_short_option(dt, option, portfolio.unit_portfolio[0], cd_open_by_price)
         elif isinstance(portfolio,CalandarSpread):
             self.open_long_option(dt, portfolio.option_mdt1, portfolio.unit_portfolio, cd_open_by_price)
             self.open_long_option(dt, portfolio.option_mdt2, portfolio.unit_portfolio, cd_open_by_price)
@@ -545,6 +564,7 @@ class BktAccount(object):
                 port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
                 # short_positions_pnl += (bktoption.trade_open_price-mkt_price)*unit*multiplier
             # bktoption.trade_margin_capital = maintain_margin
+
             self.cash -= margin_call
             self.total_margin_capital += margin_call
             bktoption.trade_margin_capital += margin_call
@@ -572,6 +592,7 @@ class BktAccount(object):
         self.mtm_long_positions = mtm_long_positions
         money_utilization = 1- self.cash / self.total_asset
         self.npv = self.total_asset / self.init_fund
+        self.port_delta = port_delta
         self.holdings = holdings
         account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
                                      self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],

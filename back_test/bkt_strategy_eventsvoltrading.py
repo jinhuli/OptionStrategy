@@ -30,10 +30,10 @@ class BktStrategyEventVol(BktOptionStrategy):
         idx_event = 0
         print(self.df_events)
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-            dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
-            # dt_event = self.df_events.loc[idx_event, 'dt_test']
-            dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
-            # dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
+            # dt_event = self.df_events.loc[idx_event, 'dt_impact_beg']
+            dt_event = self.df_events.loc[idx_event, 'dt_test']
+            # dt_volpeak = self.df_events.loc[idx_event, 'dt_vol_peak']
+            dt_volpeak = self.df_events.loc[idx_event, 'dt_test2']
             cd_trade_deriction = self.df_events.loc[idx_event, 'cd_trade_direction']
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
             cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
@@ -65,62 +65,82 @@ class BktStrategyEventVol(BktOptionStrategy):
                 cash_for_option = (1 - self.cash_reserve_pct) * bkt.cash
 
                 """Option: Select Strategy and Open Position"""
-                # if cd_trade_deriction == -1:
-                #     portfolio = self.bkt_optionset.get_put(self.moneyness,
-                #                                                   self.get_1st_eligible_maturity(evalDate))  # 选择跨式期权头寸
-                # elif cd_trade_deriction == 1:
-                #     portfolio = self.bkt_optionset.get_call(self.moneyness, self.get_1st_eligible_maturity(evalDate))
-                # else:
-                #     portfolio = self.bkt_optionset.get_straddle(self.moneyness,
-                #                                                        self.get_1st_eligible_maturity(evalDate))
-                # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
-
                 cd_underlying_price = 'open'
-                if cd_close_position_time == 'afternoon_close_15min':cd_underlying_price = 'close'
-                portfolio = self.bkt_optionset.get_straddle(
-                    self.moneyness,self.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
+                delta_exposure = 0.0
+                if cd_close_position_time == 'afternoon_close_15min': cd_underlying_price = 'close'
+                if cd_event == 'e':
+                    portfolio = self.bkt_optionset.get_straddle(
+                        self.moneyness, self.get_1st_eligible_maturity(evalDate),delta_exposure,
+                        cd_underlying_price=cd_underlying_price)
+                else:
+                    if cd_trade_deriction == -1:
+                        delta_exposure = -0.1
+                        # portfolio = self.bkt_optionset.get_put(
+                        #     self.moneyness,self.get_1st_eligible_maturity(evalDate), self.util.long, cd_underlying_price)
+                        portfolio = self.bkt_optionset.get_call(
+                            self.moneyness, self.get_1st_eligible_maturity(evalDate), self.util.short,
+                            cd_underlying_price)
+                    else:
+                        delta_exposure = 0.1
+                        # portfolio = self.bkt_optionset.get_call(
+                        #     self.moneyness, self.get_1st_eligible_maturity(evalDate), self.util.long, cd_underlying_price)
+                        portfolio = self.bkt_optionset.get_put(
+                            self.moneyness, self.get_1st_eligible_maturity(evalDate), self.util.short,
+                            cd_underlying_price)
+
+                # portfolio = self.bkt_optionset.get_straddle(
+                #     self.moneyness, self.get_1st_eligible_maturity(evalDate),delta_exposure,
+                #     cd_underlying_price=cd_underlying_price)
+
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
                 # else:
                 #     option_type = self.util.type_put
-                # option_type = self.util.type_put
+                # # option_type = self.util.type_put
                 # portfolio = self.bkt_optionset.get_backspread(option_type,self.get_1st_eligible_maturity(evalDate),
                 #     cd_underlying_price=cd_underlying_price,moneyness1=0,moneyness2=-2)
 
                 print(portfolio.optionset[0].id_instrument,portfolio.optionset[0].dt_date,portfolio.optionset[0].underlying_price)
-                print(portfolio.optionset[1].id_instrument,portfolio.optionset[1].dt_date,portfolio.optionset[1].underlying_price)
+                # print(portfolio.optionset[1].id_instrument,portfolio.optionset[1].dt_date,portfolio.optionset[1].underlying_price)
                 # mdt1 = self.get_1st_eligible_maturity(evalDate)
                 # mdt2 = self.get_2nd_eligible_maturity(evalDate)
                 # portfolio = self.bkt_optionset.get_calendar_spread_long(self.moneyness, mdt1, mdt2,
                 #                                                                option_type=self.util.type_put)
                 # self.delta_neutral = True
                 self.portfolio = portfolio
-                self.bkt_account.update_invest_units(portfolio, self.util.long, cd_open_position_time,
-                                                     fund=cash_for_option)
+                self.bkt_account.update_invest_units(portfolio, self.util.long,delta_exposure,
+                                                     cd_open_by_price=cd_open_position_time,fund=cash_for_option)
                 self.bkt_account.open_position(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
                 self.flag_trade = True
             elif evalDate != dt_volpeak:
                 if self.flag_trade and self.bkt_account.holdings != []:
-                    if isinstance(self.portfolio, Straddle) or isinstance(self.portfolio, BackSpread):
-                        morming_npv = self.bkt_account.calculate_nvp(evalDate)
-                        if cd_event == 's' and (morming_npv -self.bkt_account.npv)/self.bkt_account.npv <= -0.02:
-                            idx_event += 1
-                            if self.flag_trade:
-                                print(idx_event, ' ', evalDate, ' close position by NPV')
-                                """ Close position by NPV"""
-                                self.flag_trade = False
-                                cd_close_position_time = 'amt_afternoon_avg'
-                                for bktoption in bkt.holdings:
-                                    self.bkt_account.close_position(evalDate, bktoption,
-                                                                    cd_close_by_price=cd_close_position_time)
-                        else:
+                    # if isinstance(self.portfolio, Straddle) or isinstance(self.portfolio, BackSpread):
+                    #     """ Delta neutral rebalancing """
+                    #     self.bkt_account.update_invest_units(self.portfolio, self.util.long, delta_exposure)
+                    #     self.bkt_account.rebalance_position(evalDate, self.portfolio)
+
+                    morming_npv = self.bkt_account.calculate_nvp(evalDate)
+                    if cd_event == 's' and (morming_npv - self.bkt_account.npv) / self.bkt_account.npv <= -0.01:
+                        idx_event += 1
+                        if self.flag_trade:
+                            print(idx_event, ' ', evalDate, ' close position by NPV')
+                            """ Close position by NPV"""
+                            self.flag_trade = False
+                            cd_close_position_time = 'amt_afternoon_avg'
+                            for bktoption in bkt.holdings:
+                                self.bkt_account.close_position(evalDate, bktoption,
+                                                                cd_close_by_price=cd_close_position_time)
+                    else:
+                        if isinstance(self.portfolio, Straddle) or isinstance(self.portfolio, BackSpread):
                             """ Delta neutral rebalancing """
-                            self.bkt_account.update_invest_units(self.portfolio, self.util.long)
+                            self.bkt_account.update_invest_units(self.portfolio, self.util.long, delta_exposure)
                             self.bkt_account.rebalance_position(evalDate, self.portfolio)
 
-            if self.flag_trade and self.bkt_account.holdings != []:
-                if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
-                    print("hello")
+
+
+            # if self.flag_trade and self.bkt_account.holdings != []:
+            #     if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
+            #         print("hello")
 
             if evalDate >= dt_volpeak:
                 idx_event += 1
@@ -134,10 +154,10 @@ class BktStrategyEventVol(BktOptionStrategy):
             """按当日价格调整保证金，计算投资组合盯市价值"""
             self.bkt_account.mkm_update(evalDate)
 
-            if self.flag_trade and self.bkt_account.holdings != []:
-                if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
-                    print("hello")
-            print(evalDate, bkt_optionset.eval_date, ' , ', bkt.npv)
+            # if self.flag_trade and self.bkt_account.holdings != []:
+            #     if self.bkt_account.total_margin_capital != self.bkt_account.holdings[1].trade_margin_capital:
+            #         print("hello")
+            print(evalDate, bkt_optionset.eval_date, ' , ', bkt.npv,bkt.port_delta)
             bkt_optionset.next()
             if idx_event >= len(self.df_events): break
 
@@ -500,6 +520,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 """Back Test Settings"""
 start_date = datetime.date(2015, 8, 1)
 end_date = datetime.date(2018, 5, 5)
+# start_date = datetime.date(2017, 11, 17)
+# end_date = datetime.date(2018, 5, 5)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()

@@ -16,7 +16,7 @@ class OptionPortfolio(object):
 
 class Straddle(OptionPortfolio):
 
-    def __init__(self,open_date,call,put):
+    def __init__(self,open_date,call,put,delta_exposure):
         OptionPortfolio.__init__(self,open_date)
         self.option_call = call
         self.option_put = put
@@ -25,7 +25,13 @@ class Straddle(OptionPortfolio):
         self.unit_call = None
         self.invest_ratio_put = None
         self.unit_put = None
-        self.delta_neutral_rebalancing()
+        self.rebalancing(delta_exposure)
+
+    def rebalancing(self,delta_exposure):
+        if delta_exposure == 0.0:
+            self.delta_neutral_rebalancing()
+        else:
+            self.delta_exposure_rebalancing(delta_exposure)
 
     def delta_neutral_rebalancing(self):
         delta_call = self.option_call.get_delta()
@@ -38,10 +44,24 @@ class Straddle(OptionPortfolio):
         else:
             self.invest_ratio_put = -delta_call / delta_put
 
+    def delta_exposure_rebalancing(self,delta_exposure):
+        delta_call = self.option_call.get_delta()
+        delta_put = self.option_put.get_delta()
+        if delta_exposure >= delta_call:
+            self.invest_ratio_put = 0.0
+            self.invest_ratio_call = 1.0
+
+        elif delta_exposure <= delta_put:
+            self.invest_ratio_put = 1.0
+            self.invest_ratio_call = 0.0
+        else:
+            self.invest_ratio_call = 1.0
+            self.invest_ratio_put = (delta_exposure-delta_call)/delta_put
+
 
 class BackSpread(OptionPortfolio):
 
-    def __init__(self,open_date,long,short,option_type):
+    def __init__(self,open_date,long,short,option_type,delta_exposure=0.0):
         OptionPortfolio.__init__(self,open_date)
         self.option_long = long
         self.option_short = short
@@ -51,9 +71,9 @@ class BackSpread(OptionPortfolio):
         self.invest_ratio_short = None
         self.unit_short = None
         self.option_type = option_type
-        self.delta_neutral_rebalancing()
+        self.rebalancing(delta_exposure)
 
-    def delta_neutral_rebalancing(self):
+    def rebalancing(self,delta_exposure=0.0):
         # if self.option_long.implied_vol == None: self.option_long.update_implied_vol()
         # if self.option_short.implied_vol == None: self.option_short.update_implied_vol()
         # iv = (self.option_long.implied_vol + self.option_short.implied_vol)/2
@@ -70,20 +90,23 @@ class BackSpread(OptionPortfolio):
             self.invest_ratio_short = delta_long / delta_short
 
 
+
 class Calls(OptionPortfolio):
 
-    def __init__(self,open_date,callset,cd_weighted='equal_unit'):
+    def __init__(self,open_date,callset,cd_long_short,cd_weighted='equal_unit'):
         OptionPortfolio.__init__(self,open_date)
         self.optionset = callset
         self.cd_weighted = cd_weighted
+        self.cd_long_short = cd_long_short
 
 
 class Puts(OptionPortfolio):
 
-    def __init__(self,open_date,callset,cd_weighted='equal_unit'):
+    def __init__(self,open_date,callset,cd_long_short,cd_weighted='equal_unit'):
         OptionPortfolio.__init__(self,open_date)
         self.optionset = callset
         self.cd_weighted = cd_weighted
+        self.cd_long_short = cd_long_short
 
 
 class CalandarSpread(OptionPortfolio):
@@ -94,3 +117,4 @@ class CalandarSpread(OptionPortfolio):
         self.option_mdt1 = option_mdt1
         self.option_mdt2 = option_mdt2
         self.option_type = option_type
+
