@@ -252,13 +252,6 @@ class BktOption(object):
         self.underlying_last_price = underlying_last_price
         self.underlying_open_price = underlying_open_price
 
-    # def update_rf(self):
-    #     try:
-    #         rf = self.current_daily_state[self.util.col_rf]
-    #     except Exception as e:
-    #         rf = 0.03
-    #     self.rf = rf
-
     def update_implied_vol(self):
         try:
             # self.update_rf()
@@ -512,3 +505,14 @@ class BktOption(object):
         unit = np.floor(mtm_value / (self.option_price * self.multiplier))
         # unit = mtm_value/(self.option_price*self.multiplier)
         return unit
+
+
+    def senario_calculate_option_price(self,underlying_price,vol):
+        try:
+            self.update_underlying()
+            self.update_option_price()
+            p = self.pricing_metrics.option_price(self.evaluation, self.rf,
+                                                    underlying_price, vol, self.engine_type)
+        except Exception as e:
+            p = None
+        return p
