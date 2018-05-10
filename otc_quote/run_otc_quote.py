@@ -54,18 +54,16 @@ def hisvol(data,n):
 # TODO: CHANGE URL
 url = '../data/'
 # TODO : CHANGE TO TEH LAST TEADING DAY
+start_date = datetime.date(2017, 4, 7) # 数据起始日期
 end_date = datetime.date(2018, 4, 20)
+
 evaluation_date = end_date
-
-
 engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
 Session = sessionmaker(bind=engine)
 sess = Session()
 metadata = MetaData(engine)
 table_stocks = Table('stocks_mktdata', metadata, autoload=True)
 
-
-start_date = datetime.date(2017, 4, 7) # 数据起始日期
 
 query_mkt = sess.query(table_stocks.c.dt_date,table_stocks.c.code_instrument,table_stocks.c.amt_close) \
     .filter(table_stocks.c.dt_date >= start_date).filter(table_stocks.c.dt_date <= end_date)

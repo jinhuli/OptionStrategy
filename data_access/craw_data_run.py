@@ -7,8 +7,7 @@ from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
-from back_test.data_option import get_50option_mktdata
-from back_test.bkt_option_set import BktOptionSet
+
 
 w.start()
 
@@ -25,6 +24,7 @@ futures_institution_positions = Table('futures_institution_positions', metadata,
 index_daily = Table('indexes_mktdata', metadata, autoload=True)
 option_contracts = Table('option_contracts', metadata, autoload=True)
 future_contracts = Table('future_contracts', metadata, autoload=True)
+stocks_mktdata = Table('stocks_mktdata', metadata, autoload=True)
 
 engine_intraday = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata_intraday', echo=False)
 conn_intraday = engine_intraday.connect()
@@ -38,6 +38,18 @@ metadata_metrics = MetaData(engine_metrics)
 optionMetrics = Table('option_metrics', metadata_metrics, autoload=True)
 
 dc = DataCollection()
+
+##################### GET STOCK MKT DATA #########################################
+# date = '2018-04-20'
+#
+setcode = w.wset("SectorConstituent", u"date=" + dt_date + ";sector=全部A股")
+code = setcode.Data[1]
+
+db_datas = dc.table_stocks().wind_stocks_daily_wss(dt_date,code)
+try:
+    conn.execute(stocks_mktdata.insert(), db_datas)
+except Exception as e:
+    print(e)
 
 #####################CONTRACT INFO#########################################
 # option_contracts

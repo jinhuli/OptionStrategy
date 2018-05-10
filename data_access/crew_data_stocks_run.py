@@ -25,11 +25,7 @@ stocks_mktdata = Table('stocks_mktdata', metadata, autoload=True)
 
 dc = DataCollection()
 
-# beg_date = datetime.date(2018, 4, 4)
-# end_date = datetime.date(2018, 4, 10)
-date = '2018-04-20'
 
-# date_range = w.tdays(beg_date, end_date, "").Data[0]
 ##################### CONTRACT INFO #########################################
 # option_contracts
 
@@ -45,16 +41,36 @@ date = '2018-04-20'
 #     print(dt)
 
 ##################### GET STOCK MKT DATA #########################################
+# date = '2018-04-20'
+#
+# setcode = w.wset("SectorConstituent", u"date=" + date + ";sector=全部A股")
+#
+# code = setcode.Data[1]
+#
+# db_datas = dc.table_stocks().wind_stocks_daily_wss(date,code)
+# try:
+#     conn.execute(stocks_mktdata.insert(), db_datas)
+# except Exception as e:
+#     print(e)
 
-setcode = w.wset("SectorConstituent", u"date=" + date + ";sector=全部A股")
 
-code = setcode.Data[1]
+##################### BATCH GET STOCK MKT DATA #########################################
+beg_date = datetime.date(2018, 4, 20)
+end_date = datetime.date(2018, 5, 9)
 
-db_datas = dc.table_stocks().wind_stocks_daily_wss(date,code)
-try:
-    conn.execute(stocks_mktdata.insert(), db_datas)
-except Exception as e:
-    print(e)
+date_range = w.tdays(beg_date, end_date, "").Data[0]
+for dt in date_range:
+    date = dt.strftime("%Y-%m-%d")
+    setcode = w.wset("SectorConstituent", u"date=" + date + ";sector=全部A股")
+
+    code = setcode.Data[1]
+
+    db_datas = dc.table_stocks().wind_stocks_daily_wss(date,code)
+    try:
+        conn.execute(stocks_mktdata.insert(), db_datas)
+    except Exception as e:
+        print(e)
+
 
 
 ##################### RECHECK DATA #########################################

@@ -6,7 +6,7 @@ from back_test.bkt_util import BktUtil
 
 
 def get_eventsdata(start_date, end_date,flag_impact):
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
     metadata = MetaData(engine)
@@ -25,7 +25,7 @@ def get_eventsdata(start_date, end_date,flag_impact):
 
 
 def get_50etf_mktdata(start_date, end_date):
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
     Index_mkt = dbt.IndexMkt
@@ -38,7 +38,7 @@ def get_50etf_mktdata(start_date, end_date):
 
 
 def get_50option_mktdata(start_date, end_date):
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
     Index_mkt = dbt.IndexMkt
@@ -74,10 +74,10 @@ def get_50option_mktdata(start_date, end_date):
 
 
 def get_50option_mktdata2(start_date, end_date):
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
-    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics', echo=False)
+    engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics', echo=False)
     Session2 = sessionmaker(bind=engine2)
     sess2 = Session2()
     Index_mkt = dbt.IndexMkt
@@ -117,7 +117,7 @@ def get_50option_mktdata2(start_date, end_date):
 
 
 def get_comoption_mktdata(start_date, end_date, name_code):
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
     util = BktUtil()

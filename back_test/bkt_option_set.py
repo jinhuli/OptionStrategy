@@ -437,7 +437,9 @@ class BktOptionSet(object):
         for idx, mdt in enumerate(self.eligible_maturities):
             iv_rename = 'implied_vol_' + str(idx)
             df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
-                .rename(columns={self.util.col_implied_vol: iv_rename}).set_index(self.util.col_adj_strike)
+                .rename(columns={self.util.col_implied_vol: iv_rename})\
+                .set_index(self.util.col_adj_strike).sort_index()
+
             if len(df_mkt) == 0: continue
             df_mdt_list.append(df_mkt)
             iv_name_list.append(iv_rename)
