@@ -6,10 +6,11 @@ class OptionMetrics:
     def __init__(self, option):
         self.Option = option
 
-    def option_price(self, evaluation, rf, spot_price, vol, engineType):
+    def reset_option(self,option):
+        self.Option = option
 
+    def option_price(self, evaluation, rf, spot_price, vol, engineType):
         ql_evalDate = evaluation.evalDate
-        # ql.Settings.instance().evaluationDate = ql_evalDate
         calendar = evaluation.calendar
         daycounter = evaluation.daycounter
         option = self.Option.option_ql
@@ -52,7 +53,7 @@ class OptionMetrics:
         engine = None
         return implied_vol
 
-    def delta(self, evaluation, rf, spot_price, option_price, engineType, implied_vol):
+    def delta(self, evaluation, rf, spot_price, engineType, implied_vol):
         option = self.Option.option_ql
         # if implied_vol == None :
         #     implied_vol = self.implied_vol(evaluation,rf, spot_price, option_price, engineType)
