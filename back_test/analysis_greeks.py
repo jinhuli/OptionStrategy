@@ -8,6 +8,7 @@ from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
 from OptionStrategyLib.OptionPricing import OptionPricingUtil as util
+import math
 
 
 class Portfolio(object):
@@ -141,15 +142,14 @@ class PortfolioBackspread(Portfolio):
 
 
 pu = PlotUtil()
-eval_date = datetime.date(2018, 3, 1)
-mdt = datetime.date(2018, 3, 28)
-spot = 2.8840  # 2018-3-1 50etf close price
-strike = 2.9
+eval_date = datetime.date(2018, 5, 11)
+mdt = datetime.date(2018, 5, 27)
+spot = 2.716  # 2018-3-1 50etf close price
+strike = 2.7
 strike2 = 3.0
-vol = 0.3
+option_price = 0.0546
+vol = 0.21
 rf = 0.03
-mkt_call = {3.1: 0.0148, 3.0: 0.0317, 2.95: 0.0461, 2.9: 0.0641, 2.85: 0.095, 2.8: 0.127, 2.75: 0.1622}
-mkt_put = {3.1: 0.2247, 3.0: 0.1424, 2.95: 0.1076, 2.9: 0.0751, 2.85: 0.0533, 2.8: 0.037, 2.75: 0.0249}
 
 engineType = 'AnalyticEuropeanEngine'
 calendar = ql.China()
@@ -158,69 +158,26 @@ evalDate = ql.Date(eval_date.day, eval_date.month, eval_date.year)
 maturitydt = ql.Date(mdt.day, mdt.month, mdt.year)
 evaluation = Evaluation(evalDate, daycounter, calendar)
 
-thoery_call = {}
-thoery_put = {}
-for k in mkt_call.keys():
-    option = OptionPlainEuropean(k, maturitydt, ql.Option.Call)
-    metrics = OptionMetrics(option)
-    p = metrics.option_price(evaluation, rf, spot, vol, engineType)
-    thoery_call.update({k: p})
-    option = OptionPlainEuropean(k, maturitydt, ql.Option.Put)
-    metrics = OptionMetrics(option)
-    p = metrics.option_price(evaluation, rf, spot, vol, engineType)
-    thoery_put.update({k: p})
-
 option_call = OptionPlainEuropean(strike, maturitydt, ql.Option.Call)
 
 option_put = OptionPlainEuropean(strike, maturitydt, ql.Option.Put)
 option_call2 = OptionPlainEuropean(strike2, maturitydt, ql.Option.Call)
-metrics = OptionMetrics(option_call2)
-vega = metrics.vega(evaluation, rf, spot, mkt_call[strike], engineType,
-             0.5)
-vega2 = metrics.vega(evaluation, rf, spot, mkt_call[strike], engineType,
-             0.1)
+metrics = OptionMetrics(option_call2, rf, engineType).set_evaluation(evaluation)
+iv = metrics.implied_vol(spot, option_price)
+vega = metrics.vega(spot, vol)
+vega2 = metrics.vega_effective(spot,vol)
+rho = metrics.rho(spot,vol)
+print(vega,vega2,rho)
+theta = metrics.theta(spot, iv)
 
-############## 组合价值随标的变化 ##############
-evalDate = ql.Date(eval_date.day, eval_date.month, eval_date.year)
-straddle = PortfolioStraddle(evalDate, option_call, option_put, spot, strike, vol, rf)
-# backspread = PortfolioBackspread(evalDate, option_call2, option_call, spot, strike, vol, rf)
-print('delta : ', straddle.delta())
-spots = np.arange(spot - 0.3, spot + 0.3, 0.005)
-npvs = straddle.pnls_senario_spot(spots)
-
-f1 = pu.plot_line_chart(spots, [npvs], ['straddle'], 'spot', 'pnl')
-
-############## 组合时间价值衰减 ##############
-evalDate = ql.Date(eval_date.day, eval_date.month, eval_date.year)
-straddle = PortfolioStraddle(evalDate, option_call, option_put, spot, strike, vol, rf)
-# backspread = PortfolioBackspread(evalDate, option_call2, option_call, spot, strike, vol, rf)
-
-pnls_theta = []
-x = []
-t = 0
-while evalDate < maturitydt:
-    pnl = straddle.pnl()
-    pnls_theta.append(pnl)
-    x.append(t)
-    evalDate = calendar.advance(evalDate, ql.Period(1, ql.Days))
-    straddle.reset_evaluation(evalDate)
-    t += 1
-
-f2 = pu.plot_line_chart(x, [pnls_theta], ['straddle'], 't', 'npv')
-
-############## 组合波动率变化 ##############
-evalDate = ql.Date(eval_date.day, eval_date.month, eval_date.year)
-straddle = PortfolioStraddle(evalDate, option_call, option_put, spot, strike, vol, rf)
-# backspread = PortfolioBackspread(evalDate, option_call2, option_call, spot, strike, vol, rf)
-
-npv0 = straddle.pnl()
-pnl_vols = []
-vols = np.arange(10.0, 30.0, 0.1)
-for vol in vols:
-    straddle.reset_vol(vol / 100.0)
-    npv = straddle.pnl()
-    pnl_vols.append(npv)
-
-f3 = pu.plot_line_chart(vols, [pnl_vols], ['straddle'], 'vol', 'pnl')
-
-plt.show()
+yield_curve = ql.FlatForward(evalDate,
+                             rf,
+                             daycounter)
+T = yield_curve.dayCounter().yearFraction(evalDate,
+                                          maturitydt)
+discount = yield_curve.discount(T)
+strikepayoff = ql.PlainVanillaPayoff(ql.Option.Call, strike)
+stddev = vol * math.sqrt(T)
+black = ql.BlackCalculator(strikepayoff, spot, stddev, discount)
+theta2 = black.theta(spot,T)/252
+print(iv, vega, theta,theta2)

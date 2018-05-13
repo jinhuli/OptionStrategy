@@ -20,7 +20,7 @@ class BktOptionSet(object):
                  pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
         self.util = BktUtil()
         tmp = df_option_metrics.loc[0, self.util.id_instrument]
-        self.option_code = tmp[0:tmp.index('_')]
+        self.option_code = tmp[0: tmp.index('_')]
         self.frequency = cd_frequency
         self.df_data = df_option_metrics
         self.pricing_type = pricing_type
@@ -523,7 +523,7 @@ class BktOptionSet(object):
             df.loc[idx,self.util.col_implied_vol] = iv
         return df
 
-    def collect_option_metrics(self, hp=20):
+    def collect_option_metrics(self, hp=30):
         res = []
         df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
         bktoption_list = self.bktoptionset
@@ -532,13 +532,14 @@ class BktOptionSet(object):
         bvs_put = self.get_volsurface_squre('put')
         for idx, option in enumerate(bktoption_list):
             if option.option_price > 0.0:
+                iv = option.get_implied_vol()
                 if option.option_type == self.util.type_call:
-                    carry, theta, vega, iv_roll_down = option.get_carry(bvs_call, hp)
+                    carry= option.get_carry(bvs_call, hp)
                 else:
-                    carry, theta, vega, iv_roll_down = option.get_carry(bvs_put, hp)
+                    carry = option.get_carry(bvs_put, hp)
                 theta = option.get_theta()
                 vega = option.get_vega()
-                iv = option.get_implied_vol()
+
                 delta = option.get_delta()
                 rho = option.get_rho()
                 gamma = option.get_gamma()

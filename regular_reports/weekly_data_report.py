@@ -59,84 +59,44 @@ def pcr(df_pcr,df_srf):
 """标的已实现历史波动率"""
 def hist_vol(df_underlying_core):
     """历史已实现波动率：1M、2M、3M、6M"""
-    # for (idx, row) in df_underlying_core.iterrows():
-    #     if idx == 0:
-    #         r = 0.0
-    #     else:
-    #         p1 = float(row['amt_close'])
-    #         p0 = float(df_underlying_core.loc[idx-1,'amt_close'])
-    #         if p0 == 0.0 or p1 == 0.0:
-    #             r = 0.0
-    #         else:
-    #             r = (p1-p0) / p0
-    #     df_underlying_core.loc[idx, 'yield'] = r
-    #
-    # for idx_mkt in range(len(df_underlying_core)):
-    #     if idx_mkt >= bd_6m:
-    #         df_underlying_core.loc[idx_mkt, '5近半年'] = np.std(df_underlying_core['yield'][idx_mkt-bd_6m:idx_mkt])*np.sqrt(252)*100
-    #     if idx_mkt >= bd_3m:
-    #         df_underlying_core.loc[idx_mkt, '4近三月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_3m:idx_mkt])*np.sqrt(252)*100
-    #     if idx_mkt >= bd_2m:
-    #         df_underlying_core.loc[idx_mkt, '3近两月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_2m:idx_mkt])*np.sqrt(252)*100
-    #     if idx_mkt >= bd_1m:
-    #         df_underlying_core.loc[idx_mkt, '2近一月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_1m:idx_mkt])*np.sqrt(252)*100
-    #
-    # df_histvol = df_underlying_core[df_underlying_core['dt_date']>=startDate]
-    # df_histvol = df_histvol[['dt_date','2近一月','3近两月','4近三月','5近半年']]
-    # df_histvol = df_histvol.sort_values(by='dt_date',ascending=False)
-    # df_histvol.to_csv('../save_results/'+namecode+'_future_hist_vols.csv')
-    # print('Part [历史已实现波动率] completed')
-    #
-    # """历史波动率锥"""
-    # histvols_6 = list(df_underlying_core['5近半年'].dropna())
-    # histvols_3 = list(df_underlying_core['4近三月'].dropna())
-    # histvols_2 = list(df_underlying_core['3近两月'].dropna())
-    # histvols_1 = list(df_underlying_core['2近一月'].dropna())
 
     histvols_1 = hisvol(df_underlying_core['amt_close'], 10).dropna().values
     histvols_2 = hisvol(df_underlying_core['amt_close'], 20).dropna().values
     histvols_3 = hisvol(df_underlying_core['amt_close'], 60).dropna().values
     histvols_6 = hisvol(df_underlying_core['amt_close'], 120).dropna().values
 
-    max_vols = [max(histvols_6), max(histvols_3), max(histvols_2), max(histvols_1)]
-    min_vols = [min(histvols_6), min(histvols_3), min(histvols_2), min(histvols_1)]
-    median_vols = [np.median(histvols_6), np.median(histvols_3), np.median(histvols_2),
-                   np.median(histvols_1)]
-    p75_vols = [np.percentile(histvols_6, 75), np.percentile(histvols_3, 75),
-                np.percentile(histvols_2, 75), np.percentile(histvols_1, 75)]
-    p25_vols = [np.percentile(histvols_6, 25), np.percentile(histvols_3, 25),
-                np.percentile(histvols_2, 25), np.percentile(histvols_1, 25)]
+    # max_vols = [max(histvols_6), max(histvols_3), max(histvols_2), max(histvols_1)]
+    # min_vols = [min(histvols_6), min(histvols_3), min(histvols_2), min(histvols_1)]
+    # median_vols = [np.median(histvols_6), np.median(histvols_3), np.median(histvols_2),
+    #                np.median(histvols_1)]
+    # p75_vols = [np.percentile(histvols_6, 75), np.percentile(histvols_3, 75),
+    #             np.percentile(histvols_2, 75), np.percentile(histvols_1, 75)]
+    # p25_vols = [np.percentile(histvols_6, 25), np.percentile(histvols_3, 25),
+    #             np.percentile(histvols_2, 25), np.percentile(histvols_1, 25)]
     current_vols = [histvols_6[-1], histvols_3[-1], histvols_2[-1], histvols_1[-1]]
     print('current_vols : ', current_vols)
-    # histvolcone = [current_vols, max_vols, min_vols, median_vols, p75_vols, p25_vols]
-    # x = [6, 3, 2, 1]
-    # f2, ax2 = plt.subplots()
-    # ldgs = ['当前水平', '最大值', '最小值', '中位数', '75分位数', '25分位数']
-    # for cont2, y in enumerate(histvolcone):
-    #     pu.plot_line(ax2, cont2, x, y, ldgs[cont2], '时间：月', '波动率（%）')
-    # ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-    #            ncol=6, mode="expand", borderaxespad=0., frameon=False)
-    # f2.set_size_inches((12, 6))
-    #
-    # f2.savefig('../save_figure/'+namecode+'_hist_vol_cone_' + str(evalDate) + '.png', dpi=300, format='png')
-    df_vol_cone = pd.DataFrame({'1-term': ['6月', '3月', '2月', '1月'],
-                                '2-当前隐含波动率': current_vols,
-                                '3-最大值': max_vols,
-                                '4-最小值': min_vols,
-                                '5-中位数': median_vols,
-                                '6-75分位数': p75_vols,
-                                '7-25分位数': p25_vols})
-    df_vol_cone.to_csv('../save_results/'+namecode+'_hist_vol_cone.csv')
-    print('Part [历史波动率锥] completed')
+    dates = df_underlying_core['dt_date'].tolist()[-len(histvols_6):]
+    df_histvol = pd.DataFrame({'dt_date':dates,10:histvols_1[-len(histvols_6):],20:histvols_2[-len(histvols_6):]
+                                  ,60:histvols_3[-len(histvols_6):],120:histvols_6})
+    df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
+    df_histvol.to_csv('../save_results/' + namecode + '_future_hist_vols.csv')
+    # df_vol_cone = pd.DataFrame({'1-term': ['6月', '3月', '2月', '1月'],
+    #                             '2-当前隐含波动率': current_vols,
+    #                             '3-最大值': max_vols,
+    #                             '4-最小值': min_vols,
+    #                             '5-中位数': median_vols,
+    #                             '6-75分位数': p75_vols,
+    #                             '7-25分位数': p25_vols})
+    # df_vol_cone.to_csv('../save_results/'+namecode+'_hist_vol_cone.csv')
 
 """隐含波动率期限结构"""
 def implied_vol_analysis(evalDate,w,nameCode):
     pu = PlotUtil()
-    engine1 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
+    engine1 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
                            echo=False)
     Session1 = sessionmaker(bind=engine1)
     sess1 = Session1()
-    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics',
+    engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics',
                            echo=False)
     Session2 = sessionmaker(bind=engine2)
     sess2 = Session2()
@@ -209,102 +169,34 @@ def implied_vol_analysis(evalDate,w,nameCode):
 
     optiondata_atm_df = df_put_iv[['dt_date','contract_month']]
     optiondata_atm_df.loc[:,'implied_vol'] = 100*(df_call_iv.loc[:,'pct_implied_vol']+df_put_iv.loc[:,'pct_implied_vol'])/2.0
-
-    f1, ax1 = plt.subplots()
-    cont = 0
-    contracts = []
-    for d in dates:
-        df = optiondata_atm_df[optiondata_atm_df['dt_date']==d]
-        df = df.sort_values(by=['contract_month'],ascending=True)
-        pu.plot_line(ax1, cont, range(len(df)), df['implied_vol'], d, '合约月份', '波动率(%)')
-        if len(contracts)==0 :contracts = df['contract_month'].tolist()
-        cont += 1
-    ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-               ncol=6, mode="expand", borderaxespad=0.,frameon=False)
-    ax1.set_xticks(range(len(contracts)))
-    ax1.set_xticklabels(contracts)
-    f1.set_size_inches((12,6))
-    # optiondata_atm_df = optiondata_atm_df[['date','contract_month','implied_vol']]
     optiondata_atm_df.to_csv('../save_results/'+nameCode+'_implied_vol_term_structure.csv')
-    f1.savefig('../save_figure/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
-    # ################ #Implied Vol Surface
+    # f1, ax1 = plt.subplots()
+    # cont = 0
+    # contracts = []
+    # for d in dates:
+    #     df = optiondata_atm_df[optiondata_atm_df['dt_date']==d]
+    #     df = df.sort_values(by=['contract_month'],ascending=True)
+    #     pu.plot_line(ax1, cont, range(len(df)), df['implied_vol'], d, '合约月份', '波动率(%)')
+    #     if len(contracts)==0 :contracts = df['contract_month'].tolist()
+    #     cont += 1
+    # ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+    #            ncol=6, mode="expand", borderaxespad=0.,frameon=False)
+    # ax1.set_xticks(range(len(contracts)))
+    # ax1.set_xticklabels(contracts)
+    # f1.set_size_inches((12,6))
+    # optiondata_atm_df = optiondata_atm_df[['date','contract_month','implied_vol']]
+    # f1.savefig('../save_figure/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
-    # dates_week = [evalDate,w.tdaysoffset(-5, evalDate, "").Data[0][0].strftime("%Y-%m-%d")]
-    # black_var_surfaces = []
-    # for dt in dates_week:
-    #     optionivs_df = pd.DataFrame()
-    #     date = evalDate
-    #     dt_eval = datetime.datetime.strptime(evalDate, '%Y-%m-%d').date()
-    #     ql_evalDate = ql.Date(dt_eval.day, dt_eval.month, dt_eval.year)
-    #     calendar = ql.China()
-    #     daycounter = ql.ActualActual()
-    #     optiondataset = sess.query(optionmkt_table, options_table) \
-    #         .join(options_table, optionmkt_table.id_instrument == options_table.id_instrument) \
-    #         .filter(optionmkt_table.dt_date == date) \
-    #         .filter(optionmkt_table.datasource == 'czce') \
-    #         .all()
-    #     idx_ivs = 0
-    #     for optiondata in optiondataset:
-    #         if optiondata.Options.cd_option_type == 'put': continue
-    #         if optiondata.Options.name_contract_month not in contracts: continue
-    #         optionivs_df.loc[idx_ivs, 'id_instrument'] = optiondata.OptionMkt.id_instrument
-    #         optionivs_df.loc[idx_ivs, 'pct_implied_vol'] = float(optiondata.OptionMkt.pct_implied_vol)
-    #         optionivs_df.loc[idx_ivs, 'dt_maturity'] = optiondata.Options.dt_maturity
-    #         optionivs_df.loc[idx_ivs, 'amt_strike'] = float(optiondata.Options.amt_strike)
-    #         idx_ivs += 1
-    #
-    #     maturities = optionivs_df['dt_maturity'].unique()
-    #     strikes = optionivs_df['amt_strike'].unique()
-    #     volset = []
-    #     year_fracs = []
-    #     core_strikes = []
-    #     ql_maturities = []
-    #     for k in strikes:
-    #         nbr_k = len(optionivs_df[optionivs_df['amt_strike'].map(lambda x: x == k)])
-    #         if nbr_k == maturities.size:
-    #             core_strikes.append(k)
-    #     for dt_m in maturities:
-    #         c0 = optionivs_df['dt_maturity'].map(lambda x: x == dt_m)
-    #         volset.append(optionivs_df[c0]['pct_implied_vol'].values.tolist())
-    #         year_fracs.append((dt_m - dt_eval).days / 365.0)
-    #         ql_maturities.append(ql.Date(dt_m.day, dt_m.month, dt_m.year))
-    #
-    #     implied_vols = ql.Matrix(len(core_strikes), len(maturities))
-    #     for i in range(implied_vols.rows()):
-    #         for j in range(implied_vols.columns()):
-    #             implied_vols[i][j] = volset[j][i]
-    #     plot_years = np.arange(min(year_fracs), max(year_fracs), 0.01)
-    #     plot_strikes = np.arange(min(core_strikes), max(core_strikes), 10.0)
-    #     black_var_surface = ql.BlackVarianceSurface(
-    #         ql_evalDate, calendar, ql_maturities, core_strikes, implied_vols,
-    #         daycounter)
-    #     black_var_surfaces.append(black_var_surface)
-    #
-    # X, Y = np.meshgrid(plot_strikes, plot_years)
-    # Z = np.array([black_var_surfaces[0].blackVol(y, x)
-    #               for xr, yr in zip(X, Y)
-    #               for x, y in zip(xr, yr)]
-    #              ).reshape(len(X), len(X[0]))
-    #
-    # fig2 = plt.figure()
-    # ax_ivs2 = fig2.gca(projection='3d')
-    # surf2 = ax_ivs2.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=plt_cm.coolwarm, linewidth=0.1)
-    # ax_ivs2.set_xlabel('行权价')
-    # ax_ivs2.set_ylabel('期限')
-    # ax_ivs2.set_zlabel('波动率（%）')
-    # fig2.colorbar(surf2, shrink=0.5, aspect=5)
-    #
-    # fig2.savefig('../save_figure/sr_iv_surface_' + str(evalDate) + '.png', dpi=300, format='png')
 
 """历史隐含波动率"""
 def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_future):
     pu = PlotUtil()
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
                            echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
-    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics',
+    engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics',
                            echo=False)
     Session2 = sessionmaker(bind=engine2)
     sess2 = Session2()
@@ -398,17 +290,17 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
             diff_min = diff
             current_iv_pct = p
     print(current_iv_pct)
-    f1, ax1 = plt.subplots()
-
-    pu.plot_line(ax1, 0, df_iv_results['dt_date'], core_ivs, '隐含波动率', '日期', '(%)')
-    pu.plot_line(ax1, 1, df_iv_results['dt_date'], [p_75]*len(core_ivs), '75分位数', '日期', '(%)')
-    pu.plot_line(ax1, 2, df_iv_results['dt_date'], [p_25]*len(core_ivs), '25分位数', '日期', '(%)')
-    pu.plot_line(ax1, 3, df_iv_results['dt_date'], [p_mid]*len(core_ivs), '中位数', '日期', '(%)')
-
-    ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-               ncol=3, mode="expand", borderaxespad=0.,frameon=False)
-    f1.set_size_inches((12,6))
-    f1.savefig('../save_figure/'+nameCode+'_hist_atm_ivs_' + str(evalDate) + '.png', dpi=300, format='png')
+    # f1, ax1 = plt.subplots()
+    #
+    # pu.plot_line(ax1, 0, df_iv_results['dt_date'], core_ivs, '隐含波动率', '日期', '(%)')
+    # pu.plot_line(ax1, 1, df_iv_results['dt_date'], [p_75]*len(core_ivs), '75分位数', '日期', '(%)')
+    # pu.plot_line(ax1, 2, df_iv_results['dt_date'], [p_25]*len(core_ivs), '25分位数', '日期', '(%)')
+    # pu.plot_line(ax1, 3, df_iv_results['dt_date'], [p_mid]*len(core_ivs), '中位数', '日期', '(%)')
+    #
+    # ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+    #            ncol=3, mode="expand", borderaxespad=0.,frameon=False)
+    # f1.set_size_inches((12,6))
+    # f1.savefig('../save_figure/'+nameCode+'_hist_atm_ivs_' + str(evalDate) + '.png', dpi=300, format='png')
 
     df_iv_results.to_csv('../save_results/'+nameCode+'_hist_atm_ivs.csv')
 
@@ -416,7 +308,7 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
 def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
     w.start()
     pu = PlotUtil()
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
                            echo=False)
     metadata = MetaData(engine)
     Session = sessionmaker(bind=engine)
@@ -520,14 +412,14 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 ############################################################################################
 # Eval Settings
 
-dt_date = datetime.date(2018, 5, 4)  # Set as Friday
-dt_last_week = datetime.date(2018, 4, 27)
-# current_core_underlying = 'sr_1809'
-# namecode = 'sr'
-# exchange_code = 'czce'
-current_core_underlying = 'm_1809'
-namecode = 'm'
-exchange_code = 'dce'
+dt_date = datetime.date(2018, 5, 11)  # Set as Friday
+dt_last_week = datetime.date(2018, 5, 4)
+current_core_underlying = 'sr_1809'
+namecode = 'sr'
+exchange_code = 'czce'
+# current_core_underlying = 'm_1809'
+# namecode = 'm'
+# exchange_code = 'dce'
 contracts = ['1809', '1901', '1905','1909']
 
 ############################################################################################
@@ -543,7 +435,7 @@ bd_6m = 6 * bd_1m
 calendar = ql.China()
 pu = PlotUtil()
 ###########################################################################################
-engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
 metadata2 = MetaData(engine2)
 Session2 = sessionmaker(bind=engine2)
 sess2 = Session2()
@@ -574,6 +466,7 @@ df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
 df_cmd1 = pcr(df_pcr, df_srf) # 主力连续
 # 标的历史波动率
 hist_vol(df_cmd1)
+print('Part [标的历史波动率] completed')
 
 implied_vol_analysis(evalDate,w,namecode)
 print('Part [隐含波动率期限结构] completed')

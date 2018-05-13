@@ -11,7 +11,7 @@ from data_access.db_data_collection import DataCollection
 
 w.start()
 
-date = datetime.date(2018, 5, 8)
+date = datetime.date(2018, 5,11)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
