@@ -7,7 +7,7 @@ class Option(object):
 
 class OptionPlainEuropean(object):
 
-    def __init__(self, strike, maturitydt, optionType):
+    def __init__(self, strike, maturitydt, optionType,init_price=None):
         self.strike = strike
         self.maturitydt = maturitydt
         self.optionType = optionType
@@ -17,6 +17,7 @@ class OptionPlainEuropean(object):
         self.exercise = exercise
         self.payoff = payoff
         self.option_ql = option
+        self.init_price = init_price
 
 class OptionPlainAmerican:
     def __init__(self, strike,effectivedt, maturitydt, optionType):
