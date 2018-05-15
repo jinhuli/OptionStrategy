@@ -43,81 +43,81 @@ class BktStrategyEvent(object):
         self.dt_opens = [dt_open_1d, dt_open_2d, dt_open_3d, dt_open_5d]
         self.dt_closes = [dt_close_b2d,dt_close_b1d,dt_close_1d, dt_close_2d, dt_close_3d, dt_close_5d]
 
-    def intraday_trade_run(self):
-        dt1 = datetime.date(2018,3,23)
-        dt2 = datetime.date(2018,4,9)
-        dt3 = datetime.date(2018,4,17)
-        dates = [dt1,dt2,dt3]
-        for date in dates:
-            dt_event = date
-            dt_volpeak = date
-            cd_open_position_time = 'morning_open_15min'
-            cd_close_position_time = 'afternoon_close_15min'
-            bkt_strategy = self.bkt_strategy
-            bkt_optionset = bkt_strategy.bkt_optionset
-            bkt_account = bkt_strategy.bkt_account
-            while bkt_optionset.index < len(bkt_optionset.dt_list):
-                dt_event = dt_open
-                dt_volpeak = dt_close
-                cd_trade_deriction = event['cd_trade_direction']
-                cd_open_position_time = event['cd_open_position_time']
-                cd_close_position_time = event['cd_close_position_time']
-
-                evalDate = bkt_optionset.eval_date
-
-                """ 回测期最后一天全部清仓 """
-                if evalDate == bkt_optionset.end_date:
-                    # print(' Liquidate all positions !!! ')
-                    bkt_account.liquidate_all(evalDate)
-                    bkt_account.mkm_update(evalDate)
-                    # print(evalDate, ' , ', bkt_account.npv)  # npv是组合净值，期初为1
-                    break
-
-                """Option: Open position on event day, close on vol peak day"""
-                if evalDate == dt_event:
-                    # print(evalDate, ' open position')
-
-                    if bkt_strategy.flag_trade:
-                        # print(evalDate, ' Trying to open position before previous one closed!')
-                        return
-                    cash_for_option = (1 - self.cash_reserve_pct) * bkt_account.cash
-
-                    """Option: Select Strategy and Open Position"""
-                    # if cd_trade_deriction == -1:
-                    #     portfolio = self.bkt_optionset.get_put(self.moneyness,
-                    #                                                   self.get_1st_eligible_maturity(evalDate))  # 选择跨式期权头寸
-                    # elif cd_trade_deriction == 1:
-                    #     portfolio = self.bkt_optionset.get_call(self.moneyness, self.get_1st_eligible_maturity(evalDate))
-                    # else:
-                    #     portfolio = self.bkt_optionset.get_straddle(self.moneyness,
-                    #                                                        self.get_1st_eligible_maturity(evalDate))
-                    portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
-
-                    # cd_underlying_price = 'open'
-                    # portfolio = bkt_optionset.get_straddle(
-                    #     self.moneyness, bkt_strategy.get_1st_eligible_maturity(evalDate),
-                    #     cd_underlying_price=cd_underlying_price)
-
-                    self.portfolio = portfolio
-                    bkt_account.update_invest_units(portfolio, self.util.long, cd_open_position_time,
-                                                    fund=cash_for_option)
-                    bkt_account.open_position(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
-                    bkt_strategy.flag_trade = True
-
-                if evalDate >= dt_volpeak:
-                    # idx_event += 1
-                    if bkt_strategy.flag_trade:
-                        # print( evalDate, ' close position')
-                        """ Close position"""
-                        bkt_strategy.flag_trade = False
-                        for bktoption in bkt_account.holdings:
-                            bkt_account.close_position(evalDate, bktoption, cd_close_by_price=cd_close_position_time)
-
-                """按当日价格调整保证金，计算投资组合盯市价值"""
-                bkt_account.mkm_update(evalDate)
-                if bkt_optionset.index == len(bkt_optionset.dt_list) - 1: break
-                bkt_optionset.next()
-            return bkt_account.npv
+    # def intraday_trade_run(self):
+    #     dt1 = datetime.date(2018,3,23)
+    #     dt2 = datetime.date(2018,4,9)
+    #     dt3 = datetime.date(2018,4,17)
+    #     dates = [dt1,dt2,dt3]
+    #     for date in dates:
+    #         dt_event = date
+    #         dt_volpeak = date
+    #         cd_open_position_time = 'morning_open_15min'
+    #         cd_close_position_time = 'afternoon_close_15min'
+    #         bkt_strategy = self.bkt_strategy
+    #         bkt_optionset = bkt_strategy.bkt_optionset
+    #         bkt_account = bkt_strategy.bkt_account
+    #         while bkt_optionset.index < len(bkt_optionset.dt_list):
+    #             dt_event = dt_open
+    #             dt_volpeak = dt_close
+    #             cd_trade_deriction = event['cd_trade_direction']
+    #             cd_open_position_time = event['cd_open_position_time']
+    #             cd_close_position_time = event['cd_close_position_time']
+    #
+    #             evalDate = bkt_optionset.eval_date
+    #
+    #             """ 回测期最后一天全部清仓 """
+    #             if evalDate == bkt_optionset.end_date:
+    #                 # print(' Liquidate all positions !!! ')
+    #                 bkt_account.liquidate_all(evalDate)
+    #                 bkt_account.mkm_update(evalDate)
+    #                 # print(evalDate, ' , ', bkt_account.npv)  # npv是组合净值，期初为1
+    #                 break
+    #
+    #             """Option: Open position on event day, close on vol peak day"""
+    #             if evalDate == dt_event:
+    #                 # print(evalDate, ' open position')
+    #
+    #                 if bkt_strategy.flag_trade:
+    #                     # print(evalDate, ' Trying to open position before previous one closed!')
+    #                     return
+    #                 cash_for_option = (1 - self.cash_reserve_pct) * bkt_account.cash
+    #
+    #                 """Option: Select Strategy and Open Position"""
+    #                 # if cd_trade_deriction == -1:
+    #                 #     portfolio = self.bkt_optionset.get_put(self.moneyness,
+    #                 #                                                   self.get_1st_eligible_maturity(evalDate))  # 选择跨式期权头寸
+    #                 # elif cd_trade_deriction == 1:
+    #                 #     portfolio = self.bkt_optionset.get_call(self.moneyness, self.get_1st_eligible_maturity(evalDate))
+    #                 # else:
+    #                 #     portfolio = self.bkt_optionset.get_straddle(self.moneyness,
+    #                 #                                                        self.get_1st_eligible_maturity(evalDate))
+    #                 portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
+    #
+    #                 # cd_underlying_price = 'open'
+    #                 # portfolio = bkt_optionset.get_straddle(
+    #                 #     self.moneyness, bkt_strategy.get_1st_eligible_maturity(evalDate),
+    #                 #     cd_underlying_price=cd_underlying_price)
+    #
+    #                 self.portfolio = portfolio
+    #                 bkt_account.update_invest_units(portfolio, self.util.long, cd_open_position_time,
+    #                                                 fund=cash_for_option)
+    #                 bkt_account.open_position(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
+    #                 bkt_strategy.flag_trade = True
+    #
+    #             if evalDate >= dt_volpeak:
+    #                 # idx_event += 1
+    #                 if bkt_strategy.flag_trade:
+    #                     # print( evalDate, ' close position')
+    #                     """ Close position"""
+    #                     bkt_strategy.flag_trade = False
+    #                     for bktoption in bkt_account.holdings:
+    #                         bkt_account.close_position(evalDate, bktoption, cd_close_by_price=cd_close_position_time)
+    #
+    #             """按当日价格调整保证金，计算投资组合盯市价值"""
+    #             bkt_account.mkm_update(evalDate)
+    #             if bkt_optionset.index == len(bkt_optionset.dt_list) - 1: break
+    #             bkt_optionset.next()
+    #         return bkt_account.npv
 
     def events_run(self):
         df_res = pd.DataFrame()
@@ -178,7 +178,8 @@ class BktStrategyEvent(object):
 
                 cd_underlying_price = 'open'
                 portfolio = bkt_optionset.get_straddle(
-                    self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),cd_underlying_price=cd_underlying_price)
+                    self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
+                    cd_underlying_price=cd_underlying_price)
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
                 # else:
@@ -205,10 +206,6 @@ class BktStrategyEvent(object):
                         bkt_account.update_invest_units(self.portfolio, self.util.long)
                         bkt_account.rebalance_position(evalDate, self.portfolio)
 
-            if bkt_strategy.flag_trade and bkt_account.holdings != []:
-                if bkt_account.total_margin_capital != bkt_account.holdings[1].trade_margin_capital:
-                    print("hello")
-
             if evalDate >= dt_volpeak:
                 # idx_event += 1
                 if bkt_strategy.flag_trade:
@@ -220,10 +217,6 @@ class BktStrategyEvent(object):
 
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt_account.mkm_update(evalDate)
-
-            if bkt_strategy.flag_trade and bkt_account.holdings != []:
-                if bkt_account.total_margin_capital != bkt_account.holdings[1].trade_margin_capital:
-                    print("hello")
             # print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv)
             if bkt_optionset.index == len(bkt_optionset.dt_list)-1 : break
             bkt_optionset.next()
