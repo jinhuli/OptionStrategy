@@ -299,18 +299,18 @@ class BktStrategyEventS(object):
                     cd_underlying_price = 'close'
                 else:
                     cd_underlying_price = 'open'
-                portfolio = bkt_optionset.get_straddle(
-                    self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
-                    cd_underlying_price=cd_underlying_price)
+                # portfolio = bkt_optionset.get_straddle(
+                #     self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
+                #     cd_underlying_price=cd_underlying_price)
 
-                # if cd_trade_deriction == 1:
-                #     portfolio = bkt_optionset.get_call(
-                #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
-                #           cd_underlying_price=cd_underlying_price)
-                # else:
-                #     portfolio = bkt_optionset.get_put(
-                #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
-                #           cd_underlying_price=cd_underlying_price)
+                if cd_trade_deriction == 1:
+                    portfolio = bkt_optionset.get_call(
+                        self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
+                          cd_underlying_price=cd_underlying_price)
+                else:
+                    portfolio = bkt_optionset.get_put(
+                        self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
+                          cd_underlying_price=cd_underlying_price)
 
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
@@ -350,10 +350,10 @@ class BktStrategyEventS(object):
 
 
 """Back Test Settings"""
-# start_date = datetime.date(2015, 8, 1)
-start_date = datetime.date(2017, 11, 1)
-end_date = datetime.date(2017, 12, 20)
-# end_date = datetime.date(2018, 5, 1)
+start_date = datetime.date(2015, 8, 1)
+# start_date = datetime.date(2017, 11, 1)
+# end_date = datetime.date(2017, 12, 20)
+end_date = datetime.date(2018, 5, 1)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
