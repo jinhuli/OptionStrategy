@@ -161,6 +161,54 @@ class BktStrategyEventVol(BktOptionStrategy):
             bkt_optionset.next()
             if idx_event >= len(self.df_events): break
 
+    def ivs_ranked_run(self):
+        bkt_optionset = self.bkt_optionset
+        df_ivs = pd.DataFrame()
+        df_skew = pd.DataFrame()
+        while bkt_optionset.index < len(bkt_optionset.dt_list) - 1:
+            evalDate = bkt_optionset.eval_date
+            cd_underlying_price = 'close'
+            mdt = self.get_1st_eligible_maturity(evalDate)
+            option_by_moneyness = self.bkt_optionset.update_options_by_moneyness(cd_underlying_price)
+            optionset = option_by_moneyness[mdt]
+            options_call = optionset[self.util.type_call]
+            options_put = optionset[self.util.type_put]
+            m_call = list(options_call.keys())
+            m_put = list(options_put.keys())
+            iv_call = []
+            iv_put = []
+            dt = []
+            mdts = []
+
+            for m in m_call:
+                iv = options_call[m].get_implied_vol()
+                iv_call.append(iv)
+                dt.append(evalDate)
+                mdts.append(mdt)
+            for m1 in m_put:
+                iv = options_put[m1].get_implied_vol()
+                iv_put.append(iv)
+
+            ivset = pd.DataFrame(data={'dt':dt,'mdt':mdt,'m_call':m_call,'m_put':m_put,
+                          'iv_call':iv_call,'iv_put':iv_put})
+            df_ivcall = ivset[ivset['m_call']<=0].sort_values(by='m_call',ascending=False).reset_index(drop=True).query('index <= 4')
+            if len(df_ivcall) <= 1:
+                otm_skew_call = np.nan
+            else:
+                df_diffcall = df_ivcall['iv_call'].diff()
+                otm_skew_call = df_diffcall.sum()/(len(df_diffcall)-1)
+            df_ivput = ivset[ivset['m_put']<=0].sort_values(by='m_put',ascending=False).reset_index(drop=True).query('index <= 4')
+            if len(df_ivput) <= 1:
+                otm_skew_put = np.nan
+            else:
+                df_diffput = df_ivput['iv_put'].diff()
+                otm_skew_put = df_diffput.sum()/(len(df_diffput)-1)
+            ivskew = pd.DataFrame(data={'dt':[evalDate],'mdt':[mdt],'otm_skew_call':[otm_skew_call],
+                                        'otm_skew_put':[otm_skew_put]})
+            df_skew = df_skew.append(ivskew,ignore_index=True)
+            bkt_optionset.next()
+        df_skew.to_csv('../save_results/df_skew_otm.csv')
+
     def ivs_run(self):
         bkt_optionset = self.bkt_optionset
         bkt = self.bkt_account
@@ -172,6 +220,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 
             evalDate = bkt_optionset.eval_date
             cd_underlying_price = 'close'
+            option_by_moneyness = self.bkt_optionset.update_options_by_moneyness(cd_underlying_price)
+
             call_atm = self.bkt_optionset.get_call(
                 0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             put_atm = self.bkt_optionset.get_put(
@@ -528,10 +578,10 @@ class BktStrategyEventVol(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2017, 11, 9)
-end_date = datetime.date(2017, 12, 9)
-# start_date = datetime.date(2017, 11, 17)
-# end_date = datetime.date(2018, 5, 5)
+# start_date = datetime.date(2017, 11, 9)
+# end_date = datetime.date(2017, 12, 31)
+start_date = datetime.date(2015, 3, 1)
+end_date = datetime.date(2018, 5, 5)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -566,5 +616,5 @@ bkt_strategy.set_min_holding_days(15)
 # #
 # bkt_strategy.return_analysis()
 
-bkt_strategy.ivs_run()
+bkt_strategy.ivs_ranked_run()
 

@@ -263,8 +263,8 @@ class BktOption(object):
         if option_price == None:
             option_price = self.option_price
         try:
-            self.update_underlying()
-            self.update_option_price()
+            # self.update_underlying()
+            # self.update_option_price()
             if self.flag_calculate_iv:
                 implied_vol = self.pricing_metrics.implied_vol(spot,option_price)
             else:

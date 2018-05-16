@@ -727,7 +727,7 @@ class DataCollection():
             data = w.wset("optioncontractbasicinfo", "exchange=sse;windcode=510050.SH;status=all")
             optionData = data.Data
             optionFlds = data.Fields
-
+            print('ErrorCode : ',data.ErrorCode)
             wind_code = optionData[optionFlds.index('wind_code')]
             trade_code = optionData[optionFlds.index('trade_code')]
             sec_name = optionData[optionFlds.index('sec_name')]

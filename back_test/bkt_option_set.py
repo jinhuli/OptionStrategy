@@ -284,7 +284,11 @@ class BktOptionSet(object):
 
     """Back Spread: Long small delta(atm), short large delta(otm)"""
     def get_backspread(self,option_type,mdt,moneyness1=0,moneyness2=-2,cd_underlying_price='open'):
-        options_by_moneyness = self.update_options_by_moneyness()
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
+        if moneyness2 not in options_by_moneyness[mdt][option_type].keys():
+            moneyness2 += 1
+            moneyness1 += 1
+            print(self.eval_date,' Move moneyness rank for lack of stikes')
         option_long = options_by_moneyness[mdt][option_type][moneyness2]
         option_short = options_by_moneyness[mdt][option_type][moneyness1]
         bs = BackSpread(self.eval_date,option_long,option_short,option_type)

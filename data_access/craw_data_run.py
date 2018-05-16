@@ -11,7 +11,7 @@ from data_access.db_data_collection import DataCollection
 
 w.start()
 
-date = datetime.date(2018, 5,11)
+date = datetime.date(2018, 5,15)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -40,16 +40,15 @@ optionMetrics = Table('option_metrics', metadata_metrics, autoload=True)
 dc = DataCollection()
 
 ##################### GET STOCK MKT DATA #########################################
-# date = '2018-04-20'
 #
-setcode = w.wset("SectorConstituent", u"date=" + dt_date + ";sector=全部A股")
-code = setcode.Data[1]
-
-db_datas = dc.table_stocks().wind_stocks_daily_wss(dt_date,code)
-try:
-    conn.execute(stocks_mktdata.insert(), db_datas)
-except Exception as e:
-    print(e)
+# setcode = w.wset("SectorConstituent", u"date=" + dt_date + ";sector=全部A股")
+# code = setcode.Data[1]
+#
+# db_datas = dc.table_stocks().wind_stocks_daily_wss(dt_date,code)
+# try:
+#     conn.execute(stocks_mktdata.insert(), db_datas)
+# except Exception as e:
+#     print(e)
 
 #####################CONTRACT INFO#########################################
 # option_contracts
