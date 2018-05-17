@@ -266,8 +266,8 @@ class BktOptionSet(object):
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值行权价往实值方向移一档
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
-        option_call = options_by_moneyness[mdt][self.util.type_call][moneyness_rank]
-        option_put = options_by_moneyness[mdt][self.util.type_put][moneyness_rank]
+        option_call = options_by_moneyness[mdt][self.util.type_call][1]
+        option_put = options_by_moneyness[mdt][self.util.type_put][0]
         straddle = Straddle(self.eval_date, option_call, option_put, delta_exposure)
         return straddle
 

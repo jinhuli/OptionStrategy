@@ -19,7 +19,7 @@ def get_eventsdata(start_date, end_date,flag_impact):
         .filter(events.c.dt_date >= start_date) \
         .filter(events.c.dt_date <= end_date) \
         .filter(events.c.flag_impact == flag_impact)\
-        .filter(events.c.cd_occurrence == 's')
+        .filter(events.c.cd_occurrence == 'e')
     df_event = pd.read_sql(query.statement, query.session.bind)
     return df_event
 

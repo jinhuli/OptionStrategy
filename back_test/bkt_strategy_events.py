@@ -177,9 +177,10 @@ class BktStrategyEvent(object):
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
 
                 cd_underlying_price = 'open'
-                # portfolio = bkt_optionset.get_straddle(
-                #     self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
-                #     cd_underlying_price=cd_underlying_price)
+                portfolio = bkt_optionset.get_straddle(
+                    self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
+                    cd_underlying_price=cd_underlying_price)
+
                 # if cd_trade_deriction == 1:
                 #     portfolio = bkt_optionset.get_call(
                 #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long)
@@ -187,12 +188,12 @@ class BktStrategyEvent(object):
                 #     portfolio = bkt_optionset.get_put(
                 #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long)
 
-                if cd_trade_deriction == 1:
-                    option_type = self.util.type_call
-                else:
-                    option_type = self.util.type_put
-                portfolio = bkt_optionset.get_backspread(
-                    option_type,bkt_strategy.get_1st_eligible_maturity(evalDate),moneyness1=2,moneyness2=0)
+                # if cd_trade_deriction == 1:
+                #     option_type = self.util.type_call
+                # else:
+                #     option_type = self.util.type_put
+                # portfolio = bkt_optionset.get_backspread(
+                #     option_type,bkt_strategy.get_1st_eligible_maturity(evalDate))
 
 
                 self.portfolio = portfolio
@@ -295,22 +296,27 @@ class BktStrategyEventS(object):
                 cash_for_option = (1 - self.cash_reserve_pct) * bkt_account.cash
 
                 """Option: Select Strategy and Open Position"""
+                # if cd_trade_deriction == 1:
+                #     delta = 0.2
+                # else:
+                #     delta = -0.2
+                delta = 0.0
                 if cd_open_position_time == 'afternoon_close_15min':
                     cd_underlying_price = 'close'
                 else:
                     cd_underlying_price = 'open'
-                # portfolio = bkt_optionset.get_straddle(
-                #     self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
-                #     cd_underlying_price=cd_underlying_price)
-
-                if cd_trade_deriction == 1:
-                    portfolio = bkt_optionset.get_call(
-                        self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
-                          cd_underlying_price=cd_underlying_price)
-                else:
-                    portfolio = bkt_optionset.get_put(
-                        self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
-                          cd_underlying_price=cd_underlying_price)
+                portfolio = bkt_optionset.get_straddle(
+                    self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),delta,
+                    cd_underlying_price=cd_underlying_price)
+                #
+                # if cd_trade_deriction == 1:
+                #     portfolio = bkt_optionset.get_call(
+                #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
+                #           cd_underlying_price=cd_underlying_price)
+                # else:
+                #     portfolio = bkt_optionset.get_put(
+                #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long,
+                #           cd_underlying_price=cd_underlying_price)
 
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
@@ -322,7 +328,7 @@ class BktStrategyEventS(object):
 
 
                 self.portfolio = portfolio
-                bkt_account.update_invest_units(portfolio, self.util.long, 0.0,
+                bkt_account.update_invest_units(portfolio, self.util.long, delta,
                                                 cd_open_by_price=cd_open_position_time,
                                                      fund=cash_for_option)
                 bkt_account.open_position(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
@@ -350,10 +356,10 @@ class BktStrategyEventS(object):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 8, 1)
-# start_date = datetime.date(2017, 11, 1)
-# end_date = datetime.date(2017, 12, 20)
-end_date = datetime.date(2018, 5, 1)
+# start_date = datetime.date(2015, 8, 1)
+start_date = datetime.date(2017, 6, 1)
+end_date = datetime.date(2017, 8, 1)
+# end_date = datetime.date(2018, 5, 1)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -367,7 +373,7 @@ df_option_metrics = get_mktdata(start_date, end_date)
 min_holding_days = 20
 
 for (i,event) in df_events.iterrows():
-    bkt_event = BktStrategyEventS(df_option_metrics, event, min_holding_days, option_invest_pct=0.2)
+    bkt_event = BktStrategyEvent(df_option_metrics, event, min_holding_days, option_invest_pct=0.2)
     df_res = bkt_event.events_run()
     print(df_res)
 
