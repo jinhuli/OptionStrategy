@@ -244,7 +244,7 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
     query_sro = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
                             optionMetrics.amt_strike,
                            optionMetrics.cd_option_type,optionMetrics.pct_implied_vol)\
-        .filter(optionMetrics.name_code == nameCode).filter(optionMetrics.dt_date>=dt_last_week)
+        .filter(optionMetrics.name_code == nameCode).filter(optionMetrics.dt_date >= dt_last_week)
 
     query_mdt = sess.query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
         .filter(options_table.cd_exchange == exchangeCode)
@@ -445,8 +445,8 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 ############################################################################################
 # Eval Settings
 
-dt_date = datetime.date(2018, 5, 11)  # Set as Friday
-dt_last_week = datetime.date(2018, 5, 4)
+dt_date = datetime.date(2018, 5, 18)  # Set as Friday
+dt_last_week = datetime.date(2018, 5, 11)
 current_core_underlying = 'sr_1809'
 namecode = 'sr'
 exchange_code = 'czce'
