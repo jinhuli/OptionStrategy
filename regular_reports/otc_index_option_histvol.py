@@ -31,8 +31,8 @@ IndexMkt = dbt.IndexMkt
 # Eval Settings
 evalDate = datetime.date(2018, 5, 18)
 startDate = datetime.date(2017, 1, 1)
-hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
-index_ids = ['index_300sh','index_50sh','index_500sh']
+hist_date = datetime.date(2015 ,6, 1)
+index_ids = ['index_300sh','index_50sh','index_500sh','index_50etf']
 histvols_3M = []
 realizedvols = []
 dates = []
@@ -43,14 +43,6 @@ query2_1 = sess2.query(IndexMkt.id_instrument, IndexMkt.dt_date, IndexMkt.amt_cl
         .filter(IndexMkt.id_instrument == 'index_cvix')
 
 for indexid in index_ids:
-
-    query1 = sess1.query(EquityIndexIntraday.id_instrument,
-                         EquityIndexIntraday.dt_datetime,
-                         EquityIndexIntraday.amt_close) \
-        .filter(EquityIndexIntraday.dt_datetime >= startDate) \
-        .filter(EquityIndexIntraday.dt_datetime <= evalDate) \
-        .filter(EquityIndexIntraday.id_instrument == indexid) \
-        .filter(EquityIndexIntraday.datasource == 'wind')
 
     query2 = sess2.query(IndexMkt.id_instrument, IndexMkt.dt_date, IndexMkt.amt_close) \
         .filter(IndexMkt.dt_date >= hist_date) \
