@@ -81,7 +81,7 @@ class BktOptionSet(object):
                     self.df_daily_state.loc[idx,self.util.bktoption] = bktoption
                 else:
                     df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index().drop('index',1)
-                    bktoption = BktOption(self.frequency, df_option, self.flag_calculate_iv, id_instrument=id_inst)
+                    bktoption = BktOption(self.frequency, df_option, self.flag_calculate_iv)
                     bktoption.start()
                     self.df_daily_state.loc[idx,self.util.bktoption] = bktoption
             self.bktoptionset = set(self.df_daily_state[self.util.bktoption].tolist())
@@ -294,6 +294,28 @@ class BktOptionSet(object):
         bs = BackSpread(self.eval_date,option_long,option_short,option_type)
         return bs
 
+    def get_collar(self, mdt, underlying, moneyness_call=-2, moneyness_put=-3, cd_underlying_price='close'):
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
+        while moneyness_call < 0:
+            if moneyness_call not in options_by_moneyness[mdt][self.util.type_call].keys():
+                moneyness_call += 1
+            else:
+                break
+
+        while moneyness_put <= 0:
+            if moneyness_put not in options_by_moneyness[mdt][self.util.type_put].keys():
+                moneyness_put += 1
+            else:
+                break
+        buy_put = options_by_moneyness[mdt][self.util.type_put][moneyness_put]
+        write_call = options_by_moneyness[mdt][self.util.type_call][moneyness_call]
+        "No 1st otm call/put (moneyness=-1) to write/buy"
+        if moneyness_call >= 0:
+            write_call = None
+        if moneyness_put >= 0:
+            buy_put = None
+        collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
+        return collar
 
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
     def update_options_by_moneyness(self,cd_underlying_price='open'):

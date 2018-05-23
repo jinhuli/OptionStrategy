@@ -7,6 +7,7 @@ from mpl_toolkits.axes_grid1 import host_subplot
 from Utilities.PlotUtil import PlotUtil
 import numpy as np
 from back_test.bkt_option import BktOption
+from back_test.bkt_instrument import BktInstrument
 from back_test.OptionPortfolio import *
 
 
@@ -104,15 +105,14 @@ class BktAccount(object):
             mkt_price = bktoption.option_price
         return mkt_price
 
+    " Adjust investment unit by given delta exposure "
     def update_invest_units(self,option_port,cd_long_short,delta_exposure,cd_open_by_price=None, fund=None):
         if isinstance(option_port,BackSpread):
             option_long = option_port.option_long
             option_short = option_port.option_short
             plong = self.get_open_position_price(option_long,cd_open_by_price)
             pshort = self.get_open_position_price(option_short,cd_open_by_price)
-
             option_port.rebalancing(delta_exposure)
-
             if fund == None:
                 fund = plong*option_long.multiplier*option_port.unit_long + \
                        option_short.trade_margin_capital-pshort*option_short.multiplier*option_port.unit_short
@@ -179,6 +179,17 @@ class BktAccount(object):
             unit = fund / fund0
             option_port.unit_portfolio = unit
 
+    " Collar "
+    def update_invest_units_c2(self,option_port, write_ratio, unit_underlying):
+        if isinstance(option_port,Collar):
+            call = option_port.write_call
+            put = option_port.buy_put
+            option_port.unit_call = np.floor(unit_underlying/call.multiplier)*write_ratio
+            option_port.unit_put = np.floor(unit_underlying/put.multiplier)
+            option_port.unit_underlying = unit_underlying
+
+
+
     def open_position(self, dt, portfolio,unit=None, cd_open_by_price=None):
         if isinstance(portfolio,BktOption):
             self.open_long_option(dt, portfolio, unit,cd_open_by_price)
@@ -200,8 +211,12 @@ class BktAccount(object):
         elif isinstance(portfolio,BackSpread):
             self.open_long_option(dt,portfolio.option_long,portfolio.unit_long,cd_open_by_price)
             self.open_short_option(dt,portfolio.option_short,portfolio.unit_short,cd_open_by_price)
+        elif isinstance(portfolio,Collar):
+            self.open_long_option(dt,portfolio.buy_put,portfolio.unit_put,cd_open_by_price)
+            self.open_short_option(dt,portfolio.write_call,portfolio.unit_call,cd_open_by_price)
+            self.open_long_underlying(dt,portfolio.underlying,portfolio.unit_underlying,cd_open_by_price)
 
-    def rebalance_position(self, dt, portfolio,unit=None):
+    def rebalance_position(self, dt, portfolio,unit=None,cd_rebalance_by_price=None):
         if isinstance(portfolio,BktOption):
             self.rebalance_position_option(dt, portfolio, unit)
         elif type(portfolio) == dict:
@@ -215,6 +230,13 @@ class BktAccount(object):
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
             for (i,option) in enumerate(portfolio.optionset):
                 self.rebalance_position_option(dt,option,portfolio.unit_portfolio[i])
+        elif isinstance(portfolio, Collar):
+            self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
+            self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
+            self.open_long_option(dt, portfolio.buy_put, portfolio.unit_put,cd_rebalance_by_price)
+            self.open_short_option(dt, portfolio.write_call, portfolio.unit_call,cd_rebalance_by_price)
+            portfolio.liquidate_put = None
+            portfolio.liquidate_put = None
 
     def close_position(self, dt, position,cd_close_by_price=None):
         if type(position) == dict:
@@ -248,6 +270,31 @@ class BktAccount(object):
                                     })
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         self.trade_order_dict = trade_order_dict
+
+    def open_long_underlying(self,dt, bktinstrument, unit, cd_open_by_price):
+        mkt_price = bktinstrument.mktprice_close
+        id_instrument = bktinstrument.id_instrument
+        premium = unit * mkt_price
+        fee = premium * self.fee
+        trade_type = 'open'
+        self.cash = self.cash - mkt_price * unit - fee
+        self.total_transaction_cost += fee
+        self.nbr_trade += 1
+        bktinstrument.trade_unit = unit
+        bktinstrument.trade_open_price = mkt_price
+        bktinstrument.transaction_fee = fee
+        bktinstrument.trade_flag_open = True
+        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                    self.util.dt_trade: [dt],
+                                    self.util.trading_type: [trade_type],
+                                    self.util.trade_price: [mkt_price],
+                                    self.util.trading_cost: [fee],
+                                    self.util.unit: [unit],
+                                    'premium paid': [premium],
+                                    'cash': [self.cash],
+                                    'margin capital': [self.total_margin_capital]
+                                    })
+        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
     def open_long_option(self, dt, bktoption, unit,cd_open_by_price):  # 多开
         bktoption.trade_dt_open = dt
@@ -527,12 +574,81 @@ class BktAccount(object):
                 self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
                 self.nbr_trade += 1
 
+    def mkm_update_portfolio(self, dt, portfolio):  # 每日更新
+        unrealized_pnl = 0.0
+        mtm_long_positions = 0.0
+        mtm_short_positions = 0.0
+        self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
+        port_delta = 0.0
+        holdings = []
+        for bktoption in portfolio.optionset:
+            if not bktoption.trade_flag_open: continue
+            if bktoption.maturitydt == dt:
+                self.close_position_option(dt, bktoption, None)
+                print('close option position on maturity date : ', bktoption.id_instrument)
+                continue
+            holdings.append(bktoption)
+            mkt_price = bktoption.option_price
+            unit = bktoption.trade_unit
+            long_short = bktoption.trade_long_short
+            margin_account = bktoption.trade_margin_capital
+            multiplier = bktoption.multiplier
+            maintain_margin = unit * bktoption.get_maintain_margin()
+            margin_call = maintain_margin - margin_account
+            unrealized_pnl += long_short * (mkt_price - bktoption.trade_open_price) * unit * multiplier
+            if long_short == self.util.long:
+                mtm_long_positions += mkt_price * unit * multiplier
+                port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+            else:
+                mtm_short_positions -= mkt_price * unit * multiplier
+                port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+            self.cash -= margin_call
+            self.total_margin_capital += margin_call
+            bktoption.trade_margin_capital += margin_call
+            iv = pd.DataFrame(data={'dt_date': [dt], 'id': [bktoption.id_instrument], 'price': [bktoption.option_price],
+                                    'unit': [bktoption.trade_unit],
+                                    'iv': [bktoption.implied_vol], 'long_short': [bktoption.trade_long_short]})
+            self.df_ivs = self.df_ivs.append(iv, ignore_index=True)
+
+        """trade_order_dict : Only Contains LONG underlying positions"""
+        trade_order_mktv = 0.0
+        benckmark = 0.0
+        if portfolio.underlying != None:
+            unit = portfolio.underlying.trade_unit
+            mkt_price = portfolio.underlying.mktprice_close
+            trade_order_mktv += mkt_price * unit
+            benckmark = mkt_price/portfolio.underlying.trade_open_price
+
+        self.trade_order_mktv = trade_order_mktv # Underlying market value
+        """ For long positions only, total_asset = cash + mtm_long_positions(i.e., total premiums);
+            For short positions only, total_asset = cash + margin_capital + short posiitons pnl(unrealized)"""
+        self.total_premiums_long = mtm_long_positions
+        interest = self.cash * (1.0 / 365) * self.rf
+        # total_asset1 = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
+        # total_asset2 = self.total_asset - self.total_transaction_cost + unrealized_pnl + interest
+        self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
+        self.mtm_short_positions = mtm_short_positions
+        self.mtm_long_positions = mtm_long_positions
+        money_utilization = 1- self.cash / self.total_asset
+        self.npv = self.total_asset / self.init_fund
+        self.port_delta = port_delta
+        self.holdings = holdings
+        account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
+                                     self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
+                                     self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
+                                     self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
+                                     self.util.money_utilization: [money_utilization],self.util.total_asset: [self.total_asset],
+                                     'portfolio delta': [port_delta], self.util.benchmark:[benckmark]
+                                     })
+        self.df_account = self.df_account.append(account, ignore_index=True)
+        self.nbr_trade = 0
+        self.realized_pnl = 0
+
+
     def mkm_update(self, dt, trade_order_dict=None):  # 每日更新
         unrealized_pnl = 0.0
         mtm_long_positions = 0.0
         mtm_short_positions = 0.0
-        # total_premium_paied = 0.0
-        # short_positions_pnl = 0.0
         self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
         port_delta = 0.0
         holdings = []
@@ -543,10 +659,6 @@ class BktAccount(object):
                 print('close option position on maturity date : ', bktoption.id_instrument)
                 continue
             holdings.append(bktoption)
-            # if bktoption.get_settlement != -999.0:
-            #     mkt_price = bktoption.get_settlement() # 优先用结算价计算每日净值
-            # else:
-            #     mkt_price = bktoption.option_price
             mkt_price = bktoption.option_price
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
@@ -554,23 +666,19 @@ class BktAccount(object):
             multiplier = bktoption.multiplier
             maintain_margin = unit * bktoption.get_maintain_margin()
             margin_call = maintain_margin - margin_account
-            unrealized_pnl += long_short * (mkt_price-bktoption.trade_open_price) * unit * multiplier
+            unrealized_pnl += long_short * (mkt_price - bktoption.trade_open_price) * unit * multiplier
             if long_short == self.util.long:
                 mtm_long_positions += mkt_price * unit * multiplier
-                # total_premium_paied += bktoption.premium
                 port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
             else:
                 mtm_short_positions -= mkt_price * unit * multiplier
                 port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
-                # short_positions_pnl += (bktoption.trade_open_price-mkt_price)*unit*multiplier
-            # bktoption.trade_margin_capital = maintain_margin
-
             self.cash -= margin_call
             self.total_margin_capital += margin_call
             bktoption.trade_margin_capital += margin_call
-            iv = pd.DataFrame(data={'dt_date':[dt],'id':[bktoption.id_instrument],'price':[bktoption.option_price],
-                                    'unit':[bktoption.trade_unit],
-                                    'iv':[bktoption.implied_vol],'long_short':[bktoption.trade_long_short]})
+            iv = pd.DataFrame(data={'dt_date': [dt], 'id': [bktoption.id_instrument], 'price': [bktoption.option_price],
+                                    'unit': [bktoption.trade_unit],
+                                    'iv': [bktoption.implied_vol], 'long_short': [bktoption.trade_long_short]})
             self.df_ivs = self.df_ivs.append(iv, ignore_index=True)
 
         """trade_order_dict : Only Contains LONG underlying positions"""
@@ -594,12 +702,14 @@ class BktAccount(object):
         self.npv = self.total_asset / self.init_fund
         self.port_delta = port_delta
         self.holdings = holdings
+        # benckmark =
         account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
                                      self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
                                      self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
                                      self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
                                      self.util.money_utilization: [money_utilization],self.util.total_asset: [self.total_asset],
-                                     'portfolio delta': [port_delta]})
+                                     'portfolio delta': [port_delta], self.util.benchmark:[]
+                                     })
         self.df_account = self.df_account.append(account, ignore_index=True)
 
         self.nbr_trade = 0
@@ -724,6 +834,21 @@ class BktAccount(object):
         return vol
 
     def plot_npv(self):
+        f, ax = plt.subplots()
+        ax.set_xlabel("日期")
+        x = self.df_account[self.util.dt_date].tolist()
+        npv = self.df_account[self.util.npv].tolist()
+        dd = self.df_account['drawdown'].tolist()
+        benchmark = self.df_account[self.util.benchmark].tolist()
+        ax.plot(x, npv, label='npv', color=self.pu.colors[0], linestyle=self.pu.lines[0], linewidth=2)
+        ax.plot(x, benchmark, label='benchmark', color=self.pu.colors[1], linestyle=self.pu.lines[1], linewidth=2)
+        ax.set_ylabel('Net Value')
+        ax.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+                    ncol=3, mode="expand", borderaxespad=0., frameon=False)
+        # f.savefig('../save_figure/npv.png', dpi=300, format='png')
+        plt.show()
+
+    def plot_drawdown(self):
         fig = plt.figure()
         host = host_subplot(111)
         par = host.twinx()
@@ -737,5 +862,5 @@ class BktAccount(object):
         par.set_ylabel('Drawdown')
         host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
                     ncol=3, mode="expand", borderaxespad=0., frameon=False)
-        fig.savefig('../save_figure/npv.png', dpi=300, format='png')
+        # fig.savefig('../save_figure/npv.png', dpi=300, format='png')
         plt.show()

@@ -19,7 +19,7 @@ def get_eventsdata(start_date, end_date,flag_impact):
         .filter(events.c.dt_date >= start_date) \
         .filter(events.c.dt_date <= end_date) \
         .filter(events.c.flag_impact == flag_impact)\
-        .filter(events.c.cd_occurrence == 'e')
+        # .filter(events.c.cd_occurrence == 'e')
     df_event = pd.read_sql(query.statement, query.session.bind)
     return df_event
 
@@ -114,6 +114,18 @@ def get_50option_mktdata2(start_date, end_date):
 
     df_option_metrics = df_option.join(df_50etf.set_index('dt_date'), how='left', on='dt_date')
     return df_option_metrics
+
+def get_index_mktdata(start_date, end_date, id_index):
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
+    Session = sessionmaker(bind=engine)
+    sess = Session()
+    Index_mkt = dbt.IndexMkt
+    query_etf = sess.query(Index_mkt.dt_date, Index_mkt.amt_close,Index_mkt.amt_open,
+                           Index_mkt.id_instrument, Index_mkt.amt_trading_volume) \
+        .filter(Index_mkt.dt_date >= start_date).filter(Index_mkt.dt_date <= end_date) \
+        .filter(Index_mkt.id_instrument == id_index)
+    df_index= pd.read_sql(query_etf.statement, query_etf.session.bind)
+    return df_index
 
 
 def get_comoption_mktdata(start_date, end_date, name_code):

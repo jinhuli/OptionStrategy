@@ -1,11 +1,14 @@
 from back_test.bkt_account import BktAccount
 from back_test.bkt_option_set import BktOptionSet
+from back_test.bkt_instrument import BktInstrument
 import QuantLib as ql
 from back_test.bkt_util import BktUtil
 from abc import ABCMeta, abstractmethod
 import pandas as pd
+import numpy as np
 
-class BktOptionStrategy():
+
+class BktOptionStrategy(object):
 
     __metaclass__=ABCMeta
 
@@ -17,7 +20,6 @@ class BktOptionStrategy():
         self.util = BktUtil()
         self.init_fund = init_fund
         self.money_utl = money_utilization
-        # self.holding_period = hp
         self.df_option_metrics = df_option_metrics
         self.calendar = ql.China()
         self.bkt_account = BktAccount(cd_open_price=cd_open_price,cd_close_price = cd_close_price, leverage=leverage,
@@ -119,22 +121,6 @@ class BktOptionStrategy():
         mdt = maturities_new[1]
         return mdt
 
-    """Construct a delta neutral long straddle strategy, 
-        returning bkt_option objects to buy in a dataframe"""
-    def long_straddle(self,df_metrics_today,fund,moneyness,mdt):
-        df = pd.DataFrame()
-        # moneymess：
-        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
-        # -1：虚值level1：平值行权价往虚值方向移一档
-        # 1: 实值level1： 平值新全价往实值方向移一档
-
-        # if moneyness == 0:
-
-        return df
-
-    def strangle(self):
-        return None
-
     @abstractmethod
     def get_ranked_options(self, eval_date):
         return
@@ -162,3 +148,78 @@ class BktOptionStrategy():
         print("%20s %20s %20s" % (round(ar, 4), round(mdd, 4),round(sharpe, 4)))
         print('-' * 50)
         self.bkt_account.plot_npv()
+
+    "calculate iv by moneyness"
+    def ivs_ranked_run(self):
+        bkt_optionset = self.bkt_optionset
+        df_skew = pd.DataFrame()
+        while bkt_optionset.index < len(bkt_optionset.dt_list) - 1:
+            evalDate = bkt_optionset.eval_date
+            cd_underlying_price = 'close'
+            mdt = self.get_1st_eligible_maturity(evalDate)
+            option_by_moneyness = self.bkt_optionset.update_options_by_moneyness(cd_underlying_price)
+            optionset = option_by_moneyness[mdt]
+            options_call = optionset[self.util.type_call]
+            options_put = optionset[self.util.type_put]
+            m_call = list(options_call.keys())
+            m_put = list(options_put.keys())
+            iv_call = []
+            iv_put = []
+            dt = []
+            mdts = []
+            for m in m_call:
+                iv = options_call[m].get_implied_vol()
+                iv_call.append(iv)
+                dt.append(evalDate)
+                mdts.append(mdt)
+            for m1 in m_put:
+                iv = options_put[m1].get_implied_vol()
+                iv_put.append(iv)
+
+            ivset = pd.DataFrame(data={'dt':dt,'mdt':mdt,'m_call':m_call,'m_put':m_put,
+                          'iv_call':iv_call,'iv_put':iv_put})
+            df_ivcall = ivset[ivset['m_call']<=0].sort_values(by='m_call',ascending=False).reset_index(drop=True).query('index <= 4')
+            if len(df_ivcall) <= 1:
+                otm_skew_call = np.nan
+            else:
+                df_diffcall = df_ivcall['iv_call'].diff()
+                otm_skew_call = df_diffcall.sum()/(len(df_diffcall)-1)
+            df_ivput = ivset[ivset['m_put']<=0].sort_values(by='m_put',ascending=False).reset_index(drop=True).query('index <= 4')
+            if len(df_ivput) <= 1:
+                otm_skew_put = np.nan
+            else:
+                df_diffput = df_ivput['iv_put'].diff()
+                otm_skew_put = df_diffput.sum()/(len(df_diffput)-1)
+            ivskew = pd.DataFrame(data={'dt':[evalDate],'mdt':[mdt],'otm_skew_call':[otm_skew_call],
+                                        'otm_skew_put':[otm_skew_put]})
+            df_skew = df_skew.append(ivskew,ignore_index=True)
+            bkt_optionset.next()
+        df_skew.to_csv('../save_results/df_skew_otm.csv')
+
+
+
+class BktOptionIndex(BktOptionStrategy):
+
+    def __init__(self, df_option, df_index, money_utilization = 0.2,init_fund = 100000000.0):
+        self.validate_data(df_option, df_index)
+        BktOptionStrategy.__init__(self,self.df_option,money_utilization=money_utilization,
+                                   init_fund=init_fund)
+        self.bkt_index = BktInstrument('daily',self.df_index)
+
+    def validate_data(self,df_option, df_index):
+        self.util = BktUtil()
+        dates1 = df_option[self.util.dt_date].unique()
+        dates2 = df_index[self.util.dt_date].unique()
+        for (idx,dt) in enumerate(dates1):
+            if dt != dates2[idx]:
+                print(' Recheck dates! option dates and index dates are not equal !')
+                self.df_option = None
+                self.df_index = None
+                return
+        self.df_option = df_option
+        self.df_index = df_index
+
+    def next(self):
+        self.bkt_optionset.next()
+        self.bkt_index.next()
+
