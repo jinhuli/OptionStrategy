@@ -83,22 +83,25 @@ class BktStrategyCollar(BktOptionStrategy):
                         if k_call - spot <= 1.0 or spot - k_put <= 1.0:
                             portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index)
                             if portfolio.write_call == None :
-                                bkt_account.close_position_option(dt,portfolio.write_call,cd_close_by_price='close')
+                                bkt_account.close_position_option(dt,self.portfolio.write_call,cd_close_by_price='close')
+                                bkt_account.close_position_option(dt,self.portfolio.buy_put,cd_close_by_price='close')
                                 self.flag_trade = False
                             elif portfolio.buy_put == None:
-                                bkt_account.close_position_option(dt,portfolio.buy_put,cd_close_by_price='close')
+                                bkt_account.close_position_option(dt,self.portfolio.write_call,cd_close_by_price='close')
                                 self.flag_trade = False
-                            self.portfolio.update_portfolio(buy_put=portfolio.buy_put, write_call=portfolio.write_call)
-                            bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying)
-                            bkt_account.rebalance_position(evalDate, self.portfolio)
+                            else:
+                                self.portfolio.update_portfolio(buy_put=portfolio.buy_put, write_call=portfolio.write_call)
+                                bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying)
+                                bkt_account.rebalance_position(evalDate, self.portfolio)
                     else:
                         if k_call - spot <= 0.5 or spot - k_put <= 0.5:
                             portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index)
                             if portfolio.write_call == None :
-                                bkt_account.close_position_option(dt,portfolio.write_call,cd_close_by_price='close')
+                                bkt_account.close_position_option(dt,self.portfolio.write_call,cd_close_by_price='close')
+                                bkt_account.close_position_option(dt,self.portfolio.buy_put,cd_close_by_price='close')
                                 self.flag_trade = False
                             elif portfolio.buy_put == None:
-                                bkt_account.close_position_option(dt,portfolio.buy_put,cd_close_by_price='close')
+                                bkt_account.close_position_option(dt,self.portfolio.write_call,cd_close_by_price='close')
                                 self.flag_trade = False
                             else:
                                 self.portfolio.update_portfolio(buy_put=portfolio.buy_put, write_call=portfolio.write_call)
