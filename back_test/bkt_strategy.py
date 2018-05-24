@@ -124,21 +124,32 @@ class BktOptionStrategy(object):
     def get_moving_average_signal(self,df,cd_short='ma_3',cd_long = 'ma_20'):
         df_short = df[df['cd_period']==cd_short].set_index('dt_date')
         df_long= df[df['cd_period']==cd_long].set_index('dt_date')
+        df_long['short_ma'] = df_short['amt_ma']
         df_long['short_minus_long'] = df_short['amt_ma']-df_long['amt_ma']
-        for (idx,row) in df_long.iterrows():
-            amt_long = row['amt_ma']
-            amt_short = df_short.loc[idx,'amt_ma']
-            row['short_minus_long'] = amt_short-amt_long
-            if row['short_minus_long'] >= 0:
-                row['signal'] = 1
-            else:
-                row['signal'] = -1
-            # if amt_short-amt_long >= 0: row['signal'] = 'long'
-            # if amt_short-amt_long < 0: row['signal'] = 'short'
-        # df_long[df_long['short_minus_long']>=0]['signal'] = 'long'
-        # df_long[df_long['short_minus_long']<0]['signal'] = 'short'
+        df_long = df_long.rename(columns={'amt_ma':'long_ma'})
+        df_long['signal'] = df_long['short_minus_long']\
+            .apply(lambda x: self.util.long if x>=0 else self.util.short)
         return df_long
 
+    def get_bollinger_signal(self,df,cd_long = 'ma_20'):
+        df_long = df[df['cd_period'] == cd_long].set_index('dt_date')
+        std = df_long['amt_close'].std()
+        df_long['std'] = std
+        df_long['lower_boll'] = df_long['amt_ma'] - df_long['std']
+        df_long['upper_boll'] = df_long['amt_ma'] + df_long['std']
+        df_long['signal'] = self.util.neutrual
+        df_long.ix[df_long['amt_close'] >= df_long['upper_boll'], 'signal'] = self.util.long
+        df_long.ix[df_long['amt_close'] <= df_long['lower_boll'], 'signal'] = self.util.short
+        return df_long
+
+    def util1(self,x):
+        if x[0] >= x[2]:
+            s = self.util.long
+        elif x[0] <= x[1]:
+            s = self.util.short
+        else:
+            s = self.util.neutrual
+        return s
 
     @abstractmethod
     def get_ranked_options(self, eval_date):

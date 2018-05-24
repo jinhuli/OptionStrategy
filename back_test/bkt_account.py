@@ -180,7 +180,7 @@ class BktAccount(object):
             option_port.unit_portfolio = unit
 
     " Collar "
-    def update_invest_units_c2(self,option_port, write_ratio, unit_underlying):
+    def update_invest_units_c2(self,option_port, write_ratio, unit_underlying, buy_ratio=1.0):
         if isinstance(option_port,Collar):
             call = option_port.write_call
             put = option_port.buy_put

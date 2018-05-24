@@ -30,6 +30,12 @@ class BktStrategyCollar(BktOptionStrategy):
         self.df_option = df_option
         self.df_index = df_index
 
+    def set_index_ma(self,df_index_ma):
+        self.index_ma = df_index_ma
+
+    def set_volatility_ma(self,df_vol_ma):
+        self.volatility_ma = df_vol_ma
+
     def next(self):
         self.bkt_optionset.next()
         self.bkt_index.next()
@@ -54,7 +60,10 @@ class BktStrategyCollar(BktOptionStrategy):
         bkt_account.mkm_update_portfolio(evalDate, self.portfolio)
         print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.cash)
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-
+            moneyness_call = -2
+            moneyness_put = -2
+            write_ratio = 1.0
+            buy_ratio = 1.0
             self.next()
             evalDate = bkt_optionset.eval_date
 
@@ -66,11 +75,23 @@ class BktStrategyCollar(BktOptionStrategy):
                 print(evalDate, ' , ', bkt_account.npv)  # npv是组合净值，期初为1
                 break
 
+            """ 根据动量指标与波动率指标调整write ratio """
+            signal_index = self.index_ma.loc[evalDate,'signal']
+            signal_vol = self.volatility_ma.loc[evalDate,'signal']
+            if signal_index == self.util.long:
+                moneyness_call = moneyness_put = -3
+            if signal_vol == self.util.long:
+                write_ratio = 0.75
+                buy_ratio = 1.25
+            elif signal_vol == self.util.short:
+                write_ratio = 1.25
+                buy_ratio = 0.75
+
             if not self.flag_trade:
-                """Option: Select Strategy and Open Position"""
-                portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index)
+                portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index,
+                                                              moneyness_call=moneyness_call,moneyness_put=moneyness_put)
                 self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
-                bkt_account.update_invest_units_c2(self.portfolio, self.write_ratio, unit_underlying)
+                bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying,buy_ratio=buy_ratio)
                 bkt_account.rebalance_portfolio(evalDate, self.portfolio)
                 self.flag_trade = True
             else:
@@ -96,9 +117,10 @@ class BktStrategyCollar(BktOptionStrategy):
                             flag_update = True
                             print('2')
                 if flag_update:
-                    portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index)
+                    portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index,
+                                                                  moneyness_call=moneyness_call, moneyness_put=moneyness_put)
                     self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
-                    bkt_account.update_invest_units_c2(self.portfolio, self.write_ratio, unit_underlying)
+                    bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying,buy_ratio=buy_ratio)
                     bkt_account.rebalance_portfolio(evalDate, self.portfolio)
             if self.portfolio.write_call == None or self.portfolio.buy_put==None:
                 self.flag_trade = False
@@ -112,7 +134,7 @@ class BktStrategyCollar(BktOptionStrategy):
 """Back Test Settings"""
 # start_date = datetime.date(2015, 3, 13)
 start_date = datetime.date(2018, 3, 13)
-end_date = datetime.date(2018, 5, 23)
+end_date = datetime.date(2018, 5, 21)
 
 
 """Collect Mkt Date"""
@@ -126,8 +148,8 @@ df_vix = get_index_mktdata(start_date,end_date,'index_cvix')
 bkt_strategy = BktStrategyCollar(df_option_metrics, df_index_metrics)
 bkt_strategy.set_min_holding_days(15)
 
-df_index_ma = bkt_strategy.get_moving_average_signal(df_index_metrics)
-df_vol_ma = bkt_strategy.get_moving_average_signal(df_vix)
+bkt_strategy.set_index_ma(bkt_strategy.get_moving_average_signal(df_index_metrics))
+bkt_strategy.set_volatility_ma(bkt_strategy.get_bollinger_signal(df_vix))
 bkt_strategy.run()
 
 bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')

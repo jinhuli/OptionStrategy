@@ -9,6 +9,7 @@ class BktUtil():
 
         self.long = 1
         self.short = -1
+        self.neutrual = 0
         self.long_top = 1
         self.long_bottom = -1
         self.nan_value = -999.0
