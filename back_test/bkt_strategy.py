@@ -121,6 +121,25 @@ class BktOptionStrategy(object):
         mdt = maturities_new[1]
         return mdt
 
+    def get_moving_average_signal(self,df,cd_short='ma_3',cd_long = 'ma_20'):
+        df_short = df[df['cd_period']==cd_short].set_index('dt_date')
+        df_long= df[df['cd_period']==cd_long].set_index('dt_date')
+        df_long['short_minus_long'] = df_short['amt_ma']-df_long['amt_ma']
+        for (idx,row) in df_long.iterrows():
+            amt_long = row['amt_ma']
+            amt_short = df_short.loc[idx,'amt_ma']
+            row['short_minus_long'] = amt_short-amt_long
+            if row['short_minus_long'] >= 0:
+                row['signal'] = 1
+            else:
+                row['signal'] = -1
+            # if amt_short-amt_long >= 0: row['signal'] = 'long'
+            # if amt_short-amt_long < 0: row['signal'] = 'short'
+        # df_long[df_long['short_minus_long']>=0]['signal'] = 'long'
+        # df_long[df_long['short_minus_long']<0]['signal'] = 'short'
+        return df_long
+
+
     @abstractmethod
     def get_ranked_options(self, eval_date):
         return

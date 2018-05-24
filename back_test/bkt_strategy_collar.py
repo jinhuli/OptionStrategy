@@ -66,13 +66,12 @@ class BktStrategyCollar(BktOptionStrategy):
                 print(evalDate, ' , ', bkt_account.npv)  # npv是组合净值，期初为1
                 break
 
-            unit_underlying = 0.0
             if not self.flag_trade:
-
                 """Option: Select Strategy and Open Position"""
-                self.portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index)
+                portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index)
+                self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
                 bkt_account.update_invest_units_c2(self.portfolio, self.write_ratio, unit_underlying)
-                bkt_account.open_portfolio(evalDate, self.portfolio, cd_open_by_price=cd_open_position_time)
+                bkt_account.rebalance_portfolio(evalDate, self.portfolio)
                 self.flag_trade = True
             else:
                 dt = self.util.to_dt_date(self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(8, ql.Days)))
@@ -91,24 +90,28 @@ class BktStrategyCollar(BktOptionStrategy):
                     if spot >= 3.0:
                         if k_call - spot <= 0.1 or spot - k_put <= 0.1:
                             flag_update = True
+                            print('1')
                     else:
                         if k_call - spot <= 0.05 or spot - k_put <= 0.05:
                             flag_update = True
+                            print('2')
                 if flag_update:
                     portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index)
                     self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
                     bkt_account.update_invest_units_c2(self.portfolio, self.write_ratio, unit_underlying)
                     bkt_account.rebalance_portfolio(evalDate, self.portfolio)
-
+            if self.portfolio.write_call == None or self.portfolio.buy_put==None:
+                self.flag_trade = False
+                print(evalDate, 'No complete collar portfolio constructed, try next day !')
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt_account.mkm_update_portfolio(evalDate,self.portfolio)
-            print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.cash)
+            print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.mtm_long_positions)
 
 
 
 """Back Test Settings"""
-# end_date = datetime.date(2017, 12, 31)
-start_date = datetime.date(2018, 3, 1)
+# start_date = datetime.date(2015, 3, 13)
+start_date = datetime.date(2018, 3, 13)
 end_date = datetime.date(2018, 5, 23)
 
 
@@ -116,17 +119,20 @@ end_date = datetime.date(2018, 5, 23)
 
 df_option_metrics = get_50option_mktdata(start_date, end_date)
 df_index_metrics = get_index_mktdata(start_date,end_date,'index_50etf')
-
+df_vix = get_index_mktdata(start_date,end_date,'index_cvix')
 """Run Backtest"""
+
 
 bkt_strategy = BktStrategyCollar(df_option_metrics, df_index_metrics)
 bkt_strategy.set_min_holding_days(15)
 
+df_index_ma = bkt_strategy.get_moving_average_signal(df_index_metrics)
+df_vol_ma = bkt_strategy.get_moving_average_signal(df_vix)
 bkt_strategy.run()
 
-# bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
-# bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/bkt_df_trading_book.csv')
-# bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/bkt_df_trading_records.csv')
+bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
+bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/bkt_df_trading_book.csv')
+bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/bkt_df_trading_records.csv')
 # bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/bkt_df_ivs.csv')
 #
 benckmark = df_index_metrics[bkt_strategy.util.col_close].tolist()

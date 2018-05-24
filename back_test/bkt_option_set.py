@@ -294,7 +294,7 @@ class BktOptionSet(object):
         bs = BackSpread(self.eval_date,option_long,option_short,option_type)
         return bs
 
-    def get_collar(self, mdt, underlying, moneyness_call=-2, moneyness_put=-3, cd_underlying_price='close'):
+    def get_collar(self, mdt, underlying, moneyness_call=-2, moneyness_put=-2, cd_underlying_price='close'):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         while moneyness_call < 0:
             if moneyness_call not in options_by_moneyness[mdt][self.util.type_call].keys():

@@ -282,6 +282,7 @@ class BktAccount(object):
         self.trade_order_dict = trade_order_dict
 
     def open_long_underlying(self,dt, bktinstrument, unit, cd_open_by_price):
+        if bktinstrument.trade_flag_open: print('Recheck! underlying position already opened !')
         mkt_price = bktinstrument.mktprice_close
         id_instrument = bktinstrument.id_instrument
         premium = unit * mkt_price
@@ -295,6 +296,7 @@ class BktAccount(object):
         bktinstrument.transaction_fee = fee
         bktinstrument.trade_flag_open = True
         bktinstrument.trade_long_short = self.util.long
+        bktinstrument.trade_flag_open = True
         record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
                                     self.util.dt_trade: [dt],
                                     self.util.trading_type: [trade_type],
@@ -438,6 +440,7 @@ class BktAccount(object):
         self.nbr_trade += 1
         self.realized_pnl += realized_pnl
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+        bktinstrument.trade_flag_open = False
 
 
     def close_position_option(self, dt, bktoption,cd_close_by_price):  # 多空平仓
@@ -623,14 +626,14 @@ class BktAccount(object):
         mtm_short_positions = 0.0
         self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
         port_delta = 0.0
-        holdings = []
+        # holdings = []
         for bktoption in portfolio.optionset:
             if bktoption == None: continue
             if bktoption.maturitydt == dt:
                 self.close_position_option(dt, bktoption, None)
                 print('close option position on maturity date : ', bktoption.id_instrument)
                 continue
-            holdings.append(bktoption)
+            # holdings.append(bktoption)
             mkt_price = bktoption.option_price
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
@@ -677,7 +680,7 @@ class BktAccount(object):
         money_utilization = 1- self.cash / self.total_asset
         self.npv = self.total_asset / self.init_fund
         self.port_delta = port_delta
-        self.holdings = holdings
+        # self.holdings = holdings
         account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
                                      self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
                                      self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
