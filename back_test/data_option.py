@@ -73,7 +73,7 @@ def get_50option_mktdata(start_date, end_date):
     return df_option_metrics
 
 
-def get_50option_mktdata2(start_date, end_date):
+def get_50option_metricdata(start_date, end_date):
     engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()

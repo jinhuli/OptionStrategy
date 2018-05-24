@@ -1,5 +1,6 @@
 from back_test.bkt_util import BktUtil
 import numpy as np
+import copy
 
 class OptionPortfolio(object):
 
@@ -126,7 +127,7 @@ class Collar(OptionPortfolio):
         self.buy_put = buy_put
         self.write_call = write_call
         self.underlying = underlying
-        self.optionset = [buy_put,write_call]
+        self.optionset = [self.buy_put,self.write_call]
         self.unit_call = None
         self.unit_put = None
         self.unit_underlying = None
@@ -135,13 +136,22 @@ class Collar(OptionPortfolio):
 
     "标的价格大幅运动的情况下，调整buy write的期权合约"
     def update_portfolio(self,buy_put,write_call):
-        self.liquidate_put = self.buy_put
-        self.liquidate_call = self.write_call
+        self.liquidate_put = copy.copy(self.buy_put)
+        self.liquidate_call = copy.copy(self.write_call)
         self.buy_put = buy_put
         self.write_call = write_call
-        self.optionset = [buy_put,write_call]
+        self.optionset = [self.buy_put,self.write_call]
         self.unit_long = None
         self.unit_short = None
+
+    def liquidate(self):
+        self.buy_put = None
+        self.write_call = None
+        self.underlying = None
+        self.optionset = []
+        self.unit_long = None
+        self.unit_short = None
+
 
 
 

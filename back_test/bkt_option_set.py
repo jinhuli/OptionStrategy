@@ -309,10 +309,12 @@ class BktOptionSet(object):
                 break
         buy_put = options_by_moneyness[mdt][self.util.type_put][moneyness_put]
         write_call = options_by_moneyness[mdt][self.util.type_call][moneyness_call]
-        "No 1st otm call/put (moneyness=-1) to write/buy"
+        "No 1st otm put/call (moneyness=-1) to by/write, stop collar strategy"
         if moneyness_call >= 0:
             write_call = None
+            buy_put = None
         if moneyness_put >= 0:
+            write_call = None
             buy_put = None
         collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
         return collar

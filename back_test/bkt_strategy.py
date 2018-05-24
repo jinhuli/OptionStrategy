@@ -139,7 +139,7 @@ class BktOptionStrategy(object):
     def run(self):
         return
 
-    def return_analysis(self):
+    def return_analysis(self,benckmark=None):
         ar = 100 * self.bkt_account.calculate_annulized_return()
         mdd = 100 * self.bkt_account.calculate_max_drawdown()
         sharpe = self.bkt_account.calculate_sharpe_ratio()
@@ -147,7 +147,7 @@ class BktOptionStrategy(object):
         print("%20s %20s %20s" % ('annulized_return(%)', 'max_drawdown(%)','sharpe ratio'))
         print("%20s %20s %20s" % (round(ar, 4), round(mdd, 4),round(sharpe, 4)))
         print('-' * 50)
-        self.bkt_account.plot_npv()
+        self.bkt_account.plot_npv(benckmark)
 
     "calculate iv by moneyness"
     def ivs_ranked_run(self):

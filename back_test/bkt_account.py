@@ -184,13 +184,13 @@ class BktAccount(object):
         if isinstance(option_port,Collar):
             call = option_port.write_call
             put = option_port.buy_put
-            option_port.unit_call = np.floor(unit_underlying/call.multiplier)*write_ratio
-            option_port.unit_put = np.floor(unit_underlying/put.multiplier)
+            if call != None:
+                option_port.unit_call = np.floor(unit_underlying/call.multiplier)*write_ratio
+            if put != None:
+                option_port.unit_put = np.floor(unit_underlying/put.multiplier)
             option_port.unit_underlying = unit_underlying
 
-
-
-    def open_position(self, dt, portfolio,unit=None, cd_open_by_price=None):
+    def open_portfolio(self, dt, portfolio,unit=None, cd_open_by_price=None):
         if isinstance(portfolio,BktOption):
             self.open_long_option(dt, portfolio, unit,cd_open_by_price)
         elif type(portfolio) == dict:
@@ -230,19 +230,29 @@ class BktAccount(object):
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
             for (i,option) in enumerate(portfolio.optionset):
                 self.rebalance_position_option(dt,option,portfolio.unit_portfolio[i])
-        elif isinstance(portfolio, Collar):
+
+
+    def rebalance_portfolio(self, dt, portfolio, cd_rebalance_by_price=None):
+        if isinstance(portfolio, Collar):
             self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
             self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
             self.open_long_option(dt, portfolio.buy_put, portfolio.unit_put,cd_rebalance_by_price)
             self.open_short_option(dt, portfolio.write_call, portfolio.unit_call,cd_rebalance_by_price)
             portfolio.liquidate_put = None
-            portfolio.liquidate_put = None
+            portfolio.liquidate_call = None
 
     def close_position(self, dt, position,cd_close_by_price=None):
         if type(position) == dict:
             self.close_position_index(position)
         else:
             self.close_position_option(dt, position,cd_close_by_price)
+
+    def close_portfolio(self, dt, portfolio, cd_close_by_price=None):
+        if isinstance(portfolio,Collar):
+            self.close_position_option(dt, portfolio.write_call, cd_close_by_price=cd_close_by_price)
+            self.close_position_option(dt, portfolio.buy_put, cd_close_by_price=cd_close_by_price)
+            self.close_position_underlying(dt,portfolio.underlying,cd_open_by_price=cd_close_by_price)
+            portfolio.liquidate()
 
     def option_long_index(self, trade_order_dict):
         mkt_price = trade_order_dict['price']
@@ -284,6 +294,7 @@ class BktAccount(object):
         bktinstrument.trade_open_price = mkt_price
         bktinstrument.transaction_fee = fee
         bktinstrument.trade_flag_open = True
+        bktinstrument.trade_long_short = self.util.long
         record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
                                     self.util.dt_trade: [dt],
                                     self.util.trading_type: [trade_type],
@@ -297,69 +308,71 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
     def open_long_option(self, dt, bktoption, unit,cd_open_by_price):  # 多开
-        bktoption.trade_dt_open = dt
-        bktoption.trade_long_short = self.util.long
-        id_instrument = bktoption.id_instrument
-        mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
-        multiplier = bktoption.multiplier
-        trade_type = 'open long'
-        fee = unit * mkt_price * self.fee * multiplier
-        premium = unit * mkt_price * multiplier
-        margin_capital = 0.0
-        bktoption.trade_unit = unit
-        bktoption.premium = premium
-        bktoption.trade_open_price = mkt_price
-        bktoption.trade_margin_capital = margin_capital
-        bktoption.transaction_fee = fee
-        bktoption.trade_flag_open = True
-        if bktoption not in self.holdings: self.holdings.append(bktoption)
-        self.cash = self.cash - premium - margin_capital-fee
-        self.total_transaction_cost += fee
-        self.nbr_trade += 1
-        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
-                                    self.util.dt_trade: [dt],
-                                    self.util.trading_type: [trade_type],
-                                    self.util.trade_price: [mkt_price],
-                                    self.util.trading_cost: [fee],
-                                    self.util.unit: [unit],
-                                    'premium paid': [premium],
-                                    'cash': [self.cash],
-                                    'margin capital': [self.total_margin_capital]
-                                    })
-        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+        if bktoption != None:
+            bktoption.trade_dt_open = dt
+            bktoption.trade_long_short = self.util.long
+            id_instrument = bktoption.id_instrument
+            mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
+            multiplier = bktoption.multiplier
+            trade_type = 'open long'
+            fee = unit * mkt_price * self.fee * multiplier
+            premium = unit * mkt_price * multiplier
+            margin_capital = 0.0
+            bktoption.trade_unit = unit
+            bktoption.premium = premium
+            bktoption.trade_open_price = mkt_price
+            bktoption.trade_margin_capital = margin_capital
+            bktoption.transaction_fee = fee
+            bktoption.trade_flag_open = True
+            if bktoption not in self.holdings: self.holdings.append(bktoption)
+            self.cash = self.cash - premium - margin_capital-fee
+            self.total_transaction_cost += fee
+            self.nbr_trade += 1
+            record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                        self.util.dt_trade: [dt],
+                                        self.util.trading_type: [trade_type],
+                                        self.util.trade_price: [mkt_price],
+                                        self.util.trading_cost: [fee],
+                                        self.util.unit: [unit],
+                                        'premium paid': [premium],
+                                        'cash': [self.cash],
+                                        'margin capital': [self.total_margin_capital]
+                                        })
+            self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
     def open_short_option(self, dt, bktoption, unit,cd_open_by_price):
-        bktoption.trade_dt_open = dt
-        bktoption.trade_long_short = self.util.short
-        id_instrument = bktoption.id_instrument
-        mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
-        multiplier = bktoption.multiplier
-        trade_type = 'open short'
-        fee = unit * mkt_price * self.fee * multiplier
-        premium = unit * mkt_price * multiplier
-        margin_capital = unit * bktoption.get_init_margin()
-        bktoption.trade_unit = unit
-        bktoption.premium = premium
-        bktoption.trade_open_price = mkt_price
-        bktoption.trade_margin_capital = margin_capital
-        bktoption.transaction_fee = fee
-        bktoption.trade_flag_open = True
-        if bktoption not in self.holdings : self.holdings.append(bktoption)
-        self.cash = self.cash + premium - margin_capital-fee
-        self.total_margin_capital += margin_capital
-        self.total_transaction_cost += fee
-        self.nbr_trade += 1
-        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
-                                    self.util.dt_trade: [dt],
-                                    self.util.trading_type: [trade_type],
-                                    self.util.trade_price: [mkt_price],
-                                    self.util.trading_cost: [fee],
-                                    self.util.unit: [unit],
-                                    'premium paid': [-premium],
-                                    'cash': [self.cash],
-                                    'margin capital': [self.total_margin_capital]
-                                    })
-        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+        if bktoption != None:
+            bktoption.trade_dt_open = dt
+            bktoption.trade_long_short = self.util.short
+            id_instrument = bktoption.id_instrument
+            mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
+            multiplier = bktoption.multiplier
+            trade_type = 'open short'
+            fee = unit * mkt_price * self.fee * multiplier
+            premium = unit * mkt_price * multiplier
+            margin_capital = unit * bktoption.get_init_margin()
+            bktoption.trade_unit = unit
+            bktoption.premium = premium
+            bktoption.trade_open_price = mkt_price
+            bktoption.trade_margin_capital = margin_capital
+            bktoption.transaction_fee = fee
+            bktoption.trade_flag_open = True
+            if bktoption not in self.holdings : self.holdings.append(bktoption)
+            self.cash = self.cash + premium - margin_capital-fee
+            self.total_margin_capital += margin_capital
+            self.total_transaction_cost += fee
+            self.nbr_trade += 1
+            record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                        self.util.dt_trade: [dt],
+                                        self.util.trading_type: [trade_type],
+                                        self.util.trade_price: [mkt_price],
+                                        self.util.trading_cost: [fee],
+                                        self.util.unit: [unit],
+                                        'premium paid': [-premium],
+                                        'cash': [self.cash],
+                                        'margin capital': [self.total_margin_capital]
+                                        })
+            self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
     def close_position_index(self, trade_order_dict):
         position = pd.Series()
@@ -395,8 +408,40 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         self.trade_order_dict = {}
 
+    def close_position_underlying(self,dt, bktinstrument, cd_open_by_price):
+        position = pd.Series()
+        mkt_price = bktinstrument.mktprice_close
+        unit = bktinstrument.trade_unit
+        id_instrument = bktinstrument.id_instrument
+        long_short = bktinstrument.trade_long_short
+        open_price = bktinstrument.trade_open_price
+        open_transaction_fee = bktinstrument.transaction_fee
+        self.cash = self.cash + mkt_price * unit
+        trade_type = 'close'
+        fee = mkt_price * unit * self.fee
+        realized_pnl = long_short * (
+            unit * (mkt_price - open_price)) - open_transaction_fee - fee
+        position[self.util.close_price] = mkt_price
+        position[self.util.open_price] = open_price
+        position[self.util.realized_pnl] = realized_pnl
+        self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
+        record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
+                                    self.util.dt_trade: [dt],
+                                    self.util.trading_type: [trade_type],
+                                    self.util.trade_price: [mkt_price],
+                                    self.util.trading_cost: [fee],
+                                    self.util.unit: [unit],
+                                    'premium paid': [- mkt_price * unit],
+                                    'cash': [self.cash],
+                                    'margin capital': [self.total_margin_capital]
+                                    })
+        self.nbr_trade += 1
+        self.realized_pnl += realized_pnl
+        self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+
+
     def close_position_option(self, dt, bktoption,cd_close_by_price):  # 多空平仓
-        if bktoption.trade_flag_open:
+        if bktoption != None:
             id_instrument = bktoption.id_instrument
             mkt_price = self.get_close_position_price(bktoption,cd_close_by_price)
             unit = bktoption.trade_unit
@@ -423,7 +468,6 @@ class BktAccount(object):
             self.total_transaction_cost += fee
             self.nbr_trade += 1
             self.realized_pnl += realized_pnl
-
             position = pd.Series()
             position[self.util.id_instrument] = id_instrument
             position[self.util.dt_open] = dt_open
@@ -438,7 +482,6 @@ class BktAccount(object):
             position[self.util.close_price] = mkt_price
             position[self.util.realized_pnl] = realized_pnl
             self.df_trading_book = self.df_trading_book.append(position, ignore_index=True)
-
             record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
                                         self.util.dt_trade: [dt],
                                         self.util.trading_type: [trade_type],
@@ -582,7 +625,7 @@ class BktAccount(object):
         port_delta = 0.0
         holdings = []
         for bktoption in portfolio.optionset:
-            if not bktoption.trade_flag_open: continue
+            if bktoption == None: continue
             if bktoption.maturitydt == dt:
                 self.close_position_option(dt, bktoption, None)
                 print('close option position on maturity date : ', bktoption.id_instrument)
@@ -605,10 +648,12 @@ class BktAccount(object):
             self.cash -= margin_call
             self.total_margin_capital += margin_call
             bktoption.trade_margin_capital += margin_call
-            iv = pd.DataFrame(data={'dt_date': [dt], 'id': [bktoption.id_instrument], 'price': [bktoption.option_price],
-                                    'unit': [bktoption.trade_unit],
-                                    'iv': [bktoption.implied_vol], 'long_short': [bktoption.trade_long_short]})
-            self.df_ivs = self.df_ivs.append(iv, ignore_index=True)
+            # iv = pd.DataFrame(data={'dt_date': [dt], 'id': [bktoption.id_instrument],
+            #                         'price': [bktoption.option_price],
+            #                         'unit': [bktoption.trade_unit],
+            #                         'iv': [bktoption.implied_vol],
+            #                         'long_short': [bktoption.trade_long_short]})
+            # self.df_ivs = self.df_ivs.append(iv, ignore_index=True)
 
         """trade_order_dict : Only Contains LONG underlying positions"""
         trade_order_mktv = 0.0
@@ -833,15 +878,16 @@ class BktAccount(object):
         vol = df.std() * np.sqrt(252)
         return vol
 
-    def plot_npv(self):
+    def plot_npv(self,benchmark = None):
         f, ax = plt.subplots()
         ax.set_xlabel("日期")
         x = self.df_account[self.util.dt_date].tolist()
         npv = self.df_account[self.util.npv].tolist()
-        dd = self.df_account['drawdown'].tolist()
-        benchmark = self.df_account[self.util.benchmark].tolist()
+        # benchmark = self.df_account[self.util.benchmark].tolist()
+
         ax.plot(x, npv, label='npv', color=self.pu.colors[0], linestyle=self.pu.lines[0], linewidth=2)
-        ax.plot(x, benchmark, label='benchmark', color=self.pu.colors[1], linestyle=self.pu.lines[1], linewidth=2)
+        if benchmark != None:
+            ax.plot(x, benchmark, label='benchmark', color=self.pu.colors[1], linestyle=self.pu.lines[1], linewidth=2)
         ax.set_ylabel('Net Value')
         ax.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
                     ncol=3, mode="expand", borderaxespad=0., frameon=False)
