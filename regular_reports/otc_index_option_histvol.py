@@ -1,109 +1,90 @@
 from sqlalchemy import *
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
 from matplotlib import cm as plt_cm
 import datetime
 import pandas as pd
-import numpy as np
 from WindPy import w
 from data_access.db_tables import DataBaseTables as dbt
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
-import QuantLib as ql
+from Utilities.calculate import calculate_histvol
 
 ###########################################################################################
 w.start()
 pu = PlotUtil()
 plt.rcParams['font.sans-serif'] = ['STKaiti']
-plt.rcParams.update({'font.size': 15})
-engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
-                       echo=False)
-conn = engine.connect()
-metadata = MetaData(engine)
-Session = sessionmaker(bind=engine)
-sess = Session()
-index_mkt = Table('indexes_mktdata', metadata, autoload=True)
-indexmkt_table = dbt.IndexMkt
-index_ids = ['index_300sh','index_50sh','index_500sh']
+plt.rcParams.update({'font.size': 13})
+engine1 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata_intraday', echo=False)
+engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
+metadata1 = MetaData(engine1)
+Session1 = sessionmaker(bind=engine1)
+sess1 = Session1()
+metadata2 = MetaData(engine2)
+Session2 = sessionmaker(bind=engine2)
+sess2 = Session2()
+index_intraday = Table('equity_index_mktdata_intraday', metadata1, autoload=True)
+EquityIndexIntraday = dbt.EquityIndexIntraday
+IndexMkt = dbt.IndexMkt
 ############################################################################################
 # Eval Settings
-eval_date = datetime.date(2018, 4, 4)
-evalDate = eval_date.strftime("%Y-%m-%d")
-
-hist_date = datetime.date(2016, 1, 1).strftime("%Y-%m-%d")
-
-#############################################################################################
-
-
-
-query_index = sess.query(indexmkt_table.id_instrument,indexmkt_table.dt_date,indexmkt_table.amt_close)\
-    .filter(indexmkt_table.dt_date >= hist_date)\
-    .filter(indexmkt_table.dt_date <= evalDate)\
-
-index_df = pd.read_sql(query_index.statement,query_index.session.bind)
+evalDate = datetime.date(2018, 5, 18)
+startDate = datetime.date(2017, 1, 1)
+hist_date = datetime.date(2015 ,6, 1)
+index_ids = ['index_300sh','index_50sh','index_500sh','index_50etf']
+histvols_3M = []
+realizedvols = []
+dates = []
+mergedvix_df = pd.DataFrame()
+query2_1 = sess2.query(IndexMkt.id_instrument, IndexMkt.dt_date, IndexMkt.amt_close) \
+        .filter(IndexMkt.dt_date >= startDate) \
+        .filter(IndexMkt.dt_date <= evalDate) \
+        .filter(IndexMkt.id_instrument == 'index_cvix')
 
 for indexid in index_ids:
 
-    index300sh_df = index_df[index_df['id_instrument']==indexid].reset_index(drop=True)
-    for (idx,row) in index300sh_df.iterrows():
-        if idx == 0: r=0.0
-        else:
-            r = np.log(float(row['amt_close']) / float(index300sh_df.loc[idx-1,'amt_close']))
-        index300sh_df.loc[idx,'yield'] = r
+    query2 = sess2.query(IndexMkt.id_instrument, IndexMkt.dt_date, IndexMkt.amt_close) \
+        .filter(IndexMkt.dt_date >= hist_date) \
+        .filter(IndexMkt.dt_date <= evalDate) \
+        .filter(IndexMkt.id_instrument == indexid)
 
-    for idx_v in range(len(index300sh_df)):
-        if idx_v >= 120:
-            index300sh_df.loc[idx_v,'histvol_120'] = np.std(index300sh_df['yield'][idx_v-120:idx_v])*np.sqrt(252)*100
-        if idx_v >= 60:
-            index300sh_df.loc[idx_v,'histvol_60'] = np.std(index300sh_df['yield'][idx_v-60:idx_v])*np.sqrt(252)*100
-        if idx_v >= 20:
-            index300sh_df.loc[idx_v,'histvol_20'] = np.std(index300sh_df['yield'][idx_v-20:idx_v])*np.sqrt(252)*100
-        if idx_v >= 10:
-            index300sh_df.loc[idx_v,'histvol_10'] = np.std(index300sh_df['yield'][idx_v-10:idx_v])*np.sqrt(252)*100
-        if idx_v >= 5:
-            index300sh_df.loc[idx_v,'histvol_5'] = np.std(index300sh_df['yield'][idx_v-5:idx_v])*np.sqrt(252)*100
+    index_df = pd.read_sql(query2.statement, query2.session.bind)
 
-    # print(index300sh_df)
-    volcone_df = pd.DataFrame()
-    histvols_60 = index300sh_df['histvol_120'].dropna().tolist()
-    histvols_30 = index300sh_df['histvol_60'].dropna().tolist()
-    histvols_20 = index300sh_df['histvol_20'].dropna().tolist()
-    histvols_10 = index300sh_df['histvol_10'].dropna().tolist()
-    histvols_5 = index300sh_df['histvol_5'].dropna().tolist()
-    max_vols = [max(histvols_60),max(histvols_30),max(histvols_20),max(histvols_10),max(histvols_5)]
-    min_vols = [min(histvols_60), min(histvols_30), min(histvols_20), min(histvols_10),min(histvols_5)]
-    median_vols = [np.median(histvols_60), np.median(histvols_30), np.median(histvols_20),
-                   np.median(histvols_10),np.median(histvols_5)]
-    p75_vols = [np.percentile(histvols_60, 75), np.percentile(histvols_30, 75),
-                np.percentile(histvols_20, 75), np.percentile(histvols_10, 75), np.percentile(histvols_5, 75)]
-    p25_vols = [np.percentile(histvols_60, 25), np.percentile(histvols_30, 25),
-                np.percentile(histvols_20, 25), np.percentile(histvols_10, 25), np.percentile(histvols_5, 25)]
-    # print(evalDate)
-    index300sh_df_c = index300sh_df[index300sh_df['dt_date']==eval_date]
-    current_vols = [float(index300sh_df_c['histvol_120']),
-                    float(index300sh_df_c['histvol_60']),
-                    float(index300sh_df_c['histvol_20']),
-                    float(index300sh_df_c['histvol_10']),
-                    float(index300sh_df_c['histvol_5'])]
-    print(indexid,' current_vols : ', current_vols)
-    histvolcone = [current_vols, max_vols, min_vols, median_vols, p75_vols, p25_vols]
-    x = [120, 60, 20, 10, 5]
-    x_labels = ['1W', '2W', '1M', '3M', '6M']
+    index_df['histvol_120'] = calculate_histvol(index_df['amt_close'],120)
+    index_df['histvol_60'] = calculate_histvol(index_df['amt_close'],60)
+    index_df['histvol_20'] = calculate_histvol(index_df['amt_close'],20)
+    index_df['histvol_10'] = calculate_histvol(index_df['amt_close'],10)
+    index_df['histvol_5'] = calculate_histvol(index_df['amt_close'],5)
 
+    merged_df = index_df
+    dates = merged_df['dt_date'].tolist()
+
+    vol_set = [ merged_df['histvol_20'].tolist(),
+                merged_df['histvol_60'].tolist(),
+                merged_df['histvol_120'].tolist()]
+    print(dates[-1],indexid,' histvol_120 : ',merged_df['histvol_120'].tolist()[-1])
+    print(dates[-1],indexid,' histvol_60 : ',merged_df['histvol_60'].tolist()[-1])
+    print(dates[-1],indexid,' histvol_20 : ',merged_df['histvol_20'].tolist()[-1])
     f2, ax2 = plt.subplots()
-    ldgs = ['当前水平', '最大值', '最小值', '中位数', '75分位数', '25分位数']
-    for cont2, y in enumerate(histvolcone):
-        pu.plot_line(ax2, cont2, x, y, ldgs[cont2], '时间窗口', '波动率（%）')
+    ldgs = [ '历史波动率1M', '历史波动率3M','历史波动率6M']
+    for cont2, y in enumerate(vol_set):
+        pu.plot_line(ax2, cont2, dates, y, ldgs[cont2], '日期', '波动率（%）')
     ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-               ncol=6, mode="expand", borderaxespad=0.,frameon=False)
-    ax2.set_xticks([5,10,20,60,120])
-    ax2.set_xticklabels(x_labels)
-    f2.set_size_inches((12, 6))
-    f2.savefig('../save_figure/otc_histvols_'+indexid+'_' + str(hist_date)+' - '+ str(evalDate) + '.png', dpi=300, format='png')
+               ncol=5, mode="expand", borderaxespad=0.)
+    for tick in ax2.get_xticklabels():
+        tick.set_rotation(90)
+    f2.set_size_inches((14, 6))
+    f2.savefig('../save_figure/otc_realizedvol_' + indexid + '_' + str(startDate) + ' - ' + str(evalDate) + '.png',
+               dpi=300, format='png')
+    histvols_3M.append(merged_df['histvol_60'].tolist())
+    merged_df.to_csv('../save_figure/index_vols'+indexid+'.csv')
 
 
 
 plt.show()
+
+
+
+
 

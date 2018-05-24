@@ -1,5 +1,6 @@
 from back_test.bkt_util import BktUtil
 import numpy as np
+import copy
 
 class OptionPortfolio(object):
 
@@ -9,6 +10,7 @@ class OptionPortfolio(object):
         self.portfolio_combinations = {}
         self.optionset = []
         self.unit_portfolio = None
+        self.underlying = None
         self.delta = None
         self.theta = None
         self.vega = None
@@ -59,6 +61,34 @@ class Straddle(OptionPortfolio):
             self.invest_ratio_put = (delta_exposure-delta_call)/delta_put
 
 
+class Calls(OptionPortfolio):
+
+    def __init__(self,open_date,callset,cd_long_short,cd_weighted='equal_unit'):
+        OptionPortfolio.__init__(self,open_date)
+        self.optionset = callset
+        self.cd_weighted = cd_weighted
+        self.cd_long_short = cd_long_short
+
+
+class Puts(OptionPortfolio):
+
+    def __init__(self,open_date,callset,cd_long_short,cd_weighted='equal_unit'):
+        OptionPortfolio.__init__(self,open_date)
+        self.optionset = callset
+        self.cd_weighted = cd_weighted
+        self.cd_long_short = cd_long_short
+
+
+class CalandarSpread(OptionPortfolio):
+
+    def __init__(self,open_date,option_mdt1,option_mdt2,option_type):
+        OptionPortfolio.__init__(self,open_date)
+        self.option_set = [option_mdt1,option_mdt2]
+        self.option_mdt1 = option_mdt1
+        self.option_mdt2 = option_mdt2
+        self.option_type = option_type
+
+
 class BackSpread(OptionPortfolio):
 
     def __init__(self,open_date,long,short,option_type,delta_exposure=0.0):
@@ -90,31 +120,40 @@ class BackSpread(OptionPortfolio):
             self.invest_ratio_short = delta_long / delta_short
 
 
+class Collar(OptionPortfolio):
 
-class Calls(OptionPortfolio):
-
-    def __init__(self,open_date,callset,cd_long_short,cd_weighted='equal_unit'):
+    def __init__(self,open_date,buy_put,write_call,underlying):
         OptionPortfolio.__init__(self,open_date)
-        self.optionset = callset
-        self.cd_weighted = cd_weighted
-        self.cd_long_short = cd_long_short
+        self.buy_put = buy_put
+        self.write_call = write_call
+        self.underlying = underlying
+        self.optionset = [self.buy_put,self.write_call]
+        self.unit_call = None
+        self.unit_put = None
+        self.unit_underlying = None
+        self.liquidate_put = None
+        self.liquidate_call = None
+
+    "标的价格大幅运动的情况下，调整buy write的期权合约"
+    def update_portfolio(self,buy_put,write_call):
+        self.liquidate_put = copy.copy(self.buy_put)
+        self.liquidate_call = copy.copy(self.write_call)
+        self.buy_put = buy_put
+        self.write_call = write_call
+        self.optionset = [self.buy_put,self.write_call]
+        self.unit_long = None
+        self.unit_short = None
+
+    def liquidate(self):
+        self.buy_put = None
+        self.write_call = None
+        self.underlying = None
+        self.optionset = []
+        self.unit_long = None
+        self.unit_short = None
 
 
-class Puts(OptionPortfolio):
-
-    def __init__(self,open_date,callset,cd_long_short,cd_weighted='equal_unit'):
-        OptionPortfolio.__init__(self,open_date)
-        self.optionset = callset
-        self.cd_weighted = cd_weighted
-        self.cd_long_short = cd_long_short
 
 
-class CalandarSpread(OptionPortfolio):
 
-    def __init__(self,open_date,option_mdt1,option_mdt2,option_type):
-        OptionPortfolio.__init__(self,open_date)
-        self.option_set = [option_mdt1,option_mdt2]
-        self.option_mdt1 = option_mdt1
-        self.option_mdt2 = option_mdt2
-        self.option_type = option_type
 

@@ -93,6 +93,7 @@ class BktUtil():
         self.money_utilization='money_utilization'
         self.total_asset = 'total_asset'
         self.npv = 'npv'
+        self.benchmark = 'benchmark'
 
         self.dt_trade = 'dt_trade'
         self.trading_type='trading_type'

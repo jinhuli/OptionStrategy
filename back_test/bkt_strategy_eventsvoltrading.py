@@ -38,12 +38,6 @@ class BktStrategyEventVol(BktOptionStrategy):
             cd_open_position_time = self.df_events.loc[idx_event, 'cd_open_position_time']
             cd_close_position_time = self.df_events.loc[idx_event, 'cd_close_position_time']
             cd_event = self.df_events.loc[idx_event, 'cd_occurrence']
-            # cd_open_position_time = 'morning_open_15min'
-            # cd_close_position_time = 'close'
-
-            # cd_close_position_time = 'daily_avg'
-            # cd_close_position_time = None
-
 
             evalDate = bkt_optionset.eval_date
 
@@ -580,8 +574,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 """Back Test Settings"""
 # start_date = datetime.date(2017, 11, 9)
 # end_date = datetime.date(2017, 12, 31)
-start_date = datetime.date(2015, 3, 1)
-end_date = datetime.date(2018, 5, 5)
+start_date = datetime.date(2018, 1, 1)
+end_date = datetime.date(2018, 4, 5)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -606,7 +600,7 @@ bkt_strategy.set_min_holding_days(15)
 # f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
 # plt.show()
 
-# bkt_strategy.options_run()
+bkt_strategy.options_run()
 # # # bkt_strategy.options_calendar_spread()
 
 # bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
@@ -616,5 +610,5 @@ bkt_strategy.set_min_holding_days(15)
 # #
 # bkt_strategy.return_analysis()
 
-bkt_strategy.ivs_ranked_run()
+# bkt_strategy.ivs_ranked_run()
 
