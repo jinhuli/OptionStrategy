@@ -116,13 +116,26 @@ def get_50option_metricdata(start_date, end_date):
     return df_option_metrics
 
 def get_index_mktdata(start_date, end_date, id_index):
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
+    Session = sessionmaker(bind=engine)
+    sess = Session()
+    metadata = MetaData(engine)
+    Index_mkt = Table('indexes_mktdata', metadata, autoload=True)
+    query_etf = sess.query(Index_mkt.c.dt_date, Index_mkt.c.amt_close,Index_mkt.c.amt_open,
+                           Index_mkt.c.id_instrument) \
+        .filter(Index_mkt.c.dt_date >= start_date).filter(Index_mkt.c.dt_date <= end_date) \
+        .filter(Index_mkt.c.id_instrument == id_index)
+    df_index= pd.read_sql(query_etf.statement, query_etf.session.bind)
+    return df_index
+
+def get_index_ma(start_date, end_date, id_index):
     engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics', echo=False)
     Session = sessionmaker(bind=engine)
     sess = Session()
     metadata = MetaData(engine)
     Index_mkt = Table('moving_average', metadata, autoload=True)
-    query_etf = sess.query(Index_mkt.c.dt_date, Index_mkt.c.amt_close,Index_mkt.c.amt_open,
-                           Index_mkt.c.id_instrument, Index_mkt.c.amt_ma,Index_mkt.c.cd_period) \
+    query_etf = sess.query(Index_mkt.c.dt_date, Index_mkt.c.amt_close,
+                           Index_mkt.c.id_instrument, Index_mkt.c.amt_value,Index_mkt.c.cd_period) \
         .filter(Index_mkt.c.dt_date >= start_date).filter(Index_mkt.c.dt_date <= end_date) \
         .filter(Index_mkt.c.id_instrument == id_index)
     df_index= pd.read_sql(query_etf.statement, query_etf.session.bind)

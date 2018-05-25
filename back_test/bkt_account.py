@@ -869,7 +869,7 @@ class BktAccount(object):
         return_yr = (1 + totalreturn) ** (252.0 / tradeslen) - 1
         # 年化波动率
         volatility_yr = np.std(returns, ddof=0) * np.sqrt(252.0)
-        # print('volatility_yr',volatility_yr)
+        print('volatility_yr',volatility_yr)
 
         # 夏普比率
         sharpe = (return_yr - 0.024) / volatility_yr

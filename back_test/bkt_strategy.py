@@ -124,23 +124,44 @@ class BktOptionStrategy(object):
     def get_moving_average_signal(self,df,cd_short='ma_3',cd_long = 'ma_20'):
         df_short = df[df['cd_period']==cd_short].set_index('dt_date')
         df_long= df[df['cd_period']==cd_long].set_index('dt_date')
-        df_long['short_ma'] = df_short['amt_ma']
-        df_long['short_minus_long'] = df_short['amt_ma']-df_long['amt_ma']
-        df_long = df_long.rename(columns={'amt_ma':'long_ma'})
+        df_long['short_ma'] = df_short['amt_value']
+        df_long['short_minus_long'] = df_short['amt_value']-df_long['amt_value']
+        df_long = df_long.rename(columns={'amt_value':'long_ma'})
         df_long['signal'] = df_long['short_minus_long']\
             .apply(lambda x: self.util.long if x>=0 else self.util.short)
+        df_long.to_csv('../ma_index.csv')
         return df_long
 
-    def get_bollinger_signal(self,df,cd_long = 'ma_20'):
-        df_long = df[df['cd_period'] == cd_long].set_index('dt_date')
-        std = df_long['amt_close'].std()
-        df_long['std'] = std
-        df_long['lower_boll'] = df_long['amt_ma'] - df_long['std']
-        df_long['upper_boll'] = df_long['amt_ma'] + df_long['std']
-        df_long['signal'] = self.util.neutrual
-        df_long.ix[df_long['amt_close'] >= df_long['upper_boll'], 'signal'] = self.util.long
-        df_long.ix[df_long['amt_close'] <= df_long['lower_boll'], 'signal'] = self.util.short
+    def get_bollinger_signal(self,df,cd_long = '20'):
+        df_long = df[df['cd_period'] == 'ma_'+cd_long].set_index('dt_date')
+        df_std = df[df['cd_period'] == 'std_'+cd_long].set_index('dt_date')
+        df_long['lower_sigma1'] = df_long['amt_value'] - df_std['amt_value']
+        df_long['lower_sigma2'] = df_long['amt_value'] - 2*df_std['amt_value']
+        df_long['upper_sigma1'] = df_long['amt_value'] + df_std['amt_value']
+        df_long['upper_sigma2'] = df_long['amt_value'] + 2*df_std['amt_value']
+        df_long['ma_3'] = df[df['cd_period'] == 'ma_3']['amt_value']
+        # df_long.rename(columns={'amt_value':'ma_'+cd_long})
         return df_long
+
+    # def get_percentile_signal(self,df):
+
+
+    def boll_signal(self,flag_current,amt_close,df):
+        if flag_current == self.util.long:
+            if amt_close > df['amt_value']: signal = None
+            # if amt_close >= df['upper_sigma1']: signal = None
+            elif amt_close <= df['lower_sigma1']: signal = self.util.short
+            else: signal = self.util.neutrual
+        elif flag_current == self.util.neutrual:
+            if amt_close >= df['upper_sigma1']: signal = self.util.long
+            elif amt_close <= df['lower_sigma1']: signal = self.util.short
+            else: signal = None
+        else:
+            if amt_close < df['amt_value']: signal = None
+            # if amt_close <= df['lower_sigma1']: signal = None
+            elif amt_close >= df['upper_sigma1']: signal = self.util.long
+            else: signal = self.util.neutrual
+        return signal
 
     def util1(self,x):
         if x[0] >= x[2]:

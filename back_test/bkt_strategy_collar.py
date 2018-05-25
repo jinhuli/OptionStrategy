@@ -3,7 +3,7 @@ from back_test.bkt_strategy import BktInstrument
 import numpy as np
 import QuantLib as ql
 import datetime
-from back_test.data_option import get_50option_mktdata, get_eventsdata, get_index_mktdata
+from back_test.data_option import get_50option_mktdata, get_index_ma, get_index_mktdata
 
 
 
@@ -11,7 +11,7 @@ class BktStrategyCollar(BktOptionStrategy):
 
 
     def __init__(self, df_option, df_index, money_utilization=0.2, init_fund=100000000.0,
-                 cash_reserve_pct=0.1):
+                 cash_reserve_pct=0.15):
         self.validate_data(df_option, df_index)
         BktOptionStrategy.__init__(self, self.df_option, money_utilization=money_utilization,
                                        init_fund=init_fund)
@@ -59,11 +59,14 @@ class BktStrategyCollar(BktOptionStrategy):
         self.flag_trade = True
         bkt_account.mkm_update_portfolio(evalDate, self.portfolio)
         print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.cash)
+        moneyness_call = -1
+        moneyness_put = -2
+        write_ratio = 1.0
+        buy_ratio = 1.0
+        flag_vol = self.util.neutrual
+        flag_index = self.util.neutrual
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-            moneyness_call = -2
-            moneyness_put = -2
-            write_ratio = 1.0
-            buy_ratio = 1.0
+
             self.next()
             evalDate = bkt_optionset.eval_date
 
@@ -76,16 +79,70 @@ class BktStrategyCollar(BktOptionStrategy):
                 break
 
             """ 根据动量指标与波动率指标调整write ratio """
-            signal_index = self.index_ma.loc[evalDate,'signal']
-            signal_vol = self.volatility_ma.loc[evalDate,'signal']
-            if signal_index == self.util.long:
-                moneyness_call = moneyness_put = -3
-            if signal_vol == self.util.long:
-                write_ratio = 0.75
-                buy_ratio = 1.25
-            elif signal_vol == self.util.short:
-                write_ratio = 1.25
-                buy_ratio = 0.75
+            vol_ma = self.volatility_ma.loc[evalDate,'ma_3']
+            index_ma = self.index_ma.loc[evalDate,'amt_close']
+            vol_signal = self.boll_signal(flag_vol,vol_ma,self.volatility_ma.loc[evalDate])
+            index_signal = self.boll_signal(flag_index,index_ma,self.index_ma.loc[evalDate])
+            " research paper method"
+            if vol_signal != None:
+                self.flag_trade = False
+                if vol_signal == self.util.long:
+                    print('!!! vol signal : long')
+                    write_ratio = 0.5
+                    if index_signal == self.util.short: buy_ratio = 1.5
+                    else: buy_ratio = 1.0
+                elif vol_signal == self.util.short:
+                    print('!!! vol signal : short')
+                    buy_ratio = 0.5
+                    if index_signal == self.util.short:
+                        write_ratio = 1.5
+                    else:
+                        write_ratio = 0.5
+                else:
+                    print('!!! vol signal : neutral')
+                    if index_signal == self.util.short:
+                        write_ratio = 1.5
+                        buy_ratio = 1.5
+                    elif index_signal == self.util.long:
+                        write_ratio = 0.5
+                        buy_ratio = 0.5
+                    else:
+                        write_ratio = 1.0
+                        buy_ratio = 1.0
+                flag_vol = vol_signal
+
+            if index_signal != None:
+                self.flag_trade = False
+                if index_signal == self.util.long:
+                    print('!!! index signal : long')
+                    moneyness_call = -2
+                    moneyness_put = -3
+                # elif index_signal == self.util.short:
+                #     print('!!! index signal : short')
+                #     moneyness_call = -1
+                #     moneyness_put = -1
+                else:
+                    moneyness_call = -1
+                    moneyness_put = -1
+                    print('!!! index signal : shot/neutral')
+                flag_index = index_signal
+
+            # if vol_signal != flag_vol:
+            #     self.flag_trade = False
+            #     if vol_signal == self.util.long:
+            #         print('!!! vol signal : long')
+            #         write_ratio = 0.5
+            #         if index_signal == self.util.short: buy_ratio = 1.25
+            #     elif vol_signal == self.util.short:
+            #         print('!!! vol signal : short')
+            #         if index_signal == self.util.short:
+            #             write_ratio = 1.25
+            #         else:
+            #             write_ratio = 0.75
+            #             buy_ratio = 0.75
+            #     else:
+            #         write_ratio = self.write_ratio
+            #         print('!!! vol signal : neutral')
 
             if not self.flag_trade:
                 portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index,
@@ -132,8 +189,8 @@ class BktStrategyCollar(BktOptionStrategy):
 
 
 """Back Test Settings"""
-# start_date = datetime.date(2015, 3, 13)
-start_date = datetime.date(2018, 3, 13)
+start_date = datetime.date(2015, 3, 20)
+# start_date = datetime.date(2018, 3, 13)
 end_date = datetime.date(2018, 5, 21)
 
 
@@ -141,15 +198,21 @@ end_date = datetime.date(2018, 5, 21)
 
 df_option_metrics = get_50option_mktdata(start_date, end_date)
 df_index_metrics = get_index_mktdata(start_date,end_date,'index_50etf')
-df_vix = get_index_mktdata(start_date,end_date,'index_cvix')
 """Run Backtest"""
 
 
 bkt_strategy = BktStrategyCollar(df_option_metrics, df_index_metrics)
 bkt_strategy.set_min_holding_days(15)
 
-bkt_strategy.set_index_ma(bkt_strategy.get_moving_average_signal(df_index_metrics))
-bkt_strategy.set_volatility_ma(bkt_strategy.get_bollinger_signal(df_vix))
+
+# bkt_strategy.get_moving_average_signal(get_index_ma(start_date,end_date,'index_cvix'))
+df_vix_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_cvix'))
+df_index_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_50etf'))
+bkt_strategy.set_index_ma(df_index_boll)
+bkt_strategy.set_volatility_ma(df_vix_boll)
+df_vix_boll.to_csv('../df_vix_boll.csv')
+df_index_boll.to_csv('../df_index_boll.csv')
+
 bkt_strategy.run()
 
 bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
@@ -158,8 +221,7 @@ bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/bkt_df_tradi
 # bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/bkt_df_ivs.csv')
 #
 benckmark = df_index_metrics[bkt_strategy.util.col_close].tolist()
-b0 = benckmark[0]
-b = np.array(benckmark)/b0
+b = np.array(benckmark)/benckmark[0]
 benckmark = b.tolist()
 bkt_strategy.return_analysis(benckmark)
 
