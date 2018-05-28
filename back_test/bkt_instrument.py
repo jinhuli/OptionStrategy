@@ -84,14 +84,17 @@ class BktInstrument(object):
 
     def set_instrument_basics(self):
         try:
-            # code_instrument = self.current_daily_state[self.util.col_code_instrument]
             id_instrument = self.current_daily_state[self.util.id_instrument]
         except Exception as e:
             print(e)
-            # code_instrument = None
             id_instrument = None
-        # self.code_instrument = code_instrument
         self.id_instrument = id_instrument
+        try:
+            code_instrument = self.current_daily_state[self.util.col_code_instrument]
+        except Exception as e:
+            print(e)
+            code_instrument = None
+        self.code_instrument = code_instrument
 
 
     def update_instrument_price(self):

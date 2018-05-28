@@ -14,6 +14,44 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
 
         BktOptionStrategy.__init__(self, df_option_metrics)
 
+    def ivs_mdt1_run(self):
+        res = []
+        bkt_optionset = self.bkt_optionset
+        df_ivs = pd.DataFrame()
+        while bkt_optionset.index < len(bkt_optionset.dt_list)-1:
+
+            evalDate = bkt_optionset.eval_date
+            cd_underlying_price = 'close'
+            call_atm = self.bkt_optionset.get_call(
+                0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            put_atm = self.bkt_optionset.get_put(
+                0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            res.append({
+                'dt_date': evalDate,
+                'id_underlying': 'index_50etf',
+                'cd_option_type': 'call',
+                'cd_mdt': 'hp_8_1st', # TODO
+                'cd_moneyness': 0,
+                'pct_implies_vol': call_atm,
+            })
+            res.append({
+                'dt_date': evalDate,
+                'id_underlying': 'index_50etf',
+                'cd_option_type': 'put',
+                'cd_mdt': 'hp_8_1st', # TODO
+                'cd_moneyness': 0,
+                'pct_implies_vol': put_atm,
+            })
+            # iv = pd.DataFrame(data={'dt': [evalDate],
+            #                         'call_atm': [call_atm],
+            #                         'put_atm': [put_atm]
+            #                         })
+            # df_ivs = df_ivs.append(iv,ignore_index=True)
+            bkt_optionset.next()
+        # df_ivs.to_csv('../save_results/df_ivs_total.csv')
+        return res
+
+
     def get_ivs_mdt1(self,moneyness):
         res = []
         bkt_optionset = self.bkt_optionset
@@ -34,7 +72,7 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
                     'dt_date':evalDate,
                     'id_underlying':'index_50etf',
                     'cd_option_type':'call',
-                    'cd_mdt':'hp_5_1st',
+                    'cd_mdt':'hp_5_1st', # TODO
                     'cd_moneyness':moneyness,
                     'pct_implies_vol': iv_call,
                     'amt_option_price': float(p_call)
@@ -88,8 +126,8 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
         return res
 
 """Back Test Settings"""
-start_date = datetime.date(2018, 4, 17)
-end_date = datetime.date(2018, 4, 26)
+start_date = datetime.date(2015, 1, 1)
+end_date = datetime.date(2018, 5, 28)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
@@ -106,8 +144,8 @@ df_option_metrics = get_mktdata(start_date, end_date)
 """Run Backtest"""
 
 bkt = BktStrategyMoneynessVol(df_option_metrics)
-bkt.set_min_holding_days(5) # 期权到期时间至少5个工作日
-res = bkt.get_ivs_keyvols()
+bkt.set_min_holding_days(8) # 期权到期时间至少5个工作日
+res = bkt.ivs_mdt1_run()
 # res = bkt.get_ivs_mdt1(0)
 df = pd.DataFrame(res)
 print(df)

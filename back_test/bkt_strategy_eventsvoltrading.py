@@ -4,7 +4,7 @@ import QuantLib as ql
 import numpy as np
 import datetime
 from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata2 as get_mktdata, get_eventsdata, get_50etf_mktdata
+from back_test.data_option import get_50option_mktdata, get_eventsdata, get_50etf_mktdata
 from back_test.OptionPortfolio import *
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
@@ -220,60 +220,64 @@ class BktStrategyEventVol(BktOptionStrategy):
                 0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
             put_atm = self.bkt_optionset.get_put(
                 0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-
-            try:
-                call_itm = self.bkt_optionset.get_call(
-                    2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                call_itm = np.nan
-            try:
-                call_itm1 = self.bkt_optionset.get_call(
-                    1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                call_itm1 = np.nan
-            try:
-                call_otm = self.bkt_optionset.get_call(
-                    -2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                call_otm = np.nan
-            try:
-                call_otm1 = self.bkt_optionset.get_call(
-                    -1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                call_otm1 = np.nan
-            try:
-                put_itm = self.bkt_optionset.get_put(
-                    2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                put_itm = np.nan
-            try:
-                put_itm1 = self.bkt_optionset.get_put(
-                    1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                put_itm1 = np.nan
-            try:
-                put_otm = self.bkt_optionset.get_put(
-                    -2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                put_otm = np.nan
-            try:
-                put_otm1 = self.bkt_optionset.get_put(
-                    -1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            except:
-                put_otm1 = np.nan
+            #
+            # try:
+            #     call_itm = self.bkt_optionset.get_call(
+            #         2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     call_itm = np.nan
+            # try:
+            #     call_itm1 = self.bkt_optionset.get_call(
+            #         1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     call_itm1 = np.nan
+            # try:
+            #     call_otm = self.bkt_optionset.get_call(
+            #         -2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     call_otm = np.nan
+            # try:
+            #     call_otm1 = self.bkt_optionset.get_call(
+            #         -1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     call_otm1 = np.nan
+            # try:
+            #     put_itm = self.bkt_optionset.get_put(
+            #         2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     put_itm = np.nan
+            # try:
+            #     put_itm1 = self.bkt_optionset.get_put(
+            #         1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     put_itm1 = np.nan
+            # try:
+            #     put_otm = self.bkt_optionset.get_put(
+            #         -2, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     put_otm = np.nan
+            # try:
+            #     put_otm1 = self.bkt_optionset.get_put(
+            #         -1, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+            # except:
+            #     put_otm1 = np.nan
+            # iv = pd.DataFrame(data={'dt': [evalDate],
+            #                         'call_atm': [call_atm],
+            #                         'call_itm': [call_itm],
+            #                         'call_itm 1': [call_itm1],
+            #                         'call_otm': [call_otm],
+            #                         'call_otm 1': [call_otm1],
+            #                         'put_atm': [put_atm],
+            #                         'put_itm': [put_itm],
+            #                         'put_itm 1': [put_itm1],
+            #                         'put_otm': [put_otm],
+            #                         'put_otm 1': [put_otm1]
+            #                         })
             iv = pd.DataFrame(data={'dt': [evalDate],
                                     'call_atm': [call_atm],
-                                    'call_itm': [call_itm],
-                                    'call_itm 1': [call_itm1],
-                                    'call_otm': [call_otm],
-                                    'call_otm 1': [call_otm1],
-                                    'put_atm': [put_atm],
-                                    'put_itm': [put_itm],
-                                    'put_itm 1': [put_itm1],
-                                    'put_otm': [put_otm],
-                                    'put_otm 1': [put_otm1]
+                                    'put_atm': [put_atm]
                                     })
-            print(iv)
+            # print(iv)
             df_ivs = df_ivs.append(iv,ignore_index=True)
             bkt_optionset.next()
         df_ivs.to_csv('../save_results/df_ivs_total.csv')
@@ -574,8 +578,8 @@ class BktStrategyEventVol(BktOptionStrategy):
 """Back Test Settings"""
 # start_date = datetime.date(2017, 11, 9)
 # end_date = datetime.date(2017, 12, 31)
-start_date = datetime.date(2018, 1, 1)
-end_date = datetime.date(2018, 4, 5)
+start_date = datetime.date(2015, 1, 1)
+end_date = datetime.date(2018, 5, 28)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -583,13 +587,13 @@ daycounter = ql.ActualActual()
 """Collect Mkt Date"""
 df_events = get_eventsdata(start_date, end_date,1)
 
-df_option_metrics = get_mktdata(start_date, end_date)
+df_option_metrics = get_50option_mktdata(start_date, end_date)
 # df_etf_metrics = get_50etf_mktdata(start_date,end_date)
 
 """Run Backtest"""
 
 bkt_strategy = BktStrategyEventVol(df_option_metrics, df_events, option_invest_pct=0.2)
-bkt_strategy.set_min_holding_days(15)
+bkt_strategy.set_min_holding_days(8)
 
 # bkt_strategy.options_straddle_etf()
 # npv1 = bkt_strategy.bkt_account1.df_account['npv'].tolist()
@@ -600,7 +604,7 @@ bkt_strategy.set_min_holding_days(15)
 # f = pu.plot_line_chart(dates, [npv1,npv2], ['85% 50etf & 10% option & 5% cash','50etf'])
 # plt.show()
 
-bkt_strategy.options_run()
+# bkt_strategy.options_run()
 # # # bkt_strategy.options_calendar_spread()
 
 # bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
@@ -610,5 +614,5 @@ bkt_strategy.options_run()
 # #
 # bkt_strategy.return_analysis()
 
-# bkt_strategy.ivs_ranked_run()
+bkt_strategy.ivs_run()
 
