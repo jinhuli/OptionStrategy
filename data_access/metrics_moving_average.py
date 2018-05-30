@@ -20,6 +20,9 @@ def standard_deviation(df,n):
     std =df['amt_close'].rolling(window = n).std()
     return std
 
+def percentile(df,n,percent):
+    return df['amt_close'].rolling(window=n).quantile(percent)
+
 # beg_date = datetime.date(2014, 6, 1)
 date = datetime.date(2015, 1, 1)
 
@@ -35,19 +38,19 @@ index_mktdata = Table('indexes_mktdata', metadata, autoload=True)
 ma_metrics = Table('moving_average', metadata_metrics, autoload=True)
 
 
-query_mkt = sess.query(index_mktdata.c.dt_date,index_mktdata.c.id_instrument,
-                       index_mktdata.c.amt_close) \
-    .filter(index_mktdata.c.datasource == 'wind')\
-    .filter(index_mktdata.c.id_instrument == 'index_50etf')\
-    .filter(index_mktdata.c.dt_date >= date)
-df_dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
-
-# query_mkt = sess1.query(ma_metrics.c.dt_date,ma_metrics.c.id_instrument,
-#                        ma_metrics.c.amt_close) \
-#     .filter(ma_metrics.c.cd_period == 'ma_3')\
-#     .filter(ma_metrics.c.id_instrument == 'index_cvix')
-#     # .filter(ma_metrics.c.dt_date >= date)
+# query_mkt = sess.query(index_mktdata.c.dt_date,index_mktdata.c.id_instrument,
+#                        index_mktdata.c.amt_close) \
+#     .filter(index_mktdata.c.datasource == 'wind')\
+#     .filter(index_mktdata.c.id_instrument == 'index_50etf')\
+#     .filter(index_mktdata.c.dt_date >= date)
 # df_dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
+
+query_mkt = sess1.query(ma_metrics.c.dt_date,ma_metrics.c.id_instrument,
+                       ma_metrics.c.amt_close) \
+    .filter(ma_metrics.c.cd_period == 'ma_3')\
+    .filter(ma_metrics.c.id_instrument == 'index_cvix')
+    # .filter(ma_metrics.c.dt_date >= date)
+df_dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
 
 print('s')
 # xl = pd.ExcelFile('../data/VIX_daily.xlsx')
@@ -59,13 +62,14 @@ print('s')
 # df_dataset['id_instrument'] = 'index_cvix'
 
 
-for n in [3,5,20,60]:
+for p in [0.25,0.5,0.75]:
     # ma = moving_average(df_dataset,n)
-    std = standard_deviation(df_dataset,n)
+    # std = standard_deviation(df_dataset,n)
+    pct = percentile(df_dataset,126,p)
     df = df_dataset.copy()
-    df['cd_period']='std_'+str(n)
-    df['cd_calculation'] = 'standard_deviation'
-    df['amt_value'] = std
+    df['cd_period']='percentileHY_'+str(int(100*p))
+    df['cd_calculation'] = 'percentile_HY'
+    df['amt_value'] = pct
     df = df.dropna()
     df = df[df['dt_date']>date]
     # df['dt_date'] = df['dt_date'].dt.strftime('%Y-%m-%d')

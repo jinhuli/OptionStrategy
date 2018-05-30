@@ -129,7 +129,7 @@ class BktOptionStrategy(object):
         df_long = df_long.rename(columns={'amt_value':'long_ma'})
         df_long['signal'] = df_long['short_minus_long']\
             .apply(lambda x: self.util.long if x>=0 else self.util.short)
-        df_long.to_csv('../ma_index.csv')
+        # df_long.to_csv('../ma_index.csv')
         return df_long
 
     def get_bollinger_signal(self,df,cd_long = '20'):
@@ -145,6 +145,22 @@ class BktOptionStrategy(object):
 
     # def get_percentile_signal(self,df):
 
+    def ma_signal(self,flag_current,amt_close,df):
+        if flag_current == self.util.long:
+            if df['signal'] == self.util.long: signal = None
+            # if amt_close >= df['upper_sigma1']: signal = None
+            elif df['signal'] == self.util.short: signal = self.util.short
+            else: signal = self.util.neutrual
+        elif flag_current == self.util.neutrual:
+            if df['signal'] == self.util.long: signal = self.util.long
+            elif df['signal'] == self.util.short: signal = self.util.short
+            else: signal = None
+        else:
+            if df['signal'] == self.util.long: signal = self.util.long
+            # if amt_close <= df['lower_sigma1']: signal = None
+            elif df['signal'] == self.util.short: signal = None
+            else: signal = self.util.neutrual
+        return signal
 
     def boll_signal(self,flag_current,amt_close,df):
         if flag_current == self.util.long:
@@ -161,6 +177,12 @@ class BktOptionStrategy(object):
             # if amt_close <= df['lower_sigma1']: signal = None
             elif amt_close >= df['upper_sigma1']: signal = self.util.long
             else: signal = self.util.neutrual
+        return signal
+
+    def boll_status(self,amt_close,df):
+        if amt_close >= df['upper_sigma1']: signal = self.util.long
+        elif amt_close <= df['lower_sigma1']: signal = self.util.short
+        else: signal = self.util.neutrual
         return signal
 
     def util1(self,x):

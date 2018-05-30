@@ -750,13 +750,12 @@ class BktAccount(object):
         self.npv = self.total_asset / self.init_fund
         self.port_delta = port_delta
         self.holdings = holdings
-        # benckmark =
         account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
                                      self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
                                      self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
                                      self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
                                      self.util.money_utilization: [money_utilization],self.util.total_asset: [self.total_asset],
-                                     'portfolio delta': [port_delta], self.util.benchmark:[]
+                                     'portfolio delta': [port_delta]
                                      })
         self.df_account = self.df_account.append(account, ignore_index=True)
 

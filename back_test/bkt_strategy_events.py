@@ -4,7 +4,7 @@ import QuantLib as ql
 import numpy as np
 import datetime
 from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata2 as get_mktdata, get_eventsdata, get_50etf_mktdata
+from back_test.data_option import get_50option_metricdata as get_mktdata, get_eventsdata, get_50etf_mktdata
 from back_test.OptionPortfolio import *
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
@@ -40,7 +40,7 @@ class BktStrategyEvent(object):
         self.df_metrics = df_option_metrics[(df_option_metrics['dt_date'] >= dt_beg) &
                                             (df_option_metrics['dt_date'] <= dt_end)].reset_index().drop('index',1)
 
-        self.dt_opens = [dt_open_1d, dt_open_2d, dt_open_3d, dt_open_5d]
+        self.dt_opens = [dt_close_2d,dt_close_1d,dt_open_1d, dt_open_2d, dt_open_3d, dt_open_5d]
         self.dt_closes = [dt_close_b2d,dt_close_b1d,dt_close_1d, dt_close_2d, dt_close_3d, dt_close_5d]
 
     # def intraday_trade_run(self):
@@ -124,6 +124,7 @@ class BktStrategyEvent(object):
         for dt_close in self.dt_closes:
             dict_opens = {}
             for dt_open in self.dt_opens:
+                if dt_open > dt_close : continue
                 self.bkt_strategy = BktOptionStrategy(self.df_metrics, rf=0.0)
                 self.bkt_strategy.set_min_holding_days(self.min_holding)
                 npv = self.one_senario(self.event, dt_open, dt_close)
@@ -176,17 +177,17 @@ class BktStrategyEvent(object):
                 #                                                        self.get_1st_eligible_maturity(evalDate))
                 # portfolio = self.bkt_optionset.get_call(0, self.get_1st_eligible_maturity(evalDate))
 
-                cd_underlying_price = 'open'
-                portfolio = bkt_optionset.get_straddle(
-                    self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
-                    cd_underlying_price=cd_underlying_price)
+                # cd_underlying_price = 'open'
+                # portfolio = bkt_optionset.get_straddle(
+                #     self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),0.0,
+                #     cd_underlying_price=cd_underlying_price)
 
-                # if cd_trade_deriction == 1:
-                #     portfolio = bkt_optionset.get_call(
-                #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long)
-                # else:
-                #     portfolio = bkt_optionset.get_put(
-                #         self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long)
+                if cd_trade_deriction == 1:
+                    portfolio = bkt_optionset.get_call(
+                        self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long)
+                else:
+                    portfolio = bkt_optionset.get_put(
+                        self.moneyness,bkt_strategy.get_1st_eligible_maturity(evalDate),self.util.long)
 
                 # if cd_trade_deriction == 1:
                 #     option_type = self.util.type_call
@@ -200,7 +201,7 @@ class BktStrategyEvent(object):
                 bkt_account.update_invest_units(portfolio, self.util.long, 0.0,
                                                 cd_open_by_price=cd_open_position_time,
                                                      fund=cash_for_option)
-                bkt_account.open_position(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
+                bkt_account.open_portfolio(evalDate, portfolio, cd_open_by_price=cd_open_position_time)
                 bkt_strategy.flag_trade = True
             elif evalDate != dt_volpeak:
                 if bkt_strategy.flag_trade:
@@ -357,8 +358,8 @@ class BktStrategyEventS(object):
 
 """Back Test Settings"""
 # start_date = datetime.date(2015, 8, 1)
-start_date = datetime.date(2017, 6, 1)
-end_date = datetime.date(2017, 8, 1)
+start_date = datetime.date(2018, 3, 1)
+end_date = datetime.date(2018, 4, 1)
 # end_date = datetime.date(2018, 5, 1)
 
 calendar = ql.China()

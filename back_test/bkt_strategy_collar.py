@@ -59,8 +59,8 @@ class BktStrategyCollar(BktOptionStrategy):
         self.flag_trade = True
         bkt_account.mkm_update_portfolio(evalDate, self.portfolio)
         print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.cash)
-        moneyness_call = -1
-        moneyness_put = -2
+        moneyness_call = -2
+        moneyness_put = -1
         write_ratio = 1.0
         buy_ratio = 1.0
         flag_vol = self.util.neutrual
@@ -79,70 +79,39 @@ class BktStrategyCollar(BktOptionStrategy):
                 break
 
             """ 根据动量指标与波动率指标调整write ratio """
-            vol_ma = self.volatility_ma.loc[evalDate,'ma_3']
+            vol_ma = self.volatility_ma.loc[evalDate,'amt_close']
             index_ma = self.index_ma.loc[evalDate,'amt_close']
             vol_signal = self.boll_signal(flag_vol,vol_ma,self.volatility_ma.loc[evalDate])
-            index_signal = self.boll_signal(flag_index,index_ma,self.index_ma.loc[evalDate])
+            # index_signal = self.boll_signal(flag_index,index_ma,self.index_ma.loc[evalDate])
+            index_signal = self.ma_signal(flag_index,index_ma,self.index_ma.loc[evalDate])
+            # index_status = self.boll_status(index_ma,self.index_ma.loc[evalDate])
             " research paper method"
-            if vol_signal != None:
-                self.flag_trade = False
-                if vol_signal == self.util.long:
-                    print('!!! vol signal : long')
-                    write_ratio = 0.5
-                    if index_signal == self.util.short: buy_ratio = 1.5
-                    else: buy_ratio = 1.0
-                elif vol_signal == self.util.short:
-                    print('!!! vol signal : short')
-                    buy_ratio = 0.5
-                    if index_signal == self.util.short:
-                        write_ratio = 1.5
-                    else:
-                        write_ratio = 0.5
-                else:
-                    print('!!! vol signal : neutral')
-                    if index_signal == self.util.short:
-                        write_ratio = 1.5
-                        buy_ratio = 1.5
-                    elif index_signal == self.util.long:
-                        write_ratio = 0.5
-                        buy_ratio = 0.5
-                    else:
-                        write_ratio = 1.0
-                        buy_ratio = 1.0
-                flag_vol = vol_signal
-
+            # if vol_signal != None:
+            #     self.flag_trade = False
+            #     write_ratio = 1.0
+            #     buy_ratio = 1.0
+            #     if vol_signal == self.util.short:
+            #         print('vol short')
+            #         write_ratio = 1.25
+            #     elif vol_signal == self.util.long:
+            #         print('vol long')
+            #         write_ratio = 0.25
+            #     # if index_status == self.util.long:
+            #     #     write_ratio = 0.5
+            #     flag_vol = vol_signal
             if index_signal != None:
                 self.flag_trade = False
-                if index_signal == self.util.long:
-                    print('!!! index signal : long')
-                    moneyness_call = -2
-                    moneyness_put = -3
-                # elif index_signal == self.util.short:
-                #     print('!!! index signal : short')
-                #     moneyness_call = -1
-                #     moneyness_put = -1
-                else:
+                moneyness_call = -2
+                moneyness_put = -1
+                if index_signal == self.util.short:
+                    print('index short')
                     moneyness_call = -1
-                    moneyness_put = -1
-                    print('!!! index signal : shot/neutral')
+                    moneyness_put = 0
+                elif index_signal == self.util.long:
+                    print('index long')
+                    moneyness_call = -3
+                    moneyness_put = -2
                 flag_index = index_signal
-
-            # if vol_signal != flag_vol:
-            #     self.flag_trade = False
-            #     if vol_signal == self.util.long:
-            #         print('!!! vol signal : long')
-            #         write_ratio = 0.5
-            #         if index_signal == self.util.short: buy_ratio = 1.25
-            #     elif vol_signal == self.util.short:
-            #         print('!!! vol signal : short')
-            #         if index_signal == self.util.short:
-            #             write_ratio = 1.25
-            #         else:
-            #             write_ratio = 0.75
-            #             buy_ratio = 0.75
-            #     else:
-            #         write_ratio = self.write_ratio
-            #         print('!!! vol signal : neutral')
 
             if not self.flag_trade:
                 portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index,
@@ -190,7 +159,7 @@ class BktStrategyCollar(BktOptionStrategy):
 
 """Back Test Settings"""
 start_date = datetime.date(2015, 3, 20)
-# start_date = datetime.date(2018, 3, 13)
+# start_date = datetime.date(2015, 9, 1)
 end_date = datetime.date(2018, 5, 21)
 
 
@@ -205,10 +174,11 @@ bkt_strategy = BktStrategyCollar(df_option_metrics, df_index_metrics)
 bkt_strategy.set_min_holding_days(15)
 
 
-# bkt_strategy.get_moving_average_signal(get_index_ma(start_date,end_date,'index_cvix'))
+df_index_ma = bkt_strategy.get_moving_average_signal(get_index_ma(start_date,end_date,'index_cvix'))
 df_vix_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_cvix'))
 df_index_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_50etf'))
-bkt_strategy.set_index_ma(df_index_boll)
+
+bkt_strategy.set_index_ma(df_index_ma)
 bkt_strategy.set_volatility_ma(df_vix_boll)
 df_vix_boll.to_csv('../df_vix_boll.csv')
 df_index_boll.to_csv('../df_index_boll.csv')
