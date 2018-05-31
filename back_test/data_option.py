@@ -141,6 +141,26 @@ def get_index_ma(start_date, end_date, id_index):
     df_index= pd.read_sql(query_etf.statement, query_etf.session.bind)
     return df_index
 
+def get_put_call_iv( end_date):
+    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics', echo=False)
+    Session = sessionmaker(bind=engine)
+    sess = Session()
+    metadata = MetaData(engine)
+    table = Table('option_iv_by_moneyness', metadata, autoload=True)
+    query1 = sess.query(table.c.dt_date, table.c.pct_implies_vol) \
+        .filter(table.c.dt_date <= end_date).filter(table.c.id_underlying == 'index_50etf') \
+        .filter(table.c.cd_option_type == 'call').filter(table.c.cd_mdt == 'hp_8_1st')
+    df= pd.read_sql(query1.statement, query1.session.bind)
+    df = df.rename(columns={'pct_implies_vol':'iv_call'})
+    query2 = sess.query(table.c.dt_date, table.c.pct_implies_vol) \
+        .filter(table.c.dt_date <= end_date).filter(table.c.id_underlying == 'index_50etf')\
+        .filter(table.c.cd_option_type == 'put').filter(table.c.cd_mdt == 'hp_8_1st')
+    df2= pd.read_sql(query2.statement, query2.session.bind)
+    df['iv_put'] = df2['pct_implies_vol']
+    df['amt_close'] = (df['iv_put']-df['iv_call'])/((df['iv_put']+df['iv_call'])/2)
+    # df['amt_close'] = (df['iv_put']-df['iv_call'])
+    return df
+
 
 def get_comoption_mktdata(start_date, end_date, name_code):
     engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)

@@ -308,28 +308,30 @@ class BktOptionSet(object):
         collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
         return collar
 
-    def get_collar(self, mdt, underlying, moneyness_call=-2, moneyness_put=-2, cd_underlying_price='close'):
+    def get_collar(self, mdt_call,mdt_put, underlying, moneyness_call=-2, moneyness_put=-2, cd_underlying_price='close',flag_protect=False):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
+        init_m_put = moneyness_put
         while moneyness_call < 0:
-            if moneyness_call not in options_by_moneyness[mdt][self.util.type_call].keys():
+            if moneyness_call not in options_by_moneyness[mdt_call][self.util.type_call].keys():
                 moneyness_call += 1
             else:
                 break
 
         while moneyness_put <= 0:
-            if moneyness_put not in options_by_moneyness[mdt][self.util.type_put].keys():
+            if moneyness_put not in options_by_moneyness[mdt_put][self.util.type_put].keys():
                 moneyness_put += 1
             else:
                 break
-        buy_put = options_by_moneyness[mdt][self.util.type_put][moneyness_put]
-        write_call = options_by_moneyness[mdt][self.util.type_call][moneyness_call]
+        buy_put = options_by_moneyness[mdt_put][self.util.type_put][moneyness_put]
+        write_call = options_by_moneyness[mdt_call][self.util.type_call][moneyness_call]
         "No 1st otm put/call (moneyness=-1) to by/write, stop collar strategy"
         if moneyness_call >= 0:
             write_call = None
             buy_put = None
         if moneyness_put >= 0:
             write_call = None
-            buy_put = None
+            # if not flag_protect:
+            #     buy_put = None
         collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
         return collar
 

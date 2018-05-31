@@ -187,7 +187,7 @@ class BktAccount(object):
             if call != None:
                 option_port.unit_call = np.floor(unit_underlying/call.multiplier)*write_ratio
             if put != None:
-                option_port.unit_put = np.floor(unit_underlying/put.multiplier)
+                option_port.unit_put = np.floor(unit_underlying/put.multiplier)*buy_ratio
             option_port.unit_underlying = unit_underlying
 
     def open_portfolio(self, dt, portfolio,unit=None, cd_open_by_price=None):
@@ -686,7 +686,7 @@ class BktAccount(object):
                                      self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
                                      self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
                                      self.util.money_utilization: [money_utilization],self.util.total_asset: [self.total_asset],
-                                     'portfolio delta': [port_delta], self.util.benchmark:[benckmark]
+                                     'portfolio delta': [port_delta], self.util.benchmark:[benckmark],'underlying_value':trade_order_mktv
                                      })
         self.df_account = self.df_account.append(account, ignore_index=True)
         self.nbr_trade = 0

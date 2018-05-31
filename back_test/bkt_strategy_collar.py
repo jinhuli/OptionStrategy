@@ -3,7 +3,7 @@ from back_test.bkt_strategy import BktInstrument
 import numpy as np
 import QuantLib as ql
 import datetime
-from back_test.data_option import get_50option_mktdata, get_index_ma, get_index_mktdata
+from back_test.data_option import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv
 
 
 
@@ -11,13 +11,15 @@ class BktStrategyCollar(BktOptionStrategy):
 
 
     def __init__(self, df_option, df_index, money_utilization=0.2, init_fund=100000000.0,
-                 cash_reserve_pct=0.15):
+                 cash_reserve_pct=0.2):
         self.validate_data(df_option, df_index)
         BktOptionStrategy.__init__(self, self.df_option, money_utilization=money_utilization,
                                        init_fund=init_fund)
         self.bkt_index = BktInstrument('daily', self.df_index)
         self.cash_reserve_pct = cash_reserve_pct
-        self.write_ratio = 1.0
+        self.moneyness_call = -2
+        self.moneyness_put = -2
+        # self.write_ratio = 1.0
 
     def validate_data(self, df_option, df_index):
         dates1 = df_option['dt_date'].unique()
@@ -36,6 +38,15 @@ class BktStrategyCollar(BktOptionStrategy):
     def set_volatility_ma(self,df_vol_ma):
         self.volatility_ma = df_vol_ma
 
+    def set_index_boll(self,df):
+        self.index_boll = df
+
+    def set_volatility_boll(self,df):
+        self.volatility_boll = df
+
+    def set_atm_iv(self,df):
+        self.iv_boll = df
+
     def next(self):
         self.bkt_optionset.next()
         self.bkt_index.next()
@@ -51,20 +62,26 @@ class BktStrategyCollar(BktOptionStrategy):
         """Option: Select Strategy and Open Position"""
         cd_underlying_price = 'close'
         cd_open_position_time = 'close'
-        self.portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index)
+        moneyness_call = self.moneyness_call
+        moneyness_put = self.moneyness_put
+        write_ratio = 1.0
+        buy_ratio = 1.0
+        self.portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),
+                                                       self.get_2nd_eligible_maturity(evalDate),
+                                                       bkt_index,
+                                                       moneyness_call=moneyness_call,moneyness_put=moneyness_put)
 
         unit_underlying = np.floor(inv_fund / self.portfolio.underlying.mktprice_close)
-        bkt_account.update_invest_units_c2(self.portfolio, self.write_ratio, unit_underlying)
+        bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying)
         bkt_account.open_portfolio(evalDate, self.portfolio, cd_open_by_price=cd_open_position_time)
         self.flag_trade = True
         bkt_account.mkm_update_portfolio(evalDate, self.portfolio)
         print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.cash)
-        moneyness_call = -2
-        moneyness_put = -1
-        write_ratio = 1.0
-        buy_ratio = 1.0
-        flag_vol = self.util.neutrual
-        flag_index = self.util.neutrual
+
+        vol_status = self.util.neutrual
+        index_status = self.util.neutrual
+        flag_iv = self.util.neutrual
+        flag_protect = False
         while bkt_optionset.index < len(bkt_optionset.dt_list):
 
             self.next()
@@ -79,43 +96,72 @@ class BktStrategyCollar(BktOptionStrategy):
                 break
 
             """ 根据动量指标与波动率指标调整write ratio """
-            vol_ma = self.volatility_ma.loc[evalDate,'amt_close']
-            index_ma = self.index_ma.loc[evalDate,'amt_close']
-            vol_signal = self.boll_signal(flag_vol,vol_ma,self.volatility_ma.loc[evalDate])
-            # index_signal = self.boll_signal(flag_index,index_ma,self.index_ma.loc[evalDate])
-            index_signal = self.ma_signal(flag_index,index_ma,self.index_ma.loc[evalDate])
-            # index_status = self.boll_status(index_ma,self.index_ma.loc[evalDate])
+            if evalDate not in self.volatility_boll.index:
+                vol_signal=None
+            else:
+                vol_status,vol_signal = self.vol_bolliger_signal(vol_status,self.volatility_boll.loc[evalDate])
+            if evalDate not in self.index_boll.index:
+                index_signal = None
+            else:
+                index_status,index_signal = self.boll_signal(index_status,self.index_boll.loc[evalDate])
+            if evalDate not in self.iv_boll.index:
+                iv_signal = None
+            else:
+                iv_status,iv_signal = self.boll_signal_2(flag_iv,self.iv_boll.loc[evalDate])
+            # iv_status,iv_signal = self.percentile_signal(flag_iv,self.iv_boll.loc[evalDate])
             " research paper method"
-            # if vol_signal != None:
+            # if vol_signal == 2: # extreme condition long
             #     self.flag_trade = False
-            #     write_ratio = 1.0
-            #     buy_ratio = 1.0
-            #     if vol_signal == self.util.short:
-            #         print('vol short')
-            #         write_ratio = 1.25
-            #     elif vol_signal == self.util.long:
-            #         print('vol long')
-            #         write_ratio = 0.25
-            #     # if index_status == self.util.long:
-            #     #     write_ratio = 0.5
-            #     flag_vol = vol_signal
+            #     write_ratio = 0.25
+            #     print('vol_signal ',evalDate)
+            # elif vol_signal == -2:# extreme condition short
+            #     self.flag_trade = False
+            #     write_ratio = 1.25
+                # print('vol signal ', evalDate, ' ', vol_signal, ' ', vol_status, ' ',
+                #           self.volatility_boll.loc[evalDate]['amt_close'], ' ',
+                #           self.volatility_boll.loc[evalDate]['upper_sigma1'], ' ',
+                #           self.volatility_boll.loc[evalDate]['lower_sigma1'],
+                #           ' ', write_ratio, ' ', moneyness_call)
             if index_signal != None:
                 self.flag_trade = False
-                moneyness_call = -2
-                moneyness_put = -1
+                flag_protect = False
+                write_ratio = buy_ratio = 1.0
+                # if index_signal == self.util.long:
+                #     moneyness_call = -3
+                #     moneyness_put = -3
                 if index_signal == self.util.short:
-                    print('index short')
                     moneyness_call = -1
-                    moneyness_put = 0
-                elif index_signal == self.util.long:
-                    print('index long')
-                    moneyness_call = -3
+                    moneyness_put = -1
+                    flag_protect = True
+                else:
+                    moneyness_call = -2
                     moneyness_put = -2
-                flag_index = index_signal
+                print('index_signal ',index_signal,' ', evalDate)
+
+                # print('index signal ',evalDate,' ',index_signal,' ',index_status,' ',self.index_boll.loc[evalDate]['amt_close'],' ',
+                #   self.index_boll.loc[evalDate]['upper_sigma1'],' ',self.index_boll.loc[evalDate]['lower_sigma1'],' ',
+                #   write_ratio,' ',moneyness_call)
+            if iv_signal != None:
+                self.flag_trade = False
+                flag_iv = iv_signal
+                write_ratio = 1.0
+                buy_ratio = 1.0
+                if iv_signal == self.util.long:
+                    buy_ratio = 2.0
+                    # moneyness_put = 0
+                    # buy_ratio = 2.0
+                    # write_ratio = 0.25
+                elif iv_signal == self.util.short:
+                    write_ratio = 0.0
+                    buy_ratio = 0.5
+                print('iv signal ',iv_signal,' ', evalDate,' ',write_ratio,' ',buy_ratio)
 
             if not self.flag_trade:
-                portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),bkt_index,
-                                                              moneyness_call=moneyness_call,moneyness_put=moneyness_put)
+                portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),
+                                                              self.get_2nd_eligible_maturity(evalDate),
+                                                              bkt_index,
+                                                              moneyness_call=moneyness_call,moneyness_put=moneyness_put,
+                                                              flag_protect=flag_protect)
                 self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
                 bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying,buy_ratio=buy_ratio)
                 bkt_account.rebalance_portfolio(evalDate, self.portfolio)
@@ -135,16 +181,22 @@ class BktStrategyCollar(BktOptionStrategy):
                     k_call = call.adj_strike
                     k_put = put.adj_strike
                     if spot >= 3.0:
-                        if k_call - spot <= 0.1 or spot - k_put <= 0.1:
+                        if k_call - spot <= 0.1 or spot - k_put <= 0:
+                        # if k_call - spot <= 0.1:
                             flag_update = True
-                            print('1')
+                            # print('1 ',evalDate,' kput=',k_put,'kcall=',k_call,' s=',spot)
                     else:
-                        if k_call - spot <= 0.05 or spot - k_put <= 0.05:
+                        if k_call - spot <= 0.05 or spot - k_put <= 0:
+                        # if k_call - spot <= 0.05:
                             flag_update = True
-                            print('2')
+                            # print('2 ',evalDate,' kput=',k_put,'kcall=',k_call,' s=',spot)
+
                 if flag_update:
-                    portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate), bkt_index,
-                                                                  moneyness_call=moneyness_call, moneyness_put=moneyness_put)
+                    portfolio_new = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),
+                                                                  self.get_2nd_eligible_maturity(evalDate),
+                                                                  bkt_index,
+                                                                  moneyness_call=moneyness_call, moneyness_put=moneyness_put,
+                                                                  flag_protect=flag_protect)
                     self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
                     bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying,buy_ratio=buy_ratio)
                     bkt_account.rebalance_portfolio(evalDate, self.portfolio)
@@ -153,12 +205,12 @@ class BktStrategyCollar(BktOptionStrategy):
                 print(evalDate, 'No complete collar portfolio constructed, try next day !')
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt_account.mkm_update_portfolio(evalDate,self.portfolio)
-            print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.mtm_long_positions)
+            # print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.mtm_long_positions)
 
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 3, 20)
+start_date = datetime.date(2015, 3, 1)
 # start_date = datetime.date(2015, 9, 1)
 end_date = datetime.date(2018, 5, 21)
 
@@ -171,17 +223,22 @@ df_index_metrics = get_index_mktdata(start_date,end_date,'index_50etf')
 
 
 bkt_strategy = BktStrategyCollar(df_option_metrics, df_index_metrics)
-bkt_strategy.set_min_holding_days(15)
+bkt_strategy.set_min_holding_days(8)
 
 
-df_index_ma = bkt_strategy.get_moving_average_signal(get_index_ma(start_date,end_date,'index_cvix'))
-df_vix_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_cvix'))
-df_index_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_50etf'))
+df_index_ma = bkt_strategy.get_moving_average_signal(get_index_ma(start_date,end_date,'index_50etf'))
+df_vix_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_cvix'),cd_long='60')
+df_index_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_50etf'),cd_long='60')
+df_iv = bkt_strategy.get_bollinger_signal_2(get_put_call_iv(end_date),start_date)
+# df_iv = bkt_strategy.get_percentile_signal(get_put_call_iv(end_date),start_date)
 
 bkt_strategy.set_index_ma(df_index_ma)
-bkt_strategy.set_volatility_ma(df_vix_boll)
+bkt_strategy.set_index_boll(df_index_boll)
+bkt_strategy.set_volatility_boll(df_vix_boll)
+bkt_strategy.set_atm_iv(df_iv)
 df_vix_boll.to_csv('../df_vix_boll.csv')
 df_index_boll.to_csv('../df_index_boll.csv')
+df_iv.to_csv('../df_iv.csv')
 
 bkt_strategy.run()
 
