@@ -292,14 +292,15 @@ class BktOptionStrategy(object):
     def return_analysis(self,benckmark=None):
         ar = 100 * self.bkt_account.calculate_annulized_return()
         mdd = 100 * self.bkt_account.calculate_max_drawdown()
-        sharpe = self.bkt_account.calculate_sharpe_ratio()
+        return_yr, volatility_yr, sharpe = self.bkt_account.analysis()
         print('=' * 50)
-        print("%20s %20s %20s" % ('annulized_return(%)', 'max_drawdown(%)','sharpe ratio'))
-        print("%20s %20s %20s" % (round(ar, 4), round(mdd, 4),round(sharpe, 4)))
+        print("%20s %20s %20s  %20s" % ('annulized_return(%)', 'max_drawdown(%)','annualized volatility(%)','sharpe ratio'))
+        print("%20s %20s %20s %20s" % (round(ar, 4), round(mdd, 4),round(volatility_yr,4),round(sharpe, 4)))
         print('-' * 50)
         self.bkt_account.plot_npv(benckmark)
+        self.bkt_account.plot_drawdown()
 
-    "calculate iv by moneyness"
+    "calculate volatility surface skew"
     def ivs_ranked_run(self):
         bkt_optionset = self.bkt_optionset
         df_skew = pd.DataFrame()

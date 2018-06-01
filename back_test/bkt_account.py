@@ -855,7 +855,7 @@ class BktAccount(object):
         self.annualized_return = return_yr
         return return_yr
 
-    def calculate_sharpe_ratio(self):
+    def analysis(self):
         df = self.df_account
         netvalue = df[self.util.npv]
         tradeslen = len(netvalue)
@@ -868,11 +868,9 @@ class BktAccount(object):
         return_yr = (1 + totalreturn) ** (252.0 / tradeslen) - 1
         # 年化波动率
         volatility_yr = np.std(returns, ddof=0) * np.sqrt(252.0)
-        print('volatility_yr',volatility_yr)
-
         # 夏普比率
         sharpe = (return_yr - 0.024) / volatility_yr
-        return sharpe
+        return return_yr,volatility_yr,sharpe
 
     def hisvol(self, data, n):
         datas = np.log(data)
