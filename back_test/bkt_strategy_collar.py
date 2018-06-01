@@ -11,7 +11,7 @@ class BktStrategyCollar(BktOptionStrategy):
 
 
     def __init__(self, df_option, df_index, money_utilization=0.2, init_fund=100000000.0,
-                 cash_reserve_pct=0.2):
+                 cash_reserve_pct=0.20):
         self.validate_data(df_option, df_index)
         BktOptionStrategy.__init__(self, self.df_option, money_utilization=money_utilization,
                                        init_fund=init_fund)
@@ -19,7 +19,8 @@ class BktStrategyCollar(BktOptionStrategy):
         self.cash_reserve_pct = cash_reserve_pct
         self.moneyness_call = -2
         self.moneyness_put = -2
-        # self.write_ratio = 1.0
+        self.write_ratio = 1.0
+        self.buy_ratio = 1.0
 
     def validate_data(self, df_option, df_index):
         dates1 = df_option['dt_date'].unique()
@@ -64,8 +65,8 @@ class BktStrategyCollar(BktOptionStrategy):
         cd_open_position_time = 'close'
         moneyness_call = self.moneyness_call
         moneyness_put = self.moneyness_put
-        write_ratio = 1.0
-        buy_ratio = 1.0
+        write_ratio = self.write_ratio
+        buy_ratio = self.buy_ratio
         self.portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),
                                                        self.get_2nd_eligible_maturity(evalDate),
                                                        bkt_index,
@@ -122,10 +123,13 @@ class BktStrategyCollar(BktOptionStrategy):
                 #           self.volatility_boll.loc[evalDate]['upper_sigma1'], ' ',
                 #           self.volatility_boll.loc[evalDate]['lower_sigma1'],
                 #           ' ', write_ratio, ' ', moneyness_call)
+            " Change moneyness by monmentum "
             if index_signal != None:
                 self.flag_trade = False
                 flag_protect = False
-                write_ratio = buy_ratio = 1.0
+                # write_ratio = self.write_ratio
+                # buy_ratio = self.buy_ratio
+                # write_ratio = buy_ratio = 1.0
                 # if index_signal == self.util.long:
                 #     moneyness_call = -3
                 #     moneyness_put = -3
@@ -133,19 +137,23 @@ class BktStrategyCollar(BktOptionStrategy):
                     moneyness_call = -1
                     moneyness_put = -1
                     flag_protect = True
+                    # buy_ratio = 1.0
                 else:
                     moneyness_call = -2
                     moneyness_put = -2
+                    # buy_ratio = 0.5
                 print('index_signal ',index_signal,' ', evalDate)
 
                 # print('index signal ',evalDate,' ',index_signal,' ',index_status,' ',self.index_boll.loc[evalDate]['amt_close'],' ',
                 #   self.index_boll.loc[evalDate]['upper_sigma1'],' ',self.index_boll.loc[evalDate]['lower_sigma1'],' ',
                 #   write_ratio,' ',moneyness_call)
+            " change buy/write ratio by volatility signal "
             if iv_signal != None:
                 self.flag_trade = False
                 flag_iv = iv_signal
-                write_ratio = 1.0
-                buy_ratio = 1.0
+                write_ratio = self.write_ratio
+                buy_ratio = self.buy_ratio
+                # buy_ratio = 0.5
                 if iv_signal == self.util.long:
                     buy_ratio = 2.0
                     # moneyness_put = 0
@@ -153,7 +161,7 @@ class BktStrategyCollar(BktOptionStrategy):
                     # write_ratio = 0.25
                 elif iv_signal == self.util.short:
                     write_ratio = 0.0
-                    buy_ratio = 0.5
+                    buy_ratio = 0.0
                 print('iv signal ',iv_signal,' ', evalDate,' ',write_ratio,' ',buy_ratio)
 
             if not self.flag_trade:
@@ -167,7 +175,8 @@ class BktStrategyCollar(BktOptionStrategy):
                 bkt_account.rebalance_portfolio(evalDate, self.portfolio)
                 self.flag_trade = True
             else:
-                dt = self.util.to_dt_date(self.calendar.advance(self.util.to_ql_date(evalDate), ql.Period(8, ql.Days)))
+                dt = self.util.to_dt_date(self.calendar.advance(
+                    self.util.to_ql_date(evalDate), ql.Period(8, ql.Days)))
                 call = self.portfolio.write_call
                 put = self.portfolio.buy_put
                 flag_update = False
