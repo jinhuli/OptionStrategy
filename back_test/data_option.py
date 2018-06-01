@@ -66,7 +66,7 @@ def get_50option_mktdata(start_date, end_date):
     df_mkt = pd.read_sql(query_mkt.statement, query_mkt.session.bind)
     df_contract = pd.read_sql(query_option.statement, query_option.session.bind)
     df_50etf = pd.read_sql(query_etf.statement, query_etf.session.bind).rename(
-        columns={'amt_close': util.col_underlying_price,'amt_open':util.col_underlying_open_price})
+        columns={'amt_close': util.col_underlying_close,'amt_open':util.col_underlying_open_price})
     df_option = df_mkt.join(df_contract.set_index('id_instrument'), how='left', on='id_instrument')
 
     df_option_metrics = df_option.join(df_50etf.set_index('dt_date'), how='left', on='dt_date')

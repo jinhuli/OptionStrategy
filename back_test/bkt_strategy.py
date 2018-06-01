@@ -12,13 +12,11 @@ class BktOptionStrategy(object):
 
     __metaclass__=ABCMeta
 
-
-    def __init__(self, df_option_metrics,cd_open_price='close', cd_close_price='close',
-                 money_utilization=0.2,
-                 init_fund=100000000.0, tick_size=0.0001,fee_rate=2.0 / 10000,
-                 nbr_slippage=0, max_money_utilization=0.5,rf = 0.03,
-                 leverage=1.0, margin_rate=0.1,contract_multiplier=10000
-                 ):
+    def __init__(self, df_option_metrics, cd_open_price='close', cd_close_price='close',
+                 money_utilization=0.2, init_fund=100000000.0, tick_size=0.0001, fee_rate=2.0 / 10000,
+                 nbr_slippage=0, rf = 0.03, leverage=1.0, margin_rate=0.1, contract_multiplier=10000,
+                 flag_calculate_iv=True, min_ttm=2, pricing_type='OptionPlainEuropean',
+                 engine_type='AnalyticEuropeanEngine'):
         self.util = BktUtil()
         self.init_fund = init_fund
         self.money_utl = money_utilization
@@ -26,8 +24,10 @@ class BktOptionStrategy(object):
         self.calendar = ql.China()
         self.bkt_account = BktAccount(cd_open_price=cd_open_price,cd_close_price = cd_close_price, leverage=leverage,
                                       margin_rate=margin_rate, init_fund=init_fund, tick_size=tick_size,
-                                      contract_multiplier=contract_multiplier, fee_rate=fee_rate, nbr_slippage=nbr_slippage,rf = rf)
-        self.bkt_optionset = BktOptionSet('daily', df_option_metrics)
+                                      contract_multiplier=contract_multiplier, fee_rate=fee_rate,
+                                      nbr_slippage=nbr_slippage, rf = rf)
+        self.bkt_optionset = BktOptionSet('daily', df_option_metrics,flag_calculate_iv=flag_calculate_iv,
+                                          min_ttm=min_ttm, pricing_type=pricing_type, engine_type=engine_type)
         self.option_type = None
         self.min_holding_days = 1
         self.max_holding_days = 252
@@ -45,65 +45,48 @@ class BktOptionStrategy(object):
     def set_min_trading_volume(self, min_volume):
         self.min_volume = min_volume
 
-    def set_option_type(self, option_type):
-        self.option_type = option_type
+    # def get_candidate_set(self, eval_date, option_set):
+    #     candidate_set = option_set.copy()
+    #
+    #     if self.min_holding_days != None:
+    #         for option in option_set:
+    #             if option not in candidate_set: continue
+    #             min_maturity = self.util.to_dt_date(
+    #                 self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
+    #             if option.maturitydt < min_maturity:
+    #                 candidate_set.remove(option)
+    #
+    #     if self.max_holding_days != None:
+    #         for option in option_set:
+    #             if option not in candidate_set: continue
+    #             max_maturity = self.util.to_dt_date(
+    #                 self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.max_holding_days, ql.Days)))
+    #             if option.maturitydt > max_maturity:
+    #                 candidate_set.remove(option)
+    #
+    #     if self.min_volume != None:
+    #         for option in option_set:
+    #             if option not in candidate_set: continue
+    #             if option.get_trading_volume() < self.min_volume:
+    #                 candidate_set.remove(option)
+    #
+    #     return candidate_set
 
-    def set_trade_type(self, trade_type):
-        self.trade_type = trade_type
+    # def get_mdt1_candidate_set(self,eval_date,option_set):
+    #     candidate_set = option_set.copy()
+    #     maturities = sorted(self.bkt_optionset.eligible_maturities)
+    #     min_maturity = self.util.to_dt_date(
+    #         self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
+    #     mdt = maturities[0]
+    #     for mdt in maturities:
+    #         if mdt > min_maturity: break
+    #     for option in option_set:
+    #         if option not in candidate_set: continue
+    #         if option.maturitydt != mdt:
+    #             candidate_set.remove(option)
+    #     return candidate_set
 
-    def set_moneyness_type(self, moneyness_type):
-        self.moneyness_type = moneyness_type
-
-    def get_candidate_set(self, eval_date, option_set):
-        candidate_set = option_set.copy()
-
-        if self.min_holding_days != None:
-            for option in option_set:
-                if option not in candidate_set: continue
-                min_maturity = self.util.to_dt_date(
-                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
-                if option.maturitydt < min_maturity:
-                    candidate_set.remove(option)
-
-        if self.max_holding_days != None:
-            for option in option_set:
-                if option not in candidate_set: continue
-                max_maturity = self.util.to_dt_date(
-                    self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.max_holding_days, ql.Days)))
-                if option.maturitydt > max_maturity:
-                    candidate_set.remove(option)
-
-        if self.min_volume != None:
-            for option in option_set:
-                if option not in candidate_set: continue
-                if option.get_trading_volume() < self.min_volume:
-                    candidate_set.remove(option)
-
-        if self.moneyness_type == 'atm':
-            set_atm = set(self.bkt_optionset.bktoptionset_atm)
-            candidate_set = candidate_set.intersection(set_atm)
-
-        if self.moneyness_type == 'otm':
-            set_otm = set(self.bkt_optionset.bktoptionset_otm)
-            candidate_set = candidate_set.intersection(set_otm)
-
-        return candidate_set
-
-    def get_mdt1_candidate_set(self,eval_date,option_set):
-        candidate_set = option_set.copy()
-        maturities = sorted(self.bkt_optionset.eligible_maturities)
-        min_maturity = self.util.to_dt_date(
-            self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
-        mdt = maturities[0]
-        for mdt in maturities:
-            if mdt > min_maturity: break
-        for option in option_set:
-            if option not in candidate_set: continue
-            if option.maturitydt != mdt:
-                candidate_set.remove(option)
-        return candidate_set
-
-    def get_1st_eligible_maturity(self,eval_date):
+    def get_1st_eligible_maturity(self, eval_date):
         maturities = sorted(self.bkt_optionset.eligible_maturities)
         min_maturity = self.util.to_dt_date(
             self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
@@ -112,7 +95,7 @@ class BktOptionStrategy(object):
             if mdt >= min_maturity: break
         return mdt
 
-    def get_2nd_eligible_maturity(self,eval_date):
+    def get_2nd_eligible_maturity(self, eval_date):
         maturities = sorted(self.bkt_optionset.eligible_maturities)
         min_maturity = self.util.to_dt_date(
             self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
@@ -123,9 +106,9 @@ class BktOptionStrategy(object):
         mdt = maturities_new[1]
         return mdt
 
-    def get_moving_average_signal(self,df,cd_short='ma_3',cd_long = 'ma_20'):
-        df_short = df[df['cd_period']==cd_short].set_index('dt_date')
-        df_long= df[df['cd_period']==cd_long].set_index('dt_date')
+    def get_moving_average_signal(self, df, cd_short='ma_3', cd_long = 'ma_20'):
+        df_short = df[df['cd_period'] == cd_short].set_index('dt_date')
+        df_long= df[df['cd_period'] == cd_long].set_index('dt_date')
         df_long['short_ma'] = df_short['amt_value']
         df_long['short_minus_long'] = df_short['amt_value']-df_long['amt_value']
         df_long = df_long.rename(columns={'amt_value':'long_ma'})
@@ -134,8 +117,8 @@ class BktOptionStrategy(object):
         # df_long.to_csv('../ma_index.csv')
         return df_long
 
-    "Read from database"
-    def get_bollinger_signal(self,df,cd_long = '20'):
+    " Read from database "
+    def get_bollinger_signal(self, df, cd_long = '20'):
         df_long = df[df['cd_period'] == 'ma_'+cd_long].set_index('dt_date')
         df_std = df[df['cd_period'] == 'std_'+cd_long].set_index('dt_date')
         df_long['lower_sigma1'] = df_long['amt_value'] - df_std['amt_value']
@@ -157,7 +140,7 @@ class BktOptionStrategy(object):
         df_res = df[df['dt_date']>=start_date].set_index('dt_date')
         return df_res
 
-    def get_percentile_signal(self,df,start_date=None):
+    def get_percentile_signal(self, df, start_date=None):
         df['percentile_90'] = df['amt_close'].rolling(window=60).quantile(0.9)
         df['percentile_75'] = df['amt_close'].rolling(window=60).quantile(0.75)
         df['percentile_50'] = df['amt_close'].rolling(window=60).quantile(0.5)
@@ -170,7 +153,7 @@ class BktOptionStrategy(object):
         df_res = df_res.set_index('dt_date')
         return df_res
 
-    def ma_signal(self,flag_current,amt_close,df):
+    def ma_signal(self, flag_current, df):
         if flag_current == self.util.long:
             if df['signal'] == self.util.long: signal = None
             # if amt_close >= df['upper_sigma1']: signal = None
@@ -188,7 +171,7 @@ class BktOptionStrategy(object):
         return signal
 
     "Revert at upper/lower line"
-    def boll_signal(self,flag_current,df):
+    def boll_signal(self, flag_current, df):
         status = self.boll_status(df)
         if flag_current == status:
             signal = None
@@ -234,7 +217,6 @@ class BktOptionStrategy(object):
             else: signal = self.util.neutrual
         return status, signal
 
-
     def boll_status(self,df,upper='upper_sigma1',lower='lower_sigma1'):
         if df['amt_close'] >= df[upper]: signal = self.util.long
         elif df['amt_close'] <= df[lower]: signal = self.util.short
@@ -261,7 +243,6 @@ class BktOptionStrategy(object):
             return
         return status,signal
 
-
     def util1(self,x):
         if x[0] >= x[2]:
             s = self.util.long
@@ -275,11 +256,9 @@ class BktOptionStrategy(object):
     def get_ranked_options(self, eval_date):
         return
 
-
     @abstractmethod
     def get_long_short(self, df):
         return
-
 
     @abstractmethod
     def get_weighted_ls(self, invest_fund, df):

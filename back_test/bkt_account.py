@@ -44,65 +44,71 @@ class BktAccount(object):
 
     def get_open_position_price(self, bktoption,cd_open_by_price):
         if cd_open_by_price == 'open':
-            mkt_price = bktoption.option_price_open
+            mkt_price = bktoption.mktprice_open()
         elif cd_open_by_price == 'close':
-            mkt_price = bktoption.option_price
+            mkt_price = bktoption.mktprice_close()
         elif cd_open_by_price == 'morning_open_15min':
-            if bktoption.option_morning_open_15min != -999.0:
-                mkt_price = bktoption.option_morning_open_15min
-            elif bktoption.option_price_open != -999.0:
-                mkt_price = bktoption.option_price_open
-            elif bktoption.option_morning_avg != -999.0:
-                mkt_price = bktoption.option_morning_avg
-            elif bktoption.option_daily_avg != -999.0:
-                mkt_price = bktoption.option_daily_avg
+            if bktoption.mktprice_morning_open_15min() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_morning_open_15min()
+            elif bktoption.mktprice_open() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_open()
+            elif bktoption.mktprice_morning_avg() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_morning_avg()
+            elif bktoption.mktprice_daily_avg() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_daily_avg()
             else:
                 print(bktoption.id_instrument,'No volume to open position')
-                mkt_price = bktoption.option_price
+                mkt_price = bktoption.option_price()
 
         elif cd_open_by_price == 'afternoon_close_15min':
-            if bktoption.option_afternoon_close_15min != -999.0:
-                mkt_price = bktoption.option_afternoon_close_15min
+            if bktoption.mktprice_afternoon_close_15min() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_afternoon_close_15min()
             else:
                 print(bktoption.id_instrument,'No volume to open position')
-                mkt_price = bktoption.option_price
+                mkt_price = bktoption.option_price()
 
         elif cd_open_by_price == 'daily_avg':
-            if bktoption.option_daily_avg != -999.0:
-                mkt_price = bktoption.option_daily_avg
+            if bktoption.option_daily_avg != self.util.nan_value:
+                mkt_price = bktoption.mktprice_daily_avg()
             else:
-                mkt_price = bktoption.option_price
+                mkt_price = bktoption.option_price()
         else:
-            mkt_price = bktoption.option_price
+            mkt_price = bktoption.option_price()
+        if mkt_price < 0:
+            print('option price negative')
+            return
         return mkt_price
 
     def get_close_position_price(self, bktoption,cd_close_by_price=None):
         if cd_close_by_price == 'open':
-            mkt_price = bktoption.option_price_open
+            mkt_price = bktoption.mktprice_price_open()
         elif cd_close_by_price == 'close':
-            mkt_price = bktoption.option_price
+            mkt_price = bktoption.option_price()
         elif cd_close_by_price == 'morning_open_15min':
-            if bktoption.option_morning_open_15min != -999.0:
-                mkt_price = bktoption.option_morning_open_15min
-            elif bktoption.option_morning_avg != -999.0:
-                mkt_price = bktoption.option_morning_avg
-            elif bktoption.option_daily_avg != -999.0:
-                mkt_price = bktoption.option_daily_avg
+            if bktoption.mktprice_morning_open_15min() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_morning_open_15min()
+            elif bktoption.mktprice_morning_avg() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_morning_avg()
+            elif bktoption.mktprice_daily_avg() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_daily_avg()
             else:
                 print(bktoption.id_instrument,'No volume to close position')
-                mkt_price = bktoption.option_price
+                mkt_price = bktoption.option_price()
         elif cd_close_by_price == 'afternoon_close_15min':
-            if bktoption.option_afternoon_close_15min != -999.0:
-                mkt_price = bktoption.option_afternoon_close_15min
-            elif bktoption.option_afternoon_avg != -999.0:
-                mkt_price = bktoption.option_afternoon_avg
-            elif bktoption.option_daily_avg != -999.0:
-                mkt_price = bktoption.option_daily_avg
+            if bktoption.mktprice_afternoon_close_15min() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_afternoon_close_15min()
+            elif bktoption.mktprice_afternoon_avg() != self.util.nan_value:
+                mkt_price = bktoption.mktprice_afternoon_avg()
+            elif bktoption.mktprice_daily_avg() != -999.0:
+                mkt_price = bktoption.mktprice_daily_avg()
             else:
                 print(bktoption.id_instrument,'No volume to close position')
-                mkt_price = bktoption.option_price
+                mkt_price = bktoption.option_price()
         else:
-            mkt_price = bktoption.option_price
+            mkt_price = bktoption.option_price()
+        if mkt_price < 0:
+            print('option price negative')
+            return
         return mkt_price
 
     " Adjust investment unit by given delta exposure "
@@ -114,13 +120,16 @@ class BktAccount(object):
             pshort = self.get_open_position_price(option_short,cd_open_by_price)
             option_port.rebalancing(delta_exposure)
             if fund == None:
-                fund = plong*option_long.multiplier*option_port.unit_long + \
-                       option_short.trade_margin_capital-pshort*option_short.multiplier*option_port.unit_short
-                fund0 = plong * option_long.multiplier * option_port.invest_ratio_long + \
-                        (option_short.get_maintain_margin() - pshort*option_short.multiplier)*option_port.invest_ratio_short
+                fund = plong*option_long.multiplier()*option_port.unit_long + \
+                       option_short.trade_margin_capital-pshort*option_short.multiplier()*\
+                       option_port.unit_short
+                fund0 = plong * option_long.multiplier() * option_port.invest_ratio_long + \
+                        (option_short.get_maintain_margin() - pshort*option_short.multiplier())*\
+                        option_port.invest_ratio_short
             else:
-                fund0 = plong * option_long.multiplier * option_port.invest_ratio_long + \
-                        (option_short.get_init_margin()-pshort*option_short.multiplier)*option_port.invest_ratio_short
+                fund0 = plong * option_long.multiplier() * option_port.invest_ratio_long + \
+                        (option_short.get_init_margin()-pshort*option_short.multiplier())*\
+                        option_port.invest_ratio_short
             unit = fund / fund0
             option_port.unit_portfolio = unit
             option_port.unit_long = unit*option_port.invest_ratio_long
@@ -131,17 +140,19 @@ class BktAccount(object):
             price_call = self.get_open_position_price(option_call, cd_open_by_price)
             price_put = self.get_open_position_price(option_put, cd_open_by_price)
             if fund == None:
-                fund = price_call*option_call.multiplier*option_port.unit_call + \
-                       price_put*option_put.multiplier*option_port.unit_put
+                fund = price_call*option_call.multiplier()*option_port.unit_call + \
+                       price_put*option_put.multiplier()*option_port.unit_put
             option_port.rebalancing(delta_exposure)
 
             if cd_long_short == self.util.long:
-                fund0 = price_call*option_call.multiplier*option_port.invest_ratio_call + \
-                       price_put*option_put.multiplier*option_port.invest_ratio_put
+                fund0 = price_call*option_call.multiplier()*option_port.invest_ratio_call + \
+                       price_put*option_put.multiplier()*option_port.invest_ratio_put
                 unit_straddle = fund / fund0
             else:
-                fund_straddle = option_call.get_init_margin()*option_call.multiplier*option_port.invest_ratio_call + \
-                       option_put.get_maintain_margin()*option_put.multiplier*option_port.invest_ratio_put
+                fund_straddle = option_call.get_init_margin()*option_call.multiplier()*\
+                                option_port.invest_ratio_call + \
+                                option_put.get_maintain_margin()*option_put.multiplier()*\
+                                option_port.invest_ratio_put
                 unit_straddle = fund / fund_straddle
             option_port.unit_portfolio = unit_straddle
             option_port.unit_call = unit_straddle*option_port.invest_ratio_call
@@ -153,11 +164,11 @@ class BktAccount(object):
                         fund = 0
                         for (idx,option) in enumerate(option_port.optionset):
                             price = self.get_open_position_price(option, cd_open_by_price)
-                            fund += price*option.multiplier*option_port.unit_portfolio[idx]
+                            fund += price*option.multiplier()*option_port.unit_portfolio[idx]
                     fund0 = 0
                     for option in option_port.optionset: # equal weighted by mkt value
                         price = self.get_open_position_price(option, cd_open_by_price)
-                        fund0 += price*option.multiplier
+                        fund0 += price*option.multiplier()
                     unit_calls = fund/fund0
                     option_port.unit_portfolio = [unit_calls]*len(option_port.optionset)
             else:
@@ -165,11 +176,12 @@ class BktAccount(object):
                     fund = 0
                     for (idx, option) in enumerate(option_port.optionset):
                         price = self.get_open_position_price(option, cd_open_by_price)
-                        fund += (option.get_maintain_margin()-price*option.multiplier)*option_port.unit_portfolio[idx]
+                        fund += (option.get_maintain_margin()-price*option.multiplier())*\
+                                option_port.unit_portfolio[idx]
                 fund0 = 0
                 for (idx,option) in enumerate(option_port.optionset):  # equal weighted by mkt value
                     price = self.get_open_position_price(option, cd_open_by_price)
-                    fund0 += option.get_init_margin()-price*option.multiplier
+                    fund0 += option.get_init_margin()-price*option.multiplier()
                 unit_calls = fund / fund0
                 option_port.unit_portfolio = [unit_calls] * len(option_port.optionset)
         elif isinstance(option_port,CalandarSpread):
@@ -185,19 +197,19 @@ class BktAccount(object):
             call = option_port.write_call
             put = option_port.buy_put
             if call != None:
-                option_port.unit_call = np.floor(unit_underlying/call.multiplier)*write_ratio
+                option_port.unit_call = np.floor(unit_underlying/call.multiplier())*write_ratio
             if put != None:
-                option_port.unit_put = np.floor(unit_underlying/put.multiplier)*buy_ratio
+                option_port.unit_put = np.floor(unit_underlying/put.multiplier())*buy_ratio
             option_port.unit_underlying = unit_underlying
 
     def open_portfolio(self, dt, portfolio,unit=None, cd_open_by_price=None):
         if isinstance(portfolio,BktOption):
-            self.open_long_option(dt, portfolio, unit,cd_open_by_price)
+            self.open_long_option(dt, portfolio, unit, cd_open_by_price)
         elif type(portfolio) == dict:
             self.option_long_index(portfolio)
-        elif isinstance(portfolio,Straddle):
-            self.open_long_option(dt,portfolio.option_call,portfolio.unit_call,cd_open_by_price)
-            self.open_long_option(dt,portfolio.option_put,portfolio.unit_put,cd_open_by_price)
+        elif isinstance(portfolio, Straddle):
+            self.open_long_option(dt, portfolio.option_call, portfolio.unit_call, cd_open_by_price)
+            self.open_long_option(dt, portfolio.option_put, portfolio.unit_put, cd_open_by_price)
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
             if portfolio.cd_long_short == self.util.long:
                 for option in portfolio.optionset:
@@ -313,9 +325,9 @@ class BktAccount(object):
         if bktoption != None:
             bktoption.trade_dt_open = dt
             bktoption.trade_long_short = self.util.long
-            id_instrument = bktoption.id_instrument
+            id_instrument = bktoption.id_instrument()
             mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
-            multiplier = bktoption.multiplier
+            multiplier = bktoption.multiplier()
             trade_type = 'open long'
             fee = unit * mkt_price * self.fee * multiplier
             premium = unit * mkt_price * multiplier

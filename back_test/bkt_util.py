@@ -36,18 +36,22 @@ class BktUtil():
         self.col_open = 'amt_open'
         self.col_adj_option_price = 'amt_adj_option_price'
         self.col_option_price = 'amt_option_price'
-        self.col_underlying_price = 'amt_underlying_price'
+        self.col_underlying_close = 'amt_underlying_close'
         self.col_underlying_open_price = 'amt_underlying_open_price'
         self.col_settlement = 'amt_settlement'
         self.col_last_settlement = 'amt_last_settlement'
         self.col_last_close = 'amt_last_close'
         self.col_multiplier = 'nbr_multiplier'
-
         self.col_holding_volume = 'amt_holding_volume'
         self.col_trading_volume = 'amt_trading_volume'
-
+        self.col_morning_open_15min = 'amt_morning_open_15min'
+        self.col_morning_close_15min = 'amt_morning_close_15min'
+        self.col_afternoon_open_15min = 'amt_afternoon_open_15min'
+        self.col_afternoon_close_15min = 'amt_afternoon_close_15min'
+        self.col_morning_avg = 'amt_morning_avg'
+        self.col_afternoon_avg = 'amt_afternoon_avg'
+        self.col_daily_avg = 'amt_daily_avg'
         self.col_implied_vol = 'pct_implied_vol'
-
         self.col_delta = 'amt_delta'
         self.col_theta = 'amt_theta'
         self.col_vega = 'amt_vega'
@@ -57,6 +61,7 @@ class BktUtil():
 
         self.nbr_invest_days='nbr_invest_days'
         self.col_rf = 'risk_free_rate'
+
 
 
         """output dataframe column names"""

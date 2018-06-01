@@ -6,9 +6,7 @@ import datetime
 from back_test.data_option import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv
 
 
-
 class BktStrategyCollar(BktOptionStrategy):
-
 
     def __init__(self, df_option, df_index, money_utilization=0.2, init_fund=100000000.0,
                  cash_reserve_pct=0.20):
@@ -33,7 +31,7 @@ class BktStrategyCollar(BktOptionStrategy):
         self.df_option = df_option
         self.df_index = df_index
 
-    def set_index_ma(self,df_index_ma):
+    def set_index_ma(self, df_index_ma):
         self.index_ma = df_index_ma
 
     def set_volatility_ma(self,df_vol_ma):
@@ -67,12 +65,12 @@ class BktStrategyCollar(BktOptionStrategy):
         moneyness_put = self.moneyness_put
         write_ratio = self.write_ratio
         buy_ratio = self.buy_ratio
-        self.portfolio = self.bkt_optionset.get_collar(self.get_1st_eligible_maturity(evalDate),
-                                                       self.get_2nd_eligible_maturity(evalDate),
-                                                       bkt_index,
-                                                       moneyness_call=moneyness_call,moneyness_put=moneyness_put)
+        self.portfolio = self.bkt_optionset.get_collar(
+            self.get_1st_eligible_maturity(evalDate),
+            self.get_2nd_eligible_maturity(evalDate),
+            bkt_index, moneyness_call=moneyness_call,moneyness_put=moneyness_put)
 
-        unit_underlying = np.floor(inv_fund / self.portfolio.underlying.mktprice_close)
+        unit_underlying = np.floor(inv_fund / self.portfolio.underlying.mktprice_close())
         bkt_account.update_invest_units_c2(self.portfolio, write_ratio, unit_underlying)
         bkt_account.open_portfolio(evalDate, self.portfolio, cd_open_by_price=cd_open_position_time)
         self.flag_trade = True
@@ -84,21 +82,20 @@ class BktStrategyCollar(BktOptionStrategy):
         flag_iv = self.util.neutrual
         flag_protect = False
         while bkt_optionset.index < len(bkt_optionset.dt_list):
-
             self.next()
             evalDate = bkt_optionset.eval_date
 
             """ 回测期最后一天全部清仓 """
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
-                bkt_account.close_portfolio(evalDate,self.portfolio,cd_close_by_price='close')
-                bkt_account.mkm_update_portfolio(evalDate,self.portfolio)
+                bkt_account.close_portfolio(evalDate, self.portfolio, cd_close_by_price='close')
+                bkt_account.mkm_update_portfolio(evalDate, self.portfolio)
                 print(evalDate, ' , ', bkt_account.npv)  # npv是组合净值，期初为1
                 break
 
             """ 根据动量指标与波动率指标调整write ratio """
             if evalDate not in self.volatility_boll.index:
-                vol_signal=None
+                vol_signal = None
             else:
                 vol_status,vol_signal = self.vol_bolliger_signal(vol_status,self.volatility_boll.loc[evalDate])
             if evalDate not in self.index_boll.index:
@@ -110,7 +107,7 @@ class BktStrategyCollar(BktOptionStrategy):
             else:
                 iv_status,iv_signal = self.boll_signal_2(flag_iv,self.iv_boll.loc[evalDate])
             # iv_status,iv_signal = self.percentile_signal(flag_iv,self.iv_boll.loc[evalDate])
-            " research paper method"
+            " research paper method "
             # if vol_signal == 2: # extreme condition long
             #     self.flag_trade = False
             #     write_ratio = 0.25
@@ -219,8 +216,8 @@ class BktStrategyCollar(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 3, 1)
-# start_date = datetime.date(2015, 9, 1)
+# start_date = datetime.date(2015, 3, 1)
+start_date = datetime.date(2018, 3, 1)
 end_date = datetime.date(2018, 5, 21)
 
 
@@ -245,15 +242,15 @@ bkt_strategy.set_index_ma(df_index_ma)
 bkt_strategy.set_index_boll(df_index_boll)
 bkt_strategy.set_volatility_boll(df_vix_boll)
 bkt_strategy.set_atm_iv(df_iv)
-df_vix_boll.to_csv('../df_vix_boll.csv')
-df_index_boll.to_csv('../df_index_boll.csv')
-df_iv.to_csv('../df_iv.csv')
+# df_vix_boll.to_csv('../df_vix_boll.csv')
+# df_index_boll.to_csv('../df_index_boll.csv')
+# df_iv.to_csv('../df_iv.csv')
 
 bkt_strategy.run()
 
-bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
-bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/bkt_df_trading_book.csv')
-bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/bkt_df_trading_records.csv')
+# bkt_strategy.bkt_account.df_account.to_csv('../save_results/bkt_df_account.csv')
+# bkt_strategy.bkt_account.df_trading_book.to_csv('../save_results/bkt_df_trading_book.csv')
+# bkt_strategy.bkt_account.df_trading_records.to_csv('../save_results/bkt_df_trading_records.csv')
 # bkt_strategy.bkt_account.df_ivs.to_csv('../save_results/bkt_df_ivs.csv')
 #
 benckmark = df_index_metrics[bkt_strategy.util.col_close].tolist()

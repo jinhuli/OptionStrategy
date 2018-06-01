@@ -13,11 +13,10 @@ class BktOptionSet(object):
     To Collect BktOption Set
     To Calculate Vol Surface and Metrics
     To Manage Back Test State of all BktOption Objects
-    #TODO: 目前只能处理日频数据，高频数据还需调整结构进一步完善（目前注释未删的部分）
     """
 
     def __init__(self, cd_frequency, df_option_metrics, flag_calculate_iv=True, min_ttm=2,
-                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
+                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine', rf=0.03):
         self.util = BktUtil()
         tmp = df_option_metrics.loc[0, self.util.id_instrument]
         self.option_code = tmp[0: tmp.index('_')]
@@ -26,14 +25,15 @@ class BktOptionSet(object):
         self.pricing_type = pricing_type
         self.engine_type = engine_type
         self.flag_calculate_iv = flag_calculate_iv
-        if self.option_code == 'sr': self.flag_calculate_iv = False
         self.min_ttm = min_ttm
+        self.rf = rf
+        if self.option_code == 'sr': self.flag_calculate_iv = False
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
         self.bktoptionset = set()
         self.eligible_maturities = []
-        self.atm_delta_min = 0.4
-        self.atm_delta_max = 0.6
+        # self.atm_delta_min = 0.4
+        # self.atm_delta_max = 0.6
         self.index = 0
         self.start()
 
@@ -63,10 +63,9 @@ class BktOptionSet(object):
         self.eval_date = self.dt_list[self.dt_list.index(self.eval_date) + 1]
 
     def update_current_daily_state(self):
-        self.df_daily_state = self.df_data[self.df_data[self.util.col_date] == self.eval_date].reset_index().drop('index',1)
+        self.df_daily_state = self.df_data[self.df_data[self.util.col_date] == self.eval_date].reset_index(drop=True)
 
-
-    """ Update bktoption in daily state"""
+    """ Update bktoption in daily state """
     def update_bktoption(self):
         if self.frequency in self.util.cd_frequency_low:
             df_last_state = self.df_last_state
@@ -76,13 +75,12 @@ class BktOptionSet(object):
             for (idx,row) in self.df_daily_state.iterrows():
                 id_inst = row[self.util.id_instrument]
                 if id_inst in ids_last:
-                    bktoption = df_last_state[df_last_state[self.util.id_instrument]==id_inst][self.util.bktoption].values[0]
+                    bktoption = df_last_state[df_last_state[self.util.id_instrument] == id_inst][self.util.bktoption].values[0]
                     bktoption.next()
                     self.df_daily_state.loc[idx,self.util.bktoption] = bktoption
                 else:
-                    df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index().drop('index',1)
-                    bktoption = BktOption(self.frequency, df_option, self.flag_calculate_iv)
-                    bktoption.start()
+                    df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index(drop=True)
+                    bktoption = BktOption(self.frequency, df_option, self.flag_calculate_iv, rf=self.rf)
                     self.df_daily_state.loc[idx,self.util.bktoption] = bktoption
             self.bktoptionset = set(self.df_daily_state[self.util.bktoption].tolist())
 
@@ -101,22 +99,22 @@ class BktOptionSet(object):
             c = df[self.util.col_option_type] == self.util.type_put
         else:
             return "Unsupport Option Type!"
-        df = df[c].reset_index().drop('index', 1)
+        df = df[c].reset_index(drop=True)
         return df
 
-    def get_df_by_mdt(self,df,mdt):
-        c = df[self.util.col_maturitydt]==mdt
-        df = df[c].reset_index().drop('index',1)
+    def get_df_by_mdt(self, df, mdt):
+        c = df[self.util.col_maturitydt] == mdt
+        df = df[c].reset_index(drop=True)
         return df
 
-    def get_df_call_by_mdt(self,df,mdt):
-        c = (df[self.util.col_option_type]==self.util.type_call)&(df[self.util.col_maturitydt]==mdt)
-        df = df[c].reset_index().drop('index',1)
+    def get_df_call_by_mdt(self, df, mdt):
+        c = (df[self.util.col_option_type] == self.util.type_call) & (df[self.util.col_maturitydt] == mdt)
+        df = df[c].reset_index(drop=True)
         return df
 
-    def get_df_put_by_mdt(self,df,mdt):
-        c = (df[self.util.col_option_type]==self.util.type_put)&(df[self.util.col_maturitydt]==mdt)
-        df = df[c].reset_index().drop('index',1)
+    def get_df_put_by_mdt(self, df, mdt):
+        c = (df[self.util.col_option_type] == self.util.type_put) & (df[self.util.col_maturitydt] == mdt)
+        df = df[c].reset_index(drop=True)
         return df
 
     def validate_data(self):
@@ -168,7 +166,7 @@ class BktOptionSet(object):
                 else:
                     multiplier = 10000
                 self.df_data.loc[idx, self.util.col_multiplier] = multiplier
-
+    """ 合约期权最低为 min_ttm """
     def update_eligible_maturities(self):  # n: 要求合约剩余期限大于n（天）
         underlyingids = self.df_daily_state[self.util.col_id_underlying].unique()
         maturities = self.df_daily_state[self.util.col_maturitydt].unique()
@@ -191,6 +189,7 @@ class BktOptionSet(object):
                     maturity_dates2.append(mdt)
         self.eligible_maturities = sorted(maturity_dates2)
 
+    """ 主要针对50ETF期权分红 """
     def update_multiplier_adjustment(self):
         if self.option_code == '50etf':
             self.df_data[self.util.col_adj_strike] = \
@@ -201,6 +200,7 @@ class BktOptionSet(object):
             self.df_data[self.util.col_adj_strike] = self.df_data[self.util.col_strike]
             self.df_data[self.util.col_adj_option_price] = self.df_data[self.util.col_settlement]
 
+    """ 50ETF期权分红后会产生同样行权价的两个期权，选择trading volume较大的一个。 """
     def get_duplicate_strikes_dropped(self, df_metrics):
         maturities = sorted(df_metrics[self.util.col_maturitydt].unique())
         df = pd.DataFrame()
@@ -239,7 +239,7 @@ class BktOptionSet(object):
             print('bkt_option_set--get put failed,given moneyness rank not exit!')
             return pd.DataFrame()
         option_put = res_dict[moneyness_rank]
-        portfolio = Puts(self.eval_date,[option_put], cd_long_short)
+        portfolio = Puts(self.eval_date, [option_put], cd_long_short)
         return portfolio
 
     def get_call(self, moneyness_rank, mdt, cd_long_short, cd_underlying_price='open'):
@@ -283,7 +283,7 @@ class BktOptionSet(object):
         return cs
 
     """Back Spread: Long small delta(atm), short large delta(otm)"""
-    def get_backspread(self,option_type,mdt,moneyness1=0,moneyness2=-2,cd_underlying_price='open'):
+    def get_backspread(self, option_type, mdt,moneyness1=0, moneyness2=-2, cd_underlying_price='open'):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         if moneyness2 not in options_by_moneyness[mdt][option_type].keys():
             moneyness2 += 1
@@ -304,19 +304,16 @@ class BktOptionSet(object):
             buy_put = None
         else:
             buy_put = options_by_moneyness[mdt][self.util.type_put][moneyness_put]
-
         collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
         return collar
 
     def get_collar(self, mdt_call,mdt_put, underlying, moneyness_call=-2, moneyness_put=-2, cd_underlying_price='close',flag_protect=False):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
-        init_m_put = moneyness_put
         while moneyness_call < 0:
             if moneyness_call not in options_by_moneyness[mdt_call][self.util.type_call].keys():
                 moneyness_call += 1
             else:
                 break
-
         while moneyness_put <= 0:
             if moneyness_put not in options_by_moneyness[mdt_put][self.util.type_put].keys():
                 moneyness_put += 1
@@ -351,21 +348,20 @@ class BktOptionSet(object):
             atm_call = 1000
             atm_put = -1000
             if cd_underlying_price == 'close':
-                spot = optionset_call[0].underlying_price # Use underlying OPEN close as spot
+                spot = optionset_call[0].underlying_close() # Use underlying OPEN close as spot
             else:
-                spot = optionset_call[0].underlying_open_price # Use underlying OPEN close as spot
-
+                spot = optionset_call[0].underlying_open_price() # Use underlying OPEN close as spot
             m_call = []
             m_put = []
             for option in optionset_call:
-                k = option.strike
+                k = option.strike()
                 m = round(k - spot, 6)
                 if m >= 0:
                     atm_call = min(atm_call, m)
                 dict_call.update({m: option})
                 m_call.append(m)
             for option in optionset_put:
-                k = option.strike
+                k = option.strike()
                 m = round(k - spot, 6)
                 if m <= 0:
                     atm_put = max(atm_put, m)
