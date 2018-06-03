@@ -248,7 +248,7 @@ class BktOption(BktInstrument):
             evalDate = self.eval_date
             ttm = (mdt - evalDate).days / 365.0
             black_var_surface.enableExtrapolation()
-            implied_vol_t1 = black_var_surface.blackVol(ttm - dt, self.strike)
+            implied_vol_t1 = black_var_surface.blackVol(ttm - dt, self.strike())
             iv_roll_down = implied_vol_t1 - self.implied_vol
         except Exception as e:
             print(e)

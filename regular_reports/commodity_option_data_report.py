@@ -77,10 +77,10 @@ def hist_vol(df_underlying_core):
     #
 
     """历史波动率锥"""
-    df_underlying_core['5近半年'] = list(calculate_histvol(df_underlying_core['amt_close'],120))
-    df_underlying_core['4近三月'] = list(calculate_histvol(df_underlying_core['amt_close'],60))
-    df_underlying_core['3近两月'] = list(calculate_histvol(df_underlying_core['amt_close'],40))
-    df_underlying_core['2近一月'] = list(calculate_histvol(df_underlying_core['amt_close'],20))
+    df_underlying_core['5近半年'] = list(calculate_histvol(df_underlying_core['amt_close'],120)*100)
+    df_underlying_core['4近三月'] = list(calculate_histvol(df_underlying_core['amt_close'],60)*100)
+    df_underlying_core['3近两月'] = list(calculate_histvol(df_underlying_core['amt_close'],40)*100)
+    df_underlying_core['2近一月'] = list(calculate_histvol(df_underlying_core['amt_close'],20)*100)
     df_histvol = df_underlying_core[df_underlying_core['dt_date'] >= startDate]
     df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
     df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
@@ -288,7 +288,7 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
         for i in range(2):
             iv = df0.loc[i,'pct_implied_vol']
             if iv == 0.0:iv=np.nan
-            df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = iv
+            df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = iv*100
 
     df_iv_results = df_iv_results.sort_values(by='dt_date',ascending=False)
     # df = df_iv_results.replace(0.0, None)
@@ -436,14 +436,14 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 ############################################################################################
 # Eval Settings
 
-dt_date = datetime.date(2018, 5, 25)  # Set as Friday
-dt_last_week = datetime.date(2018, 5, 18)
-# current_core_underlying = 'sr_1809'
-# namecode = 'sr'
-# exchange_code = 'czce'
-current_core_underlying = 'm_1809'
-namecode = 'm'
-exchange_code = 'dce'
+dt_date = datetime.date(2018, 6, 1)  # Set as Friday
+dt_last_week = datetime.date(2018, 5, 25)
+current_core_underlying = 'sr_1809'
+namecode = 'sr'
+exchange_code = 'czce'
+# current_core_underlying = 'm_1809'
+# namecode = 'm'
+# exchange_code = 'dce'
 contracts = ['1809', '1901', '1905','1909']
 
 ############################################################################################

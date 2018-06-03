@@ -185,7 +185,7 @@ def get_comoption_mktdata(start_date, end_date, name_code):
         .filter(and_(options.dt_listed <= end_date, options.dt_maturity >= start_date))
 
     query_srf = sess.query(Future_mkt.dt_date, Future_mkt.id_instrument.label(util.col_id_underlying),
-                           Future_mkt.amt_settlement.label(util.col_underlying_price),
+                           Future_mkt.amt_settlement.label(util.col_underlying_close),
                            Future_mkt.amt_open.label(util.col_underlying_open_price)) \
         .filter(Future_mkt.dt_date >= start_date).filter(Future_mkt.dt_date <= end_date) \
         .filter(Future_mkt.name_code == name_code).filter(Future_mkt.flag_night != 1)

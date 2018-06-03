@@ -571,7 +571,7 @@ class BktOptionSet(object):
         bvs_call = self.get_volsurface_squre('call')
         bvs_put = self.get_volsurface_squre('put')
         for idx, option in enumerate(bktoption_list):
-            if option.option_price > 0.0:
+            if option.option_price() > 0.0:
                 iv = option.get_implied_vol()
                 if option.option_type == self.util.type_call:
                     carry= option.get_carry(bvs_call, hp)
@@ -603,17 +603,17 @@ class BktOptionSet(object):
                     datasource = 'czce'
             db_row = {
                 self.util.col_date: self.eval_date,
-                self.util.col_id_instrument: option.id_instrument,
+                self.util.col_id_instrument: option.id_instrument(),
                 'datasource': datasource,
                 'name_code': self.option_code,
-                'id_underlying': option.id_underlying,
-                'amt_strike': float(option.strike),
-                self.util.col_code_instrument: option.code_instrument,
-                self.util.col_option_type: option.option_type,
-                self.util.col_maturitydt: option.maturitydt,
+                'id_underlying': option.id_underlying(),
+                'amt_strike': float(option.strike()),
+                self.util.col_code_instrument: option.code_instrument(),
+                self.util.col_option_type: option.option_type(),
+                self.util.col_maturitydt: option.maturitydt(),
                 self.util.col_implied_vol: float(iv),
-                self.util.col_adj_strike: float(option.adj_strike),
-                self.util.col_option_price: float(option.option_price),
+                self.util.col_adj_strike: float(option.adj_strike()),
+                self.util.col_option_price: float(option.option_price()),
                 'amt_delta': float(delta),
                 self.util.col_vega: float(vega),
                 self.util.col_theta: float(theta),
