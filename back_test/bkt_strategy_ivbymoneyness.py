@@ -64,7 +64,8 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
         return res
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 1, 1)
+# start_date = datetime.date(2015, 1, 1)
+start_date = datetime.date(2018, 1, 1)
 end_date = datetime.date(2018, 5, 28)
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -84,18 +85,18 @@ bkt.set_min_holding_days(8) # TODO: 选择期权最低到期日
 res = bkt.ivs_mdt1_run()
 df = pd.DataFrame(res)
 print(df)
-for r in res:
-    query_res = table.select((table.c.id_underlying == r['id_underlying'])
-                               & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
-                             & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
-    if query_res.rowcount > 0:
-        table.delete((table.c.id_underlying == r['id_underlying'])
-                               & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
-                             & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
-    try:
-        conn.execute(table.insert(), r)
-    except Exception as e:
-        print(e)
-        print(r)
-        continue
+# for r in res:
+#     query_res = table.select((table.c.id_underlying == r['id_underlying'])
+#                                & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
+#                              & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
+#     if query_res.rowcount > 0:
+#         table.delete((table.c.id_underlying == r['id_underlying'])
+#                                & (table.c.dt_date == r['dt_date'])& (table.c.cd_option_type == r['cd_option_type'])
+#                              & (table.c.cd_mdt == r['cd_mdt'])& (table.c.cd_moneyness == r['cd_moneyness'])).execute()
+#     try:
+#         conn.execute(table.insert(), r)
+#     except Exception as e:
+#         print(e)
+#         print(r)
+#         continue
 
