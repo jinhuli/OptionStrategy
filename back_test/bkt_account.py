@@ -295,8 +295,8 @@ class BktAccount(object):
 
     def open_long_underlying(self,dt, bktinstrument, unit, cd_open_by_price):
         if bktinstrument.trade_flag_open: print('Recheck! underlying position already opened !')
-        mkt_price = bktinstrument.mktprice_close
-        id_instrument = bktinstrument.id_instrument
+        mkt_price = bktinstrument.mktprice_close()
+        id_instrument = bktinstrument.id_instrument()
         premium = unit * mkt_price
         fee = premium * self.fee
         trade_type = 'open'
@@ -358,9 +358,9 @@ class BktAccount(object):
         if bktoption != None:
             bktoption.trade_dt_open = dt
             bktoption.trade_long_short = self.util.short
-            id_instrument = bktoption.id_instrument
+            id_instrument = bktoption.id_instrument()
             mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
-            multiplier = bktoption.multiplier
+            multiplier = bktoption.multiplier()
             trade_type = 'open short'
             fee = unit * mkt_price * self.fee * multiplier
             premium = unit * mkt_price * multiplier
@@ -424,9 +424,9 @@ class BktAccount(object):
 
     def close_position_underlying(self,dt, bktinstrument, cd_open_by_price):
         position = pd.Series()
-        mkt_price = bktinstrument.mktprice_close
+        mkt_price = bktinstrument.mktprice_close()
         unit = bktinstrument.trade_unit
-        id_instrument = bktinstrument.id_instrument
+        id_instrument = bktinstrument.id_instrument()
         long_short = bktinstrument.trade_long_short
         open_price = bktinstrument.trade_open_price
         open_transaction_fee = bktinstrument.transaction_fee
@@ -457,13 +457,13 @@ class BktAccount(object):
 
     def close_position_option(self, dt, bktoption,cd_close_by_price):  # 多空平仓
         if bktoption != None:
-            id_instrument = bktoption.id_instrument
+            id_instrument = bktoption.id_instrument()
             mkt_price = self.get_close_position_price(bktoption,cd_close_by_price)
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_capital = bktoption.trade_margin_capital
             dt_open = bktoption.trade_dt_open
-            multiplier = bktoption.multiplier
+            multiplier = bktoption.multiplier()
             premium_open = bktoption.premium
             open_price = bktoption.trade_open_price
             premium = unit * mkt_price * multiplier
@@ -641,16 +641,16 @@ class BktAccount(object):
         # holdings = []
         for bktoption in portfolio.optionset:
             if bktoption == None: continue
-            if bktoption.maturitydt == dt:
+            if bktoption.maturitydt() == dt:
                 self.close_position_option(dt, bktoption, None)
-                print('close option position on maturity date : ', bktoption.id_instrument)
+                print('close option position on maturity date : ', bktoption.id_instrument())
                 continue
             # holdings.append(bktoption)
-            mkt_price = bktoption.option_price
+            mkt_price = bktoption.option_price()
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_account = bktoption.trade_margin_capital
-            multiplier = bktoption.multiplier
+            multiplier = bktoption.multiplier()
             maintain_margin = unit * bktoption.get_maintain_margin()
             margin_call = maintain_margin - margin_account
             unrealized_pnl += long_short * (mkt_price - bktoption.trade_open_price) * unit * multiplier
@@ -675,7 +675,7 @@ class BktAccount(object):
         benckmark = 0.0
         if portfolio.underlying != None:
             unit = portfolio.underlying.trade_unit
-            mkt_price = portfolio.underlying.mktprice_close
+            mkt_price = portfolio.underlying.mktprice_close()
             trade_order_mktv += mkt_price * unit
             benckmark = mkt_price/portfolio.underlying.trade_open_price
 
@@ -714,16 +714,16 @@ class BktAccount(object):
         holdings = []
         for bktoption in self.holdings:
             if not bktoption.trade_flag_open: continue
-            if bktoption.maturitydt == dt:
+            if bktoption.maturitydt() == dt:
                 self.close_position_option(dt, bktoption, None)
-                print('close option position on maturity date : ', bktoption.id_instrument)
+                print('close option position on maturity date : ', bktoption.id_instrument())
                 continue
             holdings.append(bktoption)
-            mkt_price = bktoption.option_price
+            mkt_price = bktoption.option_price()
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_account = bktoption.trade_margin_capital
-            multiplier = bktoption.multiplier
+            multiplier = bktoption.multiplier()
             maintain_margin = unit * bktoption.get_maintain_margin()
             margin_call = maintain_margin - margin_account
             unrealized_pnl += long_short * (mkt_price - bktoption.trade_open_price) * unit * multiplier
@@ -736,9 +736,11 @@ class BktAccount(object):
             self.cash -= margin_call
             self.total_margin_capital += margin_call
             bktoption.trade_margin_capital += margin_call
-            iv = pd.DataFrame(data={'dt_date': [dt], 'id': [bktoption.id_instrument], 'price': [bktoption.option_price],
+            iv = pd.DataFrame(data={'dt_date': [dt], 'id': [bktoption.id_instrument()],
+                                    'price': [bktoption.option_price()],
                                     'unit': [bktoption.trade_unit],
-                                    'iv': [bktoption.implied_vol], 'long_short': [bktoption.trade_long_short]})
+                                    'iv': [bktoption.implied_vol],
+                                    'long_short': [bktoption.trade_long_short]})
             self.df_ivs = self.df_ivs.append(iv, ignore_index=True)
 
         """trade_order_dict : Only Contains LONG underlying positions"""

@@ -52,31 +52,7 @@ def pcr(df_pcr):
 
 """标的历史波动率"""
 def hist_vol(df_underlying_core):
-    """历史已实现波动率：1M、2M、3M、6M"""
-    # for (idx, row) in df_underlying_core.iterrows():
-    #     if idx == 0:
-    #         r = 0.0
-    #     else:
-    #         p1 = float(row['amt_close'])
-    #         p0 = float(df_underlying_core.loc[idx-1,'amt_close'])
-    #         if p0 == 0.0 or p1 == 0.0:
-    #             r = 0.0
-    #         else:
-    #             r = (p1-p0) / p0
-    #     df_underlying_core.loc[idx, 'yield'] = r
-    #
-    # for idx_mkt in range(len(df_underlying_core)):
-    #     if idx_mkt >= bd_6m:
-    #         df_underlying_core.loc[idx_mkt, '5近半年'] = np.std(df_underlying_core['yield'][idx_mkt-bd_6m:idx_mkt])*np.sqrt(252)*100
-    #     if idx_mkt >= bd_3m:
-    #         df_underlying_core.loc[idx_mkt, '4近三月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_3m:idx_mkt])*np.sqrt(252)*100
-    #     if idx_mkt >= bd_2m:
-    #         df_underlying_core.loc[idx_mkt, '3近两月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_2m:idx_mkt])*np.sqrt(252)*100
-    #     if idx_mkt >= bd_1m:
-    #         df_underlying_core.loc[idx_mkt, '2近一月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_1m:idx_mkt])*np.sqrt(252)*100
-    #
 
-    """历史波动率锥"""
     df_underlying_core['5近半年'] = list(calculate_histvol(df_underlying_core['amt_close'],120)*100)
     df_underlying_core['4近三月'] = list(calculate_histvol(df_underlying_core['amt_close'],60)*100)
     df_underlying_core['3近两月'] = list(calculate_histvol(df_underlying_core['amt_close'],40)*100)
@@ -85,36 +61,6 @@ def hist_vol(df_underlying_core):
     df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
     df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
     df_histvol.to_csv('../save_results/' + namecode + '_future_hist_vols.csv')
-
-    # max_vols = [max(histvols_6), max(histvols_3), max(histvols_2), max(histvols_1)]
-    # min_vols = [min(histvols_6), min(histvols_3), min(histvols_2), min(histvols_1)]
-    # median_vols = [np.median(histvols_6), np.median(histvols_3), np.median(histvols_2),
-    #                np.median(histvols_1)]
-    # p75_vols = [np.percentile(histvols_6, 75), np.percentile(histvols_3, 75),
-    #             np.percentile(histvols_2, 75), np.percentile(histvols_1, 75)]
-    # p25_vols = [np.percentile(histvols_6, 25), np.percentile(histvols_3, 25),
-    #             np.percentile(histvols_2, 25), np.percentile(histvols_1, 25)]
-    # current_vols = [histvols_6[-1], histvols_3[-1], histvols_2[-1], histvols_1[-1]]
-    # print('current_vols : ', current_vols)
-    # histvolcone = [current_vols, max_vols, min_vols, median_vols, p75_vols, p25_vols]
-    # x = [6, 3, 2, 1]
-    # f2, ax2 = plt.subplots()
-    # ldgs = ['当前水平', '最大值', '最小值', '中位数', '75分位数', '25分位数']
-    # for cont2, y in enumerate(histvolcone):
-    #     pu.plot_line(ax2, cont2, x, y, ldgs[cont2], '时间：月', '波动率（%）')
-    # ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-    #            ncol=6, mode="expand", borderaxespad=0., frameon=False)
-    # f2.set_size_inches((12, 6))
-    #
-    # f2.savefig('../save_figure/'+namecode+'_hist_vol_cone_' + str(evalDate) + '.png', dpi=300, format='png')
-    # df_vol_cone = pd.DataFrame({'1-term': ['6月', '3月', '2月', '1月'],
-    #                             '2-当前隐含波动率': current_vols,
-    #                             '3-最大值': max_vols,
-    #                             '4-最小值': min_vols,
-    #                             '5-中位数': median_vols,
-    #                             '6-75分位数': p75_vols,
-    #                             '7-25分位数': p25_vols})
-    # df_vol_cone.to_csv('../save_results/'+namecode+'_hist_vol_cone.csv')
 
 """隐含波动率期限结构"""
 def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):

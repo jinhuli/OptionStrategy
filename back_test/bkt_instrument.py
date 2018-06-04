@@ -1,7 +1,7 @@
 from back_test.bkt_util import BktUtil
 import datetime
 import numpy as np
-
+import pandas as pd
 
 class BktInstrument(object):
     """ Contain metrics and trading position info as attributes """
@@ -98,7 +98,7 @@ class BktInstrument(object):
     def mktprice_settlement(self):
         try:
             settle = self.current_state[self.util.col_settlement]
-            if settle == self.util.nan_value: settle = None
+            if settle == self.util.nan_value: return
         except:
             settle = None
         return settle
@@ -176,8 +176,9 @@ class BktInstrument(object):
     """ last settlement, daily"""
     def mktprice_last_settlement(self):
         amt = None
-        if self.util.col_last_settlement in self.current_daily_state.columns:
-            amt = self.current_daily_state[self.util.col_last_settlement]
+        # tmp = pd.DataFrame(self.current_daily_state)
+        if self.util.col_last_settlement in self.current_daily_state.index.values:
+            amt = self.current_daily_state.loc[self.util.col_last_settlement]
         if amt == None or amt == np.nan:
             try:
                 idx_date = self.dt_list.index(self.eval_date)
@@ -193,8 +194,8 @@ class BktInstrument(object):
     """ last bar/state, not necessarily daily"""
     def mktprice_last_close(self):
         amt = None
-        if self.util.col_last_close in self.current_daily_state.columns:
-            amt = self.current_daily_state[self.util.col_last_close]
+        if self.util.col_last_close in self.current_daily_state.index.values:
+            amt = self.current_daily_state.loc[self.util.col_last_close]
         if amt == None or amt == np.nan:
             try:
                 if self.current_index == 0: return

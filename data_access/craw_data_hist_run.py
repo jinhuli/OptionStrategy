@@ -31,8 +31,8 @@ index_daily = Table('indexes_mktdata', metadata, autoload=True)
 
 dc = DataCollection()
 #####################################################################################
-beg_date = datetime.date(2014, 6, 1)
-end_date = datetime.date(2015, 1, 1)
+beg_date = datetime.date(2013, 6, 1)
+end_date = datetime.date(2014, 6, 1)
 
 date_range = w.tdays(beg_date, end_date, "").Data[0]
 for dt in date_range:

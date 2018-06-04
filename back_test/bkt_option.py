@@ -5,7 +5,7 @@ from back_test.bkt_util import BktUtil
 import QuantLib as ql
 import numpy as np
 from back_test.bkt_instrument import BktInstrument
-
+import datetime
 
 class BktOption(BktInstrument):
 
@@ -277,7 +277,7 @@ class BktOption(BktInstrument):
         #                               7 %×行权价格），行权价格] ×合约单位
         amt_last_settle = self.mktprice_last_settlement()
         amt_underlying_last_close = self.underlying_last_close()
-        if self.option_type == self.util.type_call:
+        if self.option_type() == self.util.type_call:
             otm = max(0, self.strike() - self.underlying_close())
             tmp = amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
                                                  0.07 * amt_underlying_last_close)
@@ -298,14 +298,19 @@ class BktOption(BktInstrument):
         # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
         #                               行权价格]×合约单位
         amt_settle = self.mktprice_settlement()
+        if amt_settle==None or amt_settle==np.nan:
+            amt_settle = self.mktprice_close()
         amt_underlying_close = self.underlying_close()
-        if self.option_type == self.util.type_call:
-            otm = max(0, self.strike() - self.underlying_close())
+        # if self.eval_date == datetime.date(2018,1,26):
+        #     print(self.eval_date)
+        print(self.eval_date,self.id_instrument(), amt_underlying_close, amt_settle)
+        if self.option_type() == self.util.type_call:
+            otm = max(0, self.strike() - amt_underlying_close)
             maintain_margin = (amt_settle + max(0.12 * amt_underlying_close - otm,
                                                 0.07 * amt_underlying_close)) * self.multiplier()
 
         else:
-            otm = max(0, self.underlying_close() - self.strike())
+            otm = max(0, amt_underlying_close - self.strike())
             maintain_margin = min(amt_settle +
                                   max(0.12 * amt_underlying_close - otm, 0.07 * self.strike()),
                                   self.strike()) * self.multiplier()
