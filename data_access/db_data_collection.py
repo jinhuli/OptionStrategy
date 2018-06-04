@@ -953,6 +953,44 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
+        def wind_data_index_hist(self, windcode, begdate, enddate, id_instrument):
+            db_data = []
+            datasource = 'wind'
+            data = w.wsd(windcode, "open,high,low,close,volume,amt",
+                         begdate, enddate, "Fill=Previous")
+            df = pd.DataFrame()
+            for i, f in enumerate(data.Fields):
+                df[f] = data.Data[i]
+            df['times'] = data.Times
+            df.fillna(0.0)
+            for (idx, row) in df.iterrows():
+                open_price = row['OPEN']
+                dt = row['times']
+                high = row['HIGH']
+                low = row['LOW']
+                close = row['CLOSE']
+                volume = row['VOLUME']
+                amt = row['AMT']
+                if np.isnan(volume): volume = 0.0
+                if np.isnan(amt): amt = 0.0
+                if np.isnan(low): low = -1.0
+                if np.isnan(high): high = -1.0
+                if np.isnan(open_price): open_price = -1.0
+                db_row = {'dt_date': dt,
+                          'id_instrument': id_instrument,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'amt_close': close,
+                          'amt_open': open_price,
+                          'amt_high': high,
+                          'amt_low': low,
+                          'amt_trading_volume': volume,
+                          'amt_trading_value': amt,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
     class table_index_intraday():
 
         def wind_data_equity_index(self, windcode, date, id_instrument):
