@@ -217,8 +217,12 @@ class BktAccount(object):
         elif type(portfolio) == dict:
             self.option_long_index(portfolio)
         elif isinstance(portfolio, Straddle):
-            self.open_long_option(dt, portfolio.option_call, portfolio.unit_call, cd_open_by_price)
-            self.open_long_option(dt, portfolio.option_put, portfolio.unit_put, cd_open_by_price)
+            if portfolio.long_short == self.util.long:
+                self.open_long_option(dt, portfolio.option_call, portfolio.unit_call, cd_open_by_price)
+                self.open_long_option(dt, portfolio.option_put, portfolio.unit_put, cd_open_by_price)
+            else:
+                self.open_short_option(dt, portfolio.option_call, portfolio.unit_call, cd_open_by_price)
+                self.open_short_option(dt, portfolio.option_put, portfolio.unit_put, cd_open_by_price)
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
             if portfolio.cd_long_short == self.util.long:
                 for option in portfolio.optionset:
