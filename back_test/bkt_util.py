@@ -16,6 +16,8 @@ class BktUtil():
         self.type_call = 'call'
         self.type_put = 'put'
         self.type_all = 'all'
+        self.method_1 = 0
+        self.method_2 = 1
         self.cd_frequency_low = ['daily','weekly','monthly','yearly']
         self.cd_frequency_intraday = ['1min','5min']
 

@@ -6,6 +6,7 @@ import numpy as np
 import datetime
 from back_test.OptionPortfolio import *
 
+
 class BktOptionSet(object):
     """
     Feature:
@@ -66,33 +67,36 @@ class BktOptionSet(object):
         self.df_daily_state = self.df_data[self.df_data[self.util.col_date] == self.eval_date].reset_index(drop=True)
 
     """ Update bktoption in daily state """
+
     def update_bktoption(self):
         if self.frequency in self.util.cd_frequency_low:
             df_last_state = self.df_last_state
             ids_last = []
             if not df_last_state.empty:
                 ids_last = df_last_state[self.util.id_instrument].tolist()
-            for (idx,row) in self.df_daily_state.iterrows():
+            for (idx, row) in self.df_daily_state.iterrows():
                 id_inst = row[self.util.id_instrument]
                 if id_inst in ids_last:
-                    bktoption = df_last_state[df_last_state[self.util.id_instrument] == id_inst][self.util.bktoption].values[0]
+                    bktoption = \
+                        df_last_state[df_last_state[self.util.id_instrument] == id_inst][self.util.bktoption].values[0]
                     bktoption.next()
-                    self.df_daily_state.loc[idx,self.util.bktoption] = bktoption
+                    self.df_daily_state.loc[idx, self.util.bktoption] = bktoption
                 else:
-                    df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index(drop=True)
+                    df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index(
+                        drop=True)
                     bktoption = BktOption(self.frequency, df_option, self.flag_calculate_iv, rf=self.rf)
-                    self.df_daily_state.loc[idx,self.util.bktoption] = bktoption
+                    self.df_daily_state.loc[idx, self.util.bktoption] = bktoption
             self.bktoptionset = set(self.df_daily_state[self.util.bktoption].tolist())
 
-    def get_df_by_mdt_type(self,df,mdt, option_type):
+    def get_df_by_mdt_type(self, df, mdt, option_type):
         if option_type == self.util.type_call:
-            return self.get_df_call_by_mdt(mdt,df)
+            return self.get_df_call_by_mdt(mdt, df)
         elif option_type == self.util.type_put:
-            return self.get_df_put_by_mdt(mdt,df)
+            return self.get_df_put_by_mdt(mdt, df)
         else:
             return "Unsupport Option Type!"
 
-    def get_df_by_type(self,df, option_type):
+    def get_df_by_type(self, df, option_type):
         if option_type == self.util.type_call:
             c = df[self.util.col_option_type] == self.util.type_call
         elif option_type == self.util.type_put:
@@ -166,7 +170,9 @@ class BktOptionSet(object):
                 else:
                     multiplier = 10000
                 self.df_data.loc[idx, self.util.col_multiplier] = multiplier
+
     """ 合约期权最低为 min_ttm """
+
     def update_eligible_maturities(self):  # n: 要求合约剩余期限大于n（天）
         underlyingids = self.df_daily_state[self.util.col_id_underlying].unique()
         maturities = self.df_daily_state[self.util.col_maturitydt].unique()
@@ -190,6 +196,7 @@ class BktOptionSet(object):
         self.eligible_maturities = sorted(maturity_dates2)
 
     """ 主要针对50ETF期权分红 """
+
     def update_multiplier_adjustment(self):
         if self.option_code == '50etf':
             self.df_data[self.util.col_adj_strike] = \
@@ -201,6 +208,7 @@ class BktOptionSet(object):
             self.df_data[self.util.col_adj_option_price] = self.df_data[self.util.col_settlement]
 
     """ 50ETF期权分红后会产生同样行权价的两个期权，选择trading volume较大的一个。 """
+
     def get_duplicate_strikes_dropped(self, df_metrics):
         maturities = sorted(df_metrics[self.util.col_maturitydt].unique())
         df = pd.DataFrame()
@@ -223,9 +231,9 @@ class BktOptionSet(object):
                 self.df_data.loc[idx, self.util.col_date] = row[self.util.col_datetime].date()
 
     def add_bktoption_column(self):
-        self.df_data[self.util.bktoption] = pd.Series(np.zeros(len(self.df_data)),index=self.df_data.index)
+        self.df_data[self.util.bktoption] = pd.Series(np.zeros(len(self.df_data)), index=self.df_data.index)
 
-    def get_put(self, moneyness_rank, mdt,cd_long_short, cd_underlying_price='open'):
+    def get_put(self, moneyness_rank, mdt, cd_long_short, cd_underlying_price='open'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
@@ -242,12 +250,12 @@ class BktOptionSet(object):
         portfolio = Puts(self.eval_date, [option_put], cd_long_short)
         return portfolio
 
-    def get_call(self, moneyness_rank, mdt, cd_long_short, cd_underlying_price='open'):
+    def get_call(self, moneyness_rank, mdt, cd_long_short, cd_underlying_price='close', cd_moneyness_method=None):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
+        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price, cd_moneyness_method)
         res_dict = options_by_moneyness[mdt][self.util.type_call]
         if res_dict == {}:
             print('bkt_option_set--get_call failed,option dict is empty!')
@@ -256,42 +264,50 @@ class BktOptionSet(object):
             print('bkt_option_set--get_call failed,given moneyness rank not exit!')
             return pd.DataFrame()
         option_call = res_dict[moneyness_rank]
-        portfolio = Calls(self.eval_date,[option_call], cd_long_short)
+        portfolio = Calls(self.eval_date, [option_call], cd_long_short)
         return portfolio
 
     """moneyness =0 : 跨式策略，moneyness = -1/-2 : 宽跨式策略"""
-    def get_straddle(self, moneyness_rank, mdt, delta_exposure, cd_underlying_price='open'):
+
+    def get_straddle(self, moneyness_rank, mdt, delta_exposure,long_short, cd_underlying_price='close'):
         # moneyness_rank：
         # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值行权价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
-        option_call = options_by_moneyness[mdt][self.util.type_call][1]
-        option_put = options_by_moneyness[mdt][self.util.type_put][0]
-        straddle = Straddle(self.eval_date, option_call, option_put, delta_exposure)
+        options_by_moneyness = self.get_moneyness_iv_by_mdt(mdt, cd_underlying_price)
+        if moneyness_rank not in options_by_moneyness[self.util.type_call].keys() or \
+                        moneyness_rank not in options_by_moneyness[self.util.type_put].keys():
+            option_call = None
+            option_put = None
+        else:
+            option_call = options_by_moneyness[self.util.type_call][moneyness_rank]
+            option_put = options_by_moneyness[self.util.type_put][moneyness_rank]
+        straddle = Straddle(self.eval_date, option_call, option_put, delta_exposure, long_short)
         return straddle
 
     """Calendar Spread: Long far month and short near month;'option_type=None' means both call and put are included"""
-    def get_calendar_spread_long(self, moneyness_rank, mdt1, mdt2, option_type,cd_underlying_price='open'):
+
+    def get_calendar_spread_long(self, moneyness_rank, mdt1, mdt2, option_type, cd_underlying_price='close'):
         if mdt1 > mdt2:
             print('get_calendar_spread_call : mdt1 > mdt2')
             return
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         option_mdt1 = options_by_moneyness[mdt1][option_type][moneyness_rank]  # short
         option_mdt2 = options_by_moneyness[mdt2][option_type][moneyness_rank]  # long
-        cs = CalandarSpread(self.eval_date,option_mdt1,option_mdt2,option_type)
+        cs = CalandarSpread(self.eval_date, option_mdt1, option_mdt2, option_type)
         return cs
 
     """Back Spread: Long small delta(atm), short large delta(otm)"""
-    def get_backspread(self, option_type, mdt,moneyness1=0, moneyness2=-2, cd_underlying_price='open'):
+
+    def get_backspread(self, option_type, mdt, moneyness1=0, moneyness2=-2, cd_underlying_price='close'):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         if moneyness2 not in options_by_moneyness[mdt][option_type].keys():
             moneyness2 += 1
             moneyness1 += 1
-            print(self.eval_date,' Move moneyness rank for lack of stikes')
+            print(self.eval_date, ' Move moneyness rank for lack of stikes')
         option_long = options_by_moneyness[mdt][option_type][moneyness2]
         option_short = options_by_moneyness[mdt][option_type][moneyness1]
-        bs = BackSpread(self.eval_date,option_long,option_short,option_type)
+        bs = BackSpread(self.eval_date, option_long, option_short, option_type)
         return bs
 
     def get_collar2(self, mdt, underlying, moneyness_call=-2, moneyness_put=-2, cd_underlying_price='close'):
@@ -304,10 +320,11 @@ class BktOptionSet(object):
             buy_put = None
         else:
             buy_put = options_by_moneyness[mdt][self.util.type_put][moneyness_put]
-        collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
+        collar = Collar(self.eval_date, buy_put=buy_put, write_call=write_call, underlying=underlying)
         return collar
 
-    def get_collar(self, mdt_call,mdt_put, underlying, moneyness_call=-2, moneyness_put=-2, cd_underlying_price='close',flag_protect=False):
+    def get_collar(self, mdt_call, mdt_put, underlying, moneyness_call=-2, moneyness_put=-2,
+                   cd_underlying_price='close', flag_protect=False):
         options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
         while moneyness_call < 0:
             if moneyness_call not in options_by_moneyness[mdt_call][self.util.type_call].keys():
@@ -329,16 +346,25 @@ class BktOptionSet(object):
             write_call = None
             # if not flag_protect:
             #     buy_put = None
-        collar = Collar(self.eval_date,buy_put=buy_put,write_call=write_call,underlying=underlying)
+        collar = Collar(self.eval_date, buy_put=buy_put, write_call=write_call, underlying=underlying)
         return collar
 
-    """ Input optionset with the same maturity,get dictionary order by moneynesses as keys """
-    def update_options_by_moneyness(self,cd_underlying_price='open'):
+    def update_options_by_moneyness(self, cd_underlying_price='open', cd_moneyness_method=None):
+        if cd_moneyness_method == None or cd_moneyness_method == self.util.method_1:
+            res = self.update_options_by_moneyness_1(cd_underlying_price)
+        else:
+            res = self.update_options_by_moneyness_2(cd_underlying_price)
+        return res
+
+    """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
+        * ATM defined as FIRST OTM  """
+
+    def update_options_by_moneyness_1(self, cd_underlying_price):
         df = self.get_duplicate_strikes_dropped(self.df_daily_state)
         options_by_moneyness = {}
         for mdt in self.eligible_maturities:
-            df_call = self.get_df_call_by_mdt(df,mdt)
-            df_put = self.get_df_put_by_mdt(df,mdt)
+            df_call = self.get_df_call_by_mdt(df, mdt)
+            df_put = self.get_df_put_by_mdt(df, mdt)
             optionset_call = df_call[self.util.bktoption]
             optionset_put = df_put[self.util.bktoption]
             dict_call = {}
@@ -348,13 +374,13 @@ class BktOptionSet(object):
             atm_call = 1000
             atm_put = -1000
             if cd_underlying_price == 'close':
-                spot = optionset_call[0].underlying_close() # Use underlying OPEN close as spot
+                spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
             else:
-                spot = optionset_call[0].underlying_open_price() # Use underlying OPEN close as spot
+                spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
             m_call = []
             m_put = []
             for option in optionset_call:
-                k = option.strike()
+                k = option.strike()  # TODO: why not adj_strike?
                 m = round(k - spot, 6)
                 if m >= 0:
                     atm_call = min(atm_call, m)
@@ -381,246 +407,394 @@ class BktOptionSet(object):
             options_by_moneyness.update({mdt: res_callput})
         return options_by_moneyness
 
-    def get_mdt_keyvols(self, option_type):
-        keyvols_mdts = {}
+    """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
+        * ATM defined as THAT WITH STRIKE CLOSEST WITH UNDERLYING PRICE """
+
+    def update_options_by_moneyness_2(self, cd_underlying_price):
         df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        options_by_moneyness = {}
         for mdt in self.eligible_maturities:
-            df_mdt = self.get_df_by_mdt_type(df,mdt,option_type)
-            df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_adj_strike])
-            spot = df_mdt[self.util.bktoption].values[0].underlying_price
-            strikes = []
-            vols = []
-            for (idx, row) in df.iterrows():
-                strike = row[self.util.col_adj_strike]
-                iv = row[self.util.col_implied_vol]
-                # if iv > 0:
-                strikes.append(float(strike))
-                vols.append(iv)
-                # else:
-                #     continue
-            volset = [vols]
-            m_list = [[mdt]]
-            vol_matrix = ql.Matrix(len(strikes), len(m_list))
-            for i in range(vol_matrix.rows()):
-                for j in range(vol_matrix.columns()):
-                    vol_matrix[i][j] = volset[j][i]
-            ql_evalDate = self.util.to_ql_date(self.eval_date)
-            ql_maturities = [ql.Date(mdt.day, mdt.month, mdt.year)]
+            df_call = self.get_df_call_by_mdt(df, mdt)
+            df_put = self.get_df_put_by_mdt(df, mdt)
+            optionset_call = df_call[self.util.bktoption]
+            optionset_put = df_put[self.util.bktoption]
+            dict_call = {}
+            dict_put = {}
+            res_call = {}
+            res_put = {}
+            if cd_underlying_price == 'close':
+                spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
+            else:
+                spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
+            dict_m = {}
+            for option in optionset_call:
+                k = option.strike()
+                m = round(k - spot, 6)
+                dict_call.update({m: option})
+                dict_m.update({abs(m): m})
+            for option in optionset_put:
+                k = option.strike()
+                m = round(k - spot, 6)
+                dict_put.update({m: option})
+            atm = dict_m[min(dict_m.keys())]
+            keys_call = sorted(dict_call)
+            keys_put = sorted(dict_put)
+            idx_call = keys_call.index(atm)
+            for (i, key) in enumerate(keys_call):
+                res_call.update({idx_call - i: dict_call[key]})
+            idx_put = keys_put.index(atm)
+            for (i, key) in enumerate(keys_put):
+                res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
+            res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
+            options_by_moneyness.update({mdt: res_callput})
+        return options_by_moneyness
+
+    def get_moneyness_iv_by_mdt(self, mdt, cd_underlying_price='open', cd_moneyness_method=None):
+        if cd_moneyness_method == None or cd_moneyness_method == self.util.method_1:
+            res = self.get_moneyness_iv_by_mdt_1(mdt, cd_underlying_price)
+        else:
+            res = self.get_moneyness_iv_by_mdt_2(mdt, cd_underlying_price)
+        return res
+
+    """ Given target maturity date, get call and put iv sorted by moneyness rank 
+        * ATM defined as FIRST OTM  """
+
+    def get_moneyness_iv_by_mdt_1(self, mdt, cd_underlying_price):
+        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        df_call = self.get_df_call_by_mdt(df, mdt)
+        df_put = self.get_df_put_by_mdt(df, mdt)
+        optionset_call = df_call[self.util.bktoption]
+        optionset_put = df_put[self.util.bktoption]
+        dict_call = {}
+        dict_put = {}
+        res_call = {}
+        res_put = {}
+        atm_call = 1000
+        atm_put = -1000
+        if cd_underlying_price == 'close':
+            spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
+        else:
+            spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
+        m_call = []
+        m_put = []
+        for option in optionset_call:
+            k = option.strike()
+            m = round(k - spot, 6)
+            if m >= 0:
+                atm_call = min(atm_call, m)
+            dict_call.update({m: option})
+            m_call.append(m)
+        for option in optionset_put:
+            k = option.strike()
+            m = round(k - spot, 6)
+            if m <= 0:
+                atm_put = max(atm_put, m)
+            dict_put.update({m: option})
+            m_put.append(m)
+        keys_call = sorted(dict_call)
+        keys_put = sorted(dict_put)
+        if atm_call == 1000: atm_call = max(m_call)
+        if atm_put == -1000: atm_put = min(m_put)
+        idx_call = keys_call.index(atm_call)
+        for (i, key) in enumerate(keys_call):
+            res_call.update({idx_call - i: dict_call[key]})
+        idx_put = keys_put.index(atm_put)
+        for (i, key) in enumerate(keys_put):
+            res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
+        res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
+        return res_callput
+
+    """ Given target maturity date, get call and put iv sorted by moneyness rank 
+        * ATM defined as THAT WITH STRIKE CLOSEST WITH UNDERLYING PRICE """
+
+    def get_moneyness_iv_by_mdt_2(self, mdt, cd_underlying_price):
+        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        df_call = self.get_df_call_by_mdt(df, mdt)
+        df_put = self.get_df_put_by_mdt(df, mdt)
+        optionset_call = df_call[self.util.bktoption]
+        optionset_put = df_put[self.util.bktoption]
+        dict_call = {}
+        dict_put = {}
+        res_call = {}
+        res_put = {}
+        if cd_underlying_price == 'close':
+            spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
+        else:
+            spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
+        dict_m = {}
+        for option in optionset_call:
+            k = option.strike()
+            m = round(k - spot, 6)
+            dict_call.update({m: option})
+            dict_m.update({abs(m): m})
+        for option in optionset_put:
+            k = option.strike()
+            m = round(k - spot, 6)
+            dict_put.update({m: option})
+        atm = dict_m[min(dict_m.keys())]
+        keys_call = sorted(dict_call)
+        keys_put = sorted(dict_put)
+        idx_call = keys_call.index(atm)
+        for (i, key) in enumerate(keys_call):
+            res_call.update({idx_call - i: dict_call[key]})
+        idx_put = keys_put.index(atm)
+        for (i, key) in enumerate(keys_put):
+            res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
+        res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
+        return res_callput
+
+
+def get_mdt_keyvols(self, option_type):
+    keyvols_mdts = {}
+    df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+    for mdt in self.eligible_maturities:
+        df_mdt = self.get_df_by_mdt_type(df, mdt, option_type)
+        df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_adj_strike])
+        spot = df_mdt[self.util.bktoption].values[0].underlying_price
+        strikes = []
+        vols = []
+        for (idx, row) in df.iterrows():
+            strike = row[self.util.col_adj_strike]
+            iv = row[self.util.col_implied_vol]
+            # if iv > 0:
+            strikes.append(float(strike))
+            vols.append(iv)
+            # else:
+            #     continue
+        volset = [vols]
+        m_list = [[mdt]]
+        vol_matrix = ql.Matrix(len(strikes), len(m_list))
+        for i in range(vol_matrix.rows()):
+            for j in range(vol_matrix.columns()):
+                vol_matrix[i][j] = volset[j][i]
+        ql_evalDate = self.util.to_ql_date(self.eval_date)
+        ql_maturities = [ql.Date(mdt.day, mdt.month, mdt.year)]
+        try:
+            black_var_surface = ql.BlackVarianceSurface(
+                ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+            keyvols_mdt = {}
             try:
-                black_var_surface = ql.BlackVarianceSurface(
-                    ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-                keyvols_mdt = {}
-                try:
-                    if min(strikes) > spot:
-                        s = min(strikes)
-                    elif max(strikes) < spot:
-                        s = max(strikes)
-                    else:
-                        s = spot
-                    vol_100 = black_var_surface.blackVol(ql_maturities[0], s)
-                    keyvols_mdt.update({100: vol_100})
-                except Exception as e:
-                    print(e)
-                    pass
-                try:
-                    vol_110 = black_var_surface.blackVol(ql_maturities[0], spot * 1.1)
-                    keyvols_mdt.update({110: vol_110})
-                except Exception as e:
-                    pass
-                try:
-                    vol_105 = black_var_surface.blackVol(ql_maturities[0], spot * 1.05)
-                    keyvols_mdt.update({105: vol_105})
-                except Exception as e:
-                    pass
-                try:
-                    vol_90 = black_var_surface.blackVol(ql_maturities[0], spot * 0.9)
-                    keyvols_mdt.update({90: vol_90})
-                except Exception as e:
-                    pass
-                try:
-                    vol_95 = black_var_surface.blackVol(ql_maturities[0], spot * 0.95)
-                    keyvols_mdt.update({95: vol_95})
-                except Exception as e:
-                    pass
-                keyvols_mdts.update({mdt: keyvols_mdt})
+                if min(strikes) > spot:
+                    s = min(strikes)
+                elif max(strikes) < spot:
+                    s = max(strikes)
+                else:
+                    s = spot
+                vol_100 = black_var_surface.blackVol(ql_maturities[0], s)
+                keyvols_mdt.update({100: vol_100})
             except Exception as e:
                 print(e)
-        return keyvols_mdts
-
-    """ Get 1M atm vol by liner interpolation """
-    def get_interpolated_atm_1M(self, option_type):
-        keyvols_mdts = self.get_mdt_keyvols(option_type)
-        ql_evalDate = self.util.to_ql_date(self.eval_date)
-        mdt_1m = self.util.to_dt_date(self.calendar.advance(ql_evalDate, ql.Period(1, ql.Months)))
-        d0 = datetime.date(1999, 1, 1)
-        mdt_1m_num = (mdt_1m - d0).days
-        maturities_num = []
-        atm_vols = []
-        for m in self.eligible_maturities:
-            maturities_num.append((m - d0).days)
-            atm_vols.append(keyvols_mdts[m][100])  # atm vol : skrike is 100% spot
-        try:
-            x = np.interp(mdt_1m_num, maturities_num, atm_vols)
+                pass
+            try:
+                vol_110 = black_var_surface.blackVol(ql_maturities[0], spot * 1.1)
+                keyvols_mdt.update({110: vol_110})
+            except Exception as e:
+                pass
+            try:
+                vol_105 = black_var_surface.blackVol(ql_maturities[0], spot * 1.05)
+                keyvols_mdt.update({105: vol_105})
+            except Exception as e:
+                pass
+            try:
+                vol_90 = black_var_surface.blackVol(ql_maturities[0], spot * 0.9)
+                keyvols_mdt.update({90: vol_90})
+            except Exception as e:
+                pass
+            try:
+                vol_95 = black_var_surface.blackVol(ql_maturities[0], spot * 0.95)
+                keyvols_mdt.update({95: vol_95})
+            except Exception as e:
+                pass
+            keyvols_mdts.update({mdt: keyvols_mdt})
         except Exception as e:
             print(e)
-            return
-        return x
+    return keyvols_mdts
 
-    """ Get Call/Put volatility surface separately"""
-    def get_volsurface_squre(self, option_type):
-        ql_maturities = []
-        df = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state,option_type))
-        df = self.calculate_implied_vol(df)
-        df_mdt_list = []
-        iv_name_list = []
-        maturity_list = []
-        for idx, mdt in enumerate(self.eligible_maturities):
-            iv_rename = 'implied_vol_' + str(idx)
-            df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
-                .rename(columns={self.util.col_implied_vol: iv_rename})\
-                .set_index(self.util.col_adj_strike).sort_index()
 
-            if len(df_mkt) == 0: continue
-            df_mdt_list.append(df_mkt)
-            iv_name_list.append(iv_rename)
-            maturity_list.append(mdt)
-        df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
-        strikes = []
-        for k in df_vol.index:
-            strikes.append(float(k))
-        volset = []
-        for name in iv_name_list:
-            volset.append(df_vol[name].tolist())
-        for mdate in maturity_list:
-            ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
-        vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
-        for i in range(vol_matrix.rows()):
-            for j in range(vol_matrix.columns()):
-                vol_matrix[i][j] = volset[j][i]
-        ql_evalDate = self.util.to_ql_date(self.eval_date)
-        black_var_surface = ql.BlackVarianceSurface(
-            ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-        return black_var_surface
+""" Get 1M atm vol by liner interpolation """
 
-    """ Get Integrate Volatility Surface by call/put mid vols"""
-    def get_mid_volsurface_squre(self):
-        ql_maturities = []
-        call_list = []
-        put_list = []
-        df_mdt_list = []
-        iv_name_list = []
-        maturity_list = []
-        for option in self.bktoptionset:
-            if option.option_type == self.util.type_call:
-                call_list.append(option)
-            else:
-                put_list.append(option)
-        df_call = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state,self.util.type_call))
-        df_put = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state,self.util.type_put))
-        df_call = self.calculate_implied_vol(df_call)
-        df_put = self.calculate_implied_vol(df_put)
-        df_call['maturity_call'] = df_call[self.util.col_maturitydt]
-        df_call['adj_strike_call'] = df_call[self.util.col_adj_strike]
-        df_call = df_call.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
-            .rename(columns={self.util.col_implied_vol: 'iv_call'})
-        df_put = df_put.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
-            .rename(columns={self.util.col_implied_vol: 'iv_put'})
-        df = df_call[['adj_strike_call', 'maturity_call', 'iv_call']] \
-            .join(df_put[['iv_put']])
-        df['mid_vol'] = (df['iv_call'] + df['iv_put']) / 2
-        maturities = sorted(df['maturity_call'].unique())
-        for idx, mdt in enumerate(maturities):
-            if mdt <= self.eval_date: continue
-            iv_rename = 'implied_vol_' + str(idx)
-            df_mkt = df[(df['maturity_call'] == mdt)] \
-                .rename(columns={'mid_vol': iv_rename}).sort_values(by='adj_strike_call').set_index('adj_strike_call')
-            if len(df_mkt) == 0: continue
-            df_mdt_list.append(df_mkt)
-            iv_name_list.append(iv_rename)
-            maturity_list.append(mdt)
-        df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
-        strikes = []
-        for k in df_vol.index:
-            strikes.append(float(k))
-        volset = []
-        for name in iv_name_list:
-            volset.append(df_vol[name].tolist())
-        for mdate in maturity_list:
-            ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
-        vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
-        for i in range(vol_matrix.rows()):
-            for j in range(vol_matrix.columns()):
-                vol_matrix[i][j] = volset[j][i]
-        ql_evalDate = self.util.to_ql_date(self.eval_date)
-        black_var_surface = ql.BlackVarianceSurface(
-            ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-        return black_var_surface
 
-    def calculate_implied_vol(self,df):
-        for (idx,row) in df.iterrows():
-            option = row[self.util.bktoption]
+def get_interpolated_atm_1M(self, option_type):
+    keyvols_mdts = self.get_mdt_keyvols(option_type)
+    ql_evalDate = self.util.to_ql_date(self.eval_date)
+    mdt_1m = self.util.to_dt_date(self.calendar.advance(ql_evalDate, ql.Period(1, ql.Months)))
+    d0 = datetime.date(1999, 1, 1)
+    mdt_1m_num = (mdt_1m - d0).days
+    maturities_num = []
+    atm_vols = []
+    for m in self.eligible_maturities:
+        maturities_num.append((m - d0).days)
+        atm_vols.append(keyvols_mdts[m][100])  # atm vol : skrike is 100% spot
+    try:
+        x = np.interp(mdt_1m_num, maturities_num, atm_vols)
+    except Exception as e:
+        print(e)
+        return
+    return x
+
+
+""" Get Call/Put volatility surface separately"""
+
+
+def get_volsurface_squre(self, option_type):
+    ql_maturities = []
+    df = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, option_type))
+    df = self.calculate_implied_vol(df)
+    df_mdt_list = []
+    iv_name_list = []
+    maturity_list = []
+    for idx, mdt in enumerate(self.eligible_maturities):
+        iv_rename = 'implied_vol_' + str(idx)
+        df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
+            .rename(columns={self.util.col_implied_vol: iv_rename}) \
+            .set_index(self.util.col_adj_strike).sort_index()
+
+        if len(df_mkt) == 0: continue
+        df_mdt_list.append(df_mkt)
+        iv_name_list.append(iv_rename)
+        maturity_list.append(mdt)
+    df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
+    strikes = []
+    for k in df_vol.index:
+        strikes.append(float(k))
+    volset = []
+    for name in iv_name_list:
+        volset.append(df_vol[name].tolist())
+    for mdate in maturity_list:
+        ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
+    vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
+    for i in range(vol_matrix.rows()):
+        for j in range(vol_matrix.columns()):
+            vol_matrix[i][j] = volset[j][i]
+    ql_evalDate = self.util.to_ql_date(self.eval_date)
+    black_var_surface = ql.BlackVarianceSurface(
+        ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+    return black_var_surface
+
+
+""" Get Integrate Volatility Surface by call/put mid vols"""
+
+
+def get_mid_volsurface_squre(self):
+    ql_maturities = []
+    call_list = []
+    put_list = []
+    df_mdt_list = []
+    iv_name_list = []
+    maturity_list = []
+    for option in self.bktoptionset:
+        if option.option_type == self.util.type_call:
+            call_list.append(option)
+        else:
+            put_list.append(option)
+    df_call = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_call))
+    df_put = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_put))
+    df_call = self.calculate_implied_vol(df_call)
+    df_put = self.calculate_implied_vol(df_put)
+    df_call['maturity_call'] = df_call[self.util.col_maturitydt]
+    df_call['adj_strike_call'] = df_call[self.util.col_adj_strike]
+    df_call = df_call.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
+        .rename(columns={self.util.col_implied_vol: 'iv_call'})
+    df_put = df_put.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
+        .rename(columns={self.util.col_implied_vol: 'iv_put'})
+    df = df_call[['adj_strike_call', 'maturity_call', 'iv_call']] \
+        .join(df_put[['iv_put']])
+    df['mid_vol'] = (df['iv_call'] + df['iv_put']) / 2
+    maturities = sorted(df['maturity_call'].unique())
+    for idx, mdt in enumerate(maturities):
+        if mdt <= self.eval_date: continue
+        iv_rename = 'implied_vol_' + str(idx)
+        df_mkt = df[(df['maturity_call'] == mdt)] \
+            .rename(columns={'mid_vol': iv_rename}).sort_values(by='adj_strike_call').set_index('adj_strike_call')
+        if len(df_mkt) == 0: continue
+        df_mdt_list.append(df_mkt)
+        iv_name_list.append(iv_rename)
+        maturity_list.append(mdt)
+    df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
+    strikes = []
+    for k in df_vol.index:
+        strikes.append(float(k))
+    volset = []
+    for name in iv_name_list:
+        volset.append(df_vol[name].tolist())
+    for mdate in maturity_list:
+        ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
+    vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
+    for i in range(vol_matrix.rows()):
+        for j in range(vol_matrix.columns()):
+            vol_matrix[i][j] = volset[j][i]
+    ql_evalDate = self.util.to_ql_date(self.eval_date)
+    black_var_surface = ql.BlackVarianceSurface(
+        ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+    return black_var_surface
+
+
+def calculate_implied_vol(self, df):
+    for (idx, row) in df.iterrows():
+        option = row[self.util.bktoption]
+        iv = option.get_implied_vol()
+        df.loc[idx, self.util.col_implied_vol] = iv
+    return df
+
+
+def collect_option_metrics(self, hp=30):
+    res = []
+    df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
+    bktoption_list = self.bktoptionset
+    if len(bktoption_list) == 0: return df
+    bvs_call = self.get_volsurface_squre('call')
+    bvs_put = self.get_volsurface_squre('put')
+    for idx, option in enumerate(bktoption_list):
+        if option.option_price() > 0.0:
             iv = option.get_implied_vol()
-            df.loc[idx,self.util.col_implied_vol] = iv
-        return df
-
-    def collect_option_metrics(self, hp=30):
-        res = []
-        df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
-        bktoption_list = self.bktoptionset
-        if len(bktoption_list) == 0: return df
-        bvs_call = self.get_volsurface_squre('call')
-        bvs_put = self.get_volsurface_squre('put')
-        for idx, option in enumerate(bktoption_list):
-            if option.option_price() > 0.0:
-                iv = option.get_implied_vol()
-                if option.option_type == self.util.type_call:
-                    carry= option.get_carry(bvs_call, hp)
-                else:
-                    carry = option.get_carry(bvs_put, hp)
-                theta = option.get_theta()
-                vega = option.get_vega()
-
-                delta = option.get_delta()
-                rho = option.get_rho()
-                gamma = option.get_gamma()
-                if carry == None or np.isnan(carry): carry = -999.0
-                if theta == None or np.isnan(theta): theta = -999.0
-                if vega == None or np.isnan(vega): vega = -999.0
-                if gamma == None or np.isnan(gamma): gamma = -999.0
-                if iv == None or np.isnan(iv): iv = -999.0
-                if delta == None or np.isnan(delta): delta = -999.0
-                if rho == None or np.isnan(rho): rho = -999.0
+            if option.option_type == self.util.type_call:
+                carry = option.get_carry(bvs_call, hp)
             else:
-                iv = option.get_implied_vol()
-                carry = theta = vega = gamma = delta = rho = -999.0
-                if iv == None or np.isnan(iv): iv = -999.0
-            if self.flag_calculate_iv:
-                datasource = 'calculated'
+                carry = option.get_carry(bvs_put, hp)
+            theta = option.get_theta()
+            vega = option.get_vega()
+
+            delta = option.get_delta()
+            rho = option.get_rho()
+            gamma = option.get_gamma()
+            if carry == None or np.isnan(carry): carry = -999.0
+            if theta == None or np.isnan(theta): theta = -999.0
+            if vega == None or np.isnan(vega): vega = -999.0
+            if gamma == None or np.isnan(gamma): gamma = -999.0
+            if iv == None or np.isnan(iv): iv = -999.0
+            if delta == None or np.isnan(delta): delta = -999.0
+            if rho == None or np.isnan(rho): rho = -999.0
+        else:
+            iv = option.get_implied_vol()
+            carry = theta = vega = gamma = delta = rho = -999.0
+            if iv == None or np.isnan(iv): iv = -999.0
+        if self.flag_calculate_iv:
+            datasource = 'calculated'
+        else:
+            if self.option_code == 'm':
+                datasource = 'dce'
             else:
-                if self.option_code == 'm':
-                    datasource = 'dce'
-                else:
-                    datasource = 'czce'
-            db_row = {
-                self.util.col_date: self.eval_date,
-                self.util.col_id_instrument: option.id_instrument(),
-                'datasource': datasource,
-                'name_code': self.option_code,
-                'id_underlying': option.id_underlying(),
-                'amt_strike': float(option.strike()),
-                self.util.col_code_instrument: option.code_instrument(),
-                self.util.col_option_type: option.option_type(),
-                self.util.col_maturitydt: option.maturitydt(),
-                self.util.col_implied_vol: float(iv),
-                self.util.col_adj_strike: float(option.adj_strike()),
-                self.util.col_option_price: float(option.option_price()),
-                'amt_delta': float(delta),
-                self.util.col_vega: float(vega),
-                self.util.col_theta: float(theta),
-                'amt_rho': float(rho),
-                'amt_gamma': float(gamma),
-                'amt_carry_1M': float(carry),
-                'timestamp': datetime.datetime.today()
-            }
-            res.append(db_row)
-        return res
+                datasource = 'czce'
+        db_row = {
+            self.util.col_date: self.eval_date,
+            self.util.col_id_instrument: option.id_instrument(),
+            'datasource': datasource,
+            'name_code': self.option_code,
+            'id_underlying': option.id_underlying(),
+            'amt_strike': float(option.strike()),
+            self.util.col_code_instrument: option.code_instrument(),
+            self.util.col_option_type: option.option_type(),
+            self.util.col_maturitydt: option.maturitydt(),
+            self.util.col_implied_vol: float(iv),
+            self.util.col_adj_strike: float(option.adj_strike()),
+            self.util.col_option_price: float(option.option_price()),
+            'amt_delta': float(delta),
+            self.util.col_vega: float(vega),
+            self.util.col_theta: float(theta),
+            'amt_rho': float(rho),
+            'amt_gamma': float(gamma),
+            'amt_carry_1M': float(carry),
+            'timestamp': datetime.datetime.today()
+        }
+        res.append(db_row)
+    return res

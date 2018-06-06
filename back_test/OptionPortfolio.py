@@ -18,7 +18,7 @@ class OptionPortfolio(object):
 
 class Straddle(OptionPortfolio):
 
-    def __init__(self,open_date,call,put,delta_exposure):
+    def __init__(self,open_date,call,put,delta_exposure,long_short):
         OptionPortfolio.__init__(self,open_date)
         self.option_call = call
         self.option_put = put
@@ -27,7 +27,20 @@ class Straddle(OptionPortfolio):
         self.unit_call = None
         self.invest_ratio_put = None
         self.unit_put = None
+        self.long_short = long_short
         self.rebalancing(delta_exposure)
+
+    "标的价格大幅运动的情况下，调整行权价组和"
+    def update_portfolio(self,option_call,option_put,long_short):
+        self.liquidate_put = copy.copy(self.option_put)
+        self.liquidate_call = copy.copy(self.option_call)
+        self.option_put = option_put
+        self.option_call = option_call
+        self.long_short = long_short
+        self.optionset = [self.option_call,self.option_put]
+        self.unit_long = None
+        self.unit_short = None
+
 
     def rebalancing(self,delta_exposure):
         if delta_exposure == 0.0:
@@ -36,6 +49,8 @@ class Straddle(OptionPortfolio):
             self.delta_exposure_rebalancing(delta_exposure)
 
     def delta_neutral_rebalancing(self):
+        if self.option_call == None or self.option_put == None:
+            return
         delta_call = self.option_call.get_delta()
         delta_put = self.option_put.get_delta()
         self.invest_ratio_call = 1.0
@@ -47,6 +62,8 @@ class Straddle(OptionPortfolio):
             self.invest_ratio_put = -delta_call / delta_put
 
     def delta_exposure_rebalancing(self,delta_exposure):
+        if self.option_call == None or self.option_put == None:
+            return
         delta_call = self.option_call.get_delta()
         delta_put = self.option_put.get_delta()
         if delta_exposure >= delta_call:

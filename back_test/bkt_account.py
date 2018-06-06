@@ -111,7 +111,7 @@ class BktAccount(object):
             return
         return mkt_price
 
-    " Adjust investment unit by given delta exposure "
+    " Given investment fund calculate portfolio units, adjust investment unit by given delta exposure "
     def update_invest_units(self,option_port,cd_long_short,delta_exposure,cd_open_by_price=None, fund=None):
         if isinstance(option_port,BackSpread):
             option_long = option_port.option_long
@@ -151,7 +151,7 @@ class BktAccount(object):
             else:
                 fund_straddle = option_call.get_init_margin()*option_call.multiplier()*\
                                 option_port.invest_ratio_call + \
-                                option_put.get_maintain_margin()*option_put.multiplier()*\
+                                option_put.get_init_margin()*option_put.multiplier()*\
                                 option_port.invest_ratio_put
                 unit_straddle = fund / fund_straddle
             option_port.unit_portfolio = unit_straddle
@@ -191,16 +191,25 @@ class BktAccount(object):
             unit = fund / fund0
             option_port.unit_portfolio = unit
 
-    " Collar "
-    def update_invest_units_c2(self,option_port, write_ratio, unit_underlying, buy_ratio=1.0):
+    " Given units of total portfolio "
+    def update_invest_units_c2(self, option_port, unit, call_ratio=1.0, put_ratio=1.0):
         if isinstance(option_port,Collar):
-            call = option_port.write_call
-            put = option_port.buy_put
-            if call != None:
-                option_port.unit_call = np.floor(unit_underlying/call.multiplier())*write_ratio
-            if put != None:
-                option_port.unit_put = np.floor(unit_underlying/put.multiplier())*buy_ratio
-            option_port.unit_underlying = unit_underlying
+            self.update_invest_units_collar(option_port, unit, call_ratio, put_ratio)
+        elif isinstance(option_port, Straddle):
+            self.update_invest_units_straddle(option_port,unit,call_ratio,put_ratio)
+
+    def update_invest_units_collar(self, option_port, unit_underlying, write_ratio, buy_ratio):
+        call = option_port.write_call
+        put = option_port.buy_put
+        if call != None:
+            option_port.unit_call = np.floor(unit_underlying/call.multiplier())*write_ratio
+        if put != None:
+            option_port.unit_put = np.floor(unit_underlying/put.multiplier())*buy_ratio
+        option_port.unit_underlying = unit_underlying
+
+    def update_invest_units_straddle(self, option_port, unit, call_ratio, put_ratio):
+        option_port.unit_call = unit*option_port.invest_ratio_call
+        option_port.unit_put = unit*option_port.invest_ratio_put
 
     def open_portfolio(self, dt, portfolio,unit=None, cd_open_by_price=None):
         if isinstance(portfolio,BktOption):
@@ -250,6 +259,17 @@ class BktAccount(object):
             self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
             self.open_long_option(dt, portfolio.buy_put, portfolio.unit_put,cd_rebalance_by_price)
             self.open_short_option(dt, portfolio.write_call, portfolio.unit_call,cd_rebalance_by_price)
+            portfolio.liquidate_put = None
+            portfolio.liquidate_call = None
+        elif isinstance(portfolio, Straddle):
+            self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
+            self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
+            if portfolio.long_short == self.util.long:
+                self.open_long_option(dt, portfolio.option_call, portfolio.unit_call,cd_rebalance_by_price)
+                self.open_long_option(dt, portfolio.option_put, portfolio.unit_put,cd_rebalance_by_price)
+            else:
+                self.open_short_option(dt, portfolio.option_call, portfolio.unit_call, cd_rebalance_by_price)
+                self.open_short_option(dt, portfolio.option_put, portfolio.unit_put, cd_rebalance_by_price)
             portfolio.liquidate_put = None
             portfolio.liquidate_call = None
 

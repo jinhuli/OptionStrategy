@@ -106,6 +106,7 @@ class BktOptionStrategy(object):
         mdt = maturities_new[1]
         return mdt
 
+    " Read from database "
     def get_moving_average_signal(self, df, cd_short='ma_3', cd_long = 'ma_20'):
         df_short = df[df['cd_period'] == cd_short].set_index('dt_date')
         df_long= df[df['cd_period'] == cd_long].set_index('dt_date')
@@ -118,7 +119,7 @@ class BktOptionStrategy(object):
         return df_long
 
     " Read from database "
-    def get_bollinger_signal(self, df, cd_long = '20'):
+    def get_bollinger_signal(self, df, cd_long = '60'):
         df_long = df[df['cd_period'] == 'ma_'+cd_long].set_index('dt_date')
         df_std = df[df['cd_period'] == 'std_'+cd_long].set_index('dt_date')
         df_long['lower_sigma1'] = df_long['amt_value'] - df_std['amt_value']
@@ -130,9 +131,9 @@ class BktOptionStrategy(object):
         return df_long
 
     "calculate"
-    def get_bollinger_signal_2(self,df,start_date):
-        df['amt_value'] = df['amt_close'].rolling(window=60).mean()
-        df['amt_std'] = df['amt_close'].rolling(window=60).std()
+    def get_bollinger_signal_calculate(self,df,start_date, cd_long=60):
+        df['amt_value'] = df['amt_close'].rolling(window=cd_long).mean()
+        df['amt_std'] = df['amt_close'].rolling(window=cd_long).std()
         df['lower_sigma1'] = df['amt_value'] - df['amt_std']
         df['lower_sigma2'] = df['amt_value'] - 2*df['amt_std']
         df['upper_sigma1'] = df['amt_value'] + df['amt_std']
@@ -140,13 +141,14 @@ class BktOptionStrategy(object):
         df_res = df[df['dt_date']>=start_date].set_index('dt_date')
         return df_res
 
-    def get_percentile_signal(self, df, start_date=None):
-        df['percentile_90'] = df['amt_close'].rolling(window=60).quantile(0.9)
-        df['percentile_75'] = df['amt_close'].rolling(window=60).quantile(0.75)
-        df['percentile_50'] = df['amt_close'].rolling(window=60).quantile(0.5)
-        df['percentile_25'] = df['amt_close'].rolling(window=60).quantile(0.25)
-        df['percentile_10'] = df['amt_close'].rolling(window=60).quantile(0.1)
-        df['amt_std'] = df['amt_close'].rolling(window=60).std()
+    "calculate"
+    def get_percentile_signal(self, df, start_date=None, cd_long=60):
+        df['percentile_90'] = df['amt_close'].rolling(window=cd_long).quantile(0.9)
+        df['percentile_75'] = df['amt_close'].rolling(window=cd_long).quantile(0.75)
+        df['percentile_50'] = df['amt_close'].rolling(window=cd_long).quantile(0.5)
+        df['percentile_25'] = df['amt_close'].rolling(window=cd_long).quantile(0.25)
+        df['percentile_10'] = df['amt_close'].rolling(window=cd_long).quantile(0.1)
+        df['amt_std'] = df['amt_close'].rolling(window=cd_long).std()
         df_res = df
         if start_date!= None:
             df_res = df[df['dt_date'] >= start_date]
@@ -199,11 +201,13 @@ class BktOptionStrategy(object):
             else: signal = self.util.neutrual
         return status,signal
 
+    "Revert at mean if revert='percentile_50' | Revert at upper/lower line if revert=None"
     def percentile_signal(self,flag_current,df,upper='percentile_90',lower='percentile_10',
-                          revert='percentile_50'):
+                          revert=None):
         amt_close = df['amt_close']
         status = self.boll_status(df,upper=upper,lower=lower)
         if flag_current == self.util.long:
+            if revert == None : revert = upper
             if amt_close > df[revert]: signal = None
             elif amt_close <= df[lower]: signal = self.util.short
             else: signal = self.util.neutrual
@@ -212,6 +216,7 @@ class BktOptionStrategy(object):
             elif amt_close <= df[lower]: signal = self.util.short
             else: signal = None
         else: # short
+            if revert == None : revert = lower
             if amt_close <= df[revert]: signal = None
             elif amt_close >= df[lower]: signal = self.util.long
             else: signal = self.util.neutrual
@@ -223,7 +228,7 @@ class BktOptionStrategy(object):
         else: signal = self.util.neutrual
         return signal
 
-    def vol_bolliger_signal(self,flag_current,df):
+    def boll_direction_signal(self,flag_current,df):
         amt = df['amt_close']
         mean = df['amt_value']
         upper = df['upper_sigma1']
@@ -233,8 +238,8 @@ class BktOptionStrategy(object):
         elif amt >= lower: status = -1
         else: status = -2
         if flag_current == status: signal = None
-        elif status == -2 or status == 2:
-            signal = status
+        # elif status == -2 or status == 2:
+        #     signal = status
         elif status > flag_current:
             signal = self.util.long
         elif status <=flag_current:
