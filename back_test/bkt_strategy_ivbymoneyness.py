@@ -15,30 +15,47 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
     def ivs_mdt1_run(self):
         res = []
         bkt_optionset = self.bkt_optionset
-        # df_ivs = pd.DataFrame()
+        df_ivs = pd.DataFrame()
+        cd_underlying_price = 'close'
+        cd_mdt = 'hp_8_1st' # TODO : change cd_mdt
         while bkt_optionset.index < len(bkt_optionset.dt_list)-1:
             evalDate = bkt_optionset.eval_date
-            cd_underlying_price = 'close'
             call_atm = self.bkt_optionset.get_call(
-                0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
+                0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0]
             put_atm = self.bkt_optionset.get_put(
-                0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0].get_implied_vol()
-            # TODO : change cd_mdt
-            res.append({
-                'dt_date': evalDate, 'id_underlying': 'index_50etf', 'cd_option_type': 'call',
-                'cd_mdt': 'hp_8_1st', 'cd_moneyness': 0, 'pct_implies_vol': call_atm,
-            })
-            res.append({
-                'dt_date': evalDate, 'id_underlying': 'index_50etf', 'cd_option_type': 'put',
-                'cd_mdt': 'hp_8_1st', 'cd_moneyness': 0, 'pct_implies_vol': put_atm,
-            })
-            # iv = pd.DataFrame(data={'dt': [evalDate],
-            #                         'call_atm': [call_atm],
-            #                         'put_atm': [put_atm]
-            #                         })
-            # df_ivs = df_ivs.append(iv,ignore_index=True)
+                0, self.get_1st_eligible_maturity(evalDate),self.util.long,cd_underlying_price=cd_underlying_price).optionset[0]
+            iv_call = call_atm.get_implied_vol()
+            iv_put = put_atm.get_implied_vol()
+            res.append({'dt_date': evalDate, 'id_underlying': 'index_50etf', 'cd_option_type': 'call',
+                'cd_mdt': cd_mdt, 'cd_moneyness': 0, 'pct_implies_vol': iv_call,
+                'amt_option_price':float(call_atm.option_price()), 'amt_strike':float(call_atm.strike()),
+                'amt_adj_strike':float(call_atm.adj_strike()),
+                'amt_underlying_price': float(call_atm.underlying_close())})
+            res.append({'dt_date': evalDate, 'id_underlying': 'index_50etf', 'cd_option_type': 'put',
+                'cd_mdt': cd_mdt, 'cd_moneyness': 0, 'pct_implies_vol': iv_put,
+                'amt_option_price':float(put_atm.option_price()), 'amt_strike':float(put_atm.strike()),
+                'amt_adj_strike':float(put_atm.adj_strike()),
+                'amt_underlying_price': float(put_atm.underlying_close())})
+
+            df_ivs = df_ivs.append(pd.DataFrame(data={
+                'dt_date': [evalDate],
+                'id_underlying': ['index_50etf'],
+                'cd_mdt': [cd_mdt],
+                'cd_moneyness': [0],
+                'iv_call': [iv_call],
+                'iv_put': [iv_put],
+                'price_call':[float(call_atm.option_price())],
+                'price_put':[float(put_atm.option_price())],
+                'strike_call':[float(call_atm.strike())],
+                'strike_put':[float(put_atm.strike())],
+                'strike_adj_call':[float(call_atm.adj_strike())],
+                'strike_adj_put':[float(put_atm.adj_strike())],
+                'underlying_price': [float(call_atm.underlying_close())],
+                'maturitydt':[call_atm.maturitydt()]
+                }),ignore_index=True)
+
             bkt_optionset.next()
-        # df_ivs.to_csv('../save_results/df_ivs_total.csv')
+        df_ivs.to_csv('../save_results/df_ivs_total.csv')
         return res
 
     """ Get interpolated 1M volatility """
@@ -51,11 +68,11 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
             iv_put = bkt_optionset.get_atmvols_1M('put')
             res.append({
                 'dt_date': evalDate, 'id_underlying': 'index_50etf', 'cd_option_type': 'call',
-                'cd_mdt': '1M', 'cd_moneyness': 0, 'pct_implies_vol': iv_call,
+                'cd_mdt': '1M', 'cd_moneyness': 0, 'pct_implies_vol': iv_call
             })
             res.append({
                 'dt_date': evalDate, 'id_underlying': 'index_50etf', 'cd_option_type': 'put',
-                'cd_mdt': '1M', 'cd_moneyness': 0, 'pct_implies_vol': iv_put,
+                'cd_mdt': '1M', 'cd_moneyness': 0, 'pct_implies_vol': iv_put
             })
             # print(evalDate,iv_call,iv_put)
             if evalDate == bkt_optionset.end_date:
@@ -64,9 +81,9 @@ class BktStrategyMoneynessVol(BktOptionStrategy):
         return res
 
 """Back Test Settings"""
-# start_date = datetime.date(2015, 1, 1)
-start_date = datetime.date(2018, 1, 1)
-end_date = datetime.date(2018, 5, 28)
+start_date = datetime.date(2015, 1, 1)
+# start_date = datetime.date(2018, 1, 1)
+end_date = datetime.date.today()
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
