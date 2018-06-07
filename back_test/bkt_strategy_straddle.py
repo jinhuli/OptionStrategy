@@ -48,7 +48,7 @@ class BktStrategyStraddle(BktOptionStrategy):
         moneyness = -2
         self.portfolio = self.bkt_optionset.get_straddle(moneyness, self.get_1st_eligible_maturity(evalDate),
                                                          delta_exposure, long_short, cd_underlying_price='close')
-        bkt_account.update_invest_units(self.portfolio,self.util.short, delta_exposure, fund=inv_fund)
+        bkt_account.portfolio_units_adjust(self.portfolio, delta_exposure, fund=inv_fund)
         portfolio_unit = self.portfolio.unit_portfolio
         bkt_account.open_portfolio(evalDate, self.portfolio, cd_open_by_price=cd_open_position_time)
         self.flag_trade = True
@@ -75,6 +75,8 @@ class BktStrategyStraddle(BktOptionStrategy):
                 # vol_status, vol_signal = self.percentile_signal(vol_status, self.volatility_boll.loc[evalDate],
                 #                                                 upper='percentile_75', lower='percentile_25')
                 # print('vol status ',vol_status,' , ',evalDate)
+            if evalDate == datetime.date(2017,7,20):
+                print('')
             if vol_signal != None:
                 self.flag_trade = False
                 if vol_signal == self.util.long:
@@ -99,19 +101,20 @@ class BktStrategyStraddle(BktOptionStrategy):
             if not self.flag_trade:
                 portfolio_new = self.bkt_optionset.get_straddle(moneyness, self.get_1st_eligible_maturity(evalDate),
                                                                 delta_exposure, long_short, cd_underlying_price='close')
-                self.portfolio.update_portfolio(option_call=portfolio_new.option_call, option_put=portfolio_new.option_put,long_short=long_short)
-                # bkt_account.update_invest_units_c2(self.portfolio, portfolio_unit,
-                #                                    call_ratio=self.portfolio.invest_ratio_call,put_ratio=self.portfolio.invest_ratio_put)
-                bkt_account.update_invest_units(self.portfolio,long_short,delta_exposure,cd_open_by_price='close', fund=None)
-                bkt_account.rebalance_portfolio(evalDate, self.portfolio)
-                self.flag_trade = True
+                if portfolio_new != None:
+                    self.portfolio.update_portfolio(option_call=portfolio_new.option_call, option_put=portfolio_new.option_put,long_short=long_short)
+                    # bkt_account.update_invest_units_c2(self.portfolio, portfolio_unit,
+                    #                                    call_ratio=self.portfolio.invest_ratio_call,put_ratio=self.portfolio.invest_ratio_put)
+                    bkt_account.portfolio_rebalancing_eqlfund(self.portfolio,delta_exposure,cd_open_by_price='close', fund=None)
+                    bkt_account.rebalance_portfolio(evalDate, self.portfolio)
+                    self.flag_trade = True
             else:
                 dt = self.util.to_dt_date(self.calendar.advance(
                     self.util.to_ql_date(evalDate), ql.Period(8, ql.Days)))
                 call = self.portfolio.option_call
                 put = self.portfolio.option_put
                 flag_update = False
-                """Update portfolio when former portfolio is  maturity reaches, spot nears strike price"""
+                """ Update portfolio when former portfolio is maturity reaches, spot nears strike price """
                 if call == None or put == None:
                     flag_update = True
                 elif call.maturitydt() <= dt:
@@ -123,19 +126,22 @@ class BktStrategyStraddle(BktOptionStrategy):
                     if k_call - spot <= 50 or spot - k_put <= 50:
                         flag_update = True
                 if flag_update:
-                    portfolio_new = self.bkt_optionset.get_straddle(moneyness, self.get_1st_eligible_maturity(evalDate), delta_exposure, long_short, cd_underlying_price='close')
-                    self.portfolio.update_portfolio(option_call=portfolio_new.option_call, option_put=portfolio_new.option_put, long_short=long_short)
-                    # bkt_account.update_invest_units_c2(self.portfolio, portfolio_unit,
-                    #                                call_ratio=self.portfolio.invest_ratio_call,put_ratio=self.portfolio.invest_ratio_put)
-                    bkt_account.update_invest_units(self.portfolio, long_short, delta_exposure,
-                                                    cd_open_by_price='close', fund=None)
-                    bkt_account.rebalance_portfolio(evalDate, self.portfolio)
+                    portfolio_new = self.bkt_optionset.get_straddle(moneyness, self.get_1st_eligible_maturity(evalDate),
+                                                                    delta_exposure, long_short, cd_underlying_price='close')
+                    if portfolio_new != None:
+                        self.portfolio.update_portfolio(option_call=portfolio_new.option_call,
+                                                        option_put=portfolio_new.option_put, long_short=long_short)
+                        # bkt_account.update_invest_units_c2(self.portfolio, portfolio_unit,
+                        #                                call_ratio=self.portfolio.invest_ratio_call,put_ratio=self.portfolio.invest_ratio_put)
+                        bkt_account.portfolio_rebalancing_eqlfund(self.portfolio, delta_exposure,
+                                                        cd_open_by_price='close', fund=None)
+                        bkt_account.rebalance_portfolio(evalDate, self.portfolio)
             if self.portfolio.option_call == None or self.portfolio.option_put==None:
                 self.flag_trade = False
                 print(evalDate, 'No complete collar portfolio constructed, try next day !')
             """按当日价格调整保证金，计算投资组合盯市价值"""
             bkt_account.mkm_update_portfolio(evalDate,self.portfolio)
-            print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.mtm_long_positions)
+            print(evalDate, ' , ', bkt_account.npv, bkt_account.mtm_long_positions, bkt_account.mtm_short_positions)
 
 
 """Back Test Settings"""

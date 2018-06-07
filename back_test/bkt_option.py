@@ -270,7 +270,7 @@ class BktOption(BktInstrument):
         return option_carry
 
     def get_init_margin(self):
-        if self.trade_long_short == self.util.long: return 0.0
+        # if self.trade_long_short == self.util.long: return 0.0
         # 认购期权义务仓开仓保证金＝[合约前结算价+Max（12%×合约标的前收盘价-认购期权虚值，
         #                           7%×合约标的前收盘价)]×合约单位
         # 认沽期权义务仓开仓保证金＝Min[合约前结算价 + Max（12 %×合约标的前收盘价 - 认沽期权虚值，
@@ -301,9 +301,6 @@ class BktOption(BktInstrument):
         if amt_settle==None or amt_settle==np.nan:
             amt_settle = self.mktprice_close()
         amt_underlying_close = self.underlying_close()
-        # if self.eval_date == datetime.date(2018,1,26):
-        #     print(self.eval_date)
-        print(self.eval_date,self.id_instrument(), amt_underlying_close, amt_settle)
         if self.option_type() == self.util.type_call:
             otm = max(0, self.strike() - amt_underlying_close)
             maintain_margin = (amt_settle + max(0.12 * amt_underlying_close - otm,

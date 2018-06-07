@@ -160,8 +160,7 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
     f1.savefig('../save_figure/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
 """历史隐含波动率"""
-def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_future):
-    pu = PlotUtil()
+def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,df_future):
     engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
                            echo=False)
     Session = sessionmaker(bind=engine)
@@ -173,10 +172,6 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
 
     optionMetrics = dbt.OptionMetrics
     options_table = dbt.Options
-
-
-    plt.rcParams['font.sans-serif'] = ['STKaiti']
-    plt.rcParams.update({'font.size': 15})
 
     query_sro = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
                             optionMetrics.amt_strike,
@@ -237,29 +232,28 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
             df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = iv*100
 
     df_iv_results = df_iv_results.sort_values(by='dt_date',ascending=False)
-    # df = df_iv_results.replace(0.0, None)
     df_iv_results = df_iv_results.dropna()
-    core_ivs = df_iv_results['contract-1'].tolist()
-    current_iv = core_ivs[0]
-    p_75 = np.percentile(core_ivs,75)
-    p_25 = np.percentile(core_ivs,25)
-    p_mid = np.percentile(core_ivs,50)
-    df_iv_results.loc[:,'75分位数（主力合约）'] = p_75
-    df_iv_results.loc[:,'25分位数（主力合约）'] = p_25
-    df_iv_results.loc[:,'中位数（主力合约）'] = p_mid
-    print('hist atm ivs:')
-    print('p_75 : ',p_75)
-    print('p_25 : ',p_25)
-    print('p_mid : ',p_mid)
-    current_iv_pct = 0
-    diff_min = 10000.0
-    for i in range(0,100):
-        p = np.percentile(core_ivs,i)
-        diff = abs(p-current_iv)
-        if diff < diff_min :
-            diff_min = diff
-            current_iv_pct = p
-    print(current_iv_pct)
+    # core_ivs = df_iv_results['contract-1'].tolist()
+    # current_iv = core_ivs[0]
+    # p_75 = np.percentile(core_ivs,75)
+    # p_25 = np.percentile(core_ivs,25)
+    # p_mid = np.percentile(core_ivs,50)
+    # df_iv_results.loc[:,'75分位数（主力合约）'] = p_75
+    # df_iv_results.loc[:,'25分位数（主力合约）'] = p_25
+    # df_iv_results.loc[:,'中位数（主力合约）'] = p_mid
+    # print('hist atm ivs:')
+    # print('p_75 : ',p_75)
+    # print('p_25 : ',p_25)
+    # print('p_mid : ',p_mid)
+    # current_iv_pct = 0
+    # diff_min = 10000.0
+    # for i in range(0,100):
+    #     p = np.percentile(core_ivs,i)
+    #     diff = abs(p-current_iv)
+    #     if diff < diff_min :
+    #         diff_min = diff
+    #         current_iv_pct = p
+    # print(current_iv_pct)
     # f1, ax1 = plt.subplots()
     #
     # pu.plot_line(ax1, 0, df_iv_results['dt_date'], core_ivs, '隐含波动率', '日期', '(%)')
@@ -390,7 +384,8 @@ exchange_code = 'czce'
 # current_core_underlying = 'm_1809'
 # namecode = 'm'
 # exchange_code = 'dce'
-contracts = ['1809', '1901', '1905','1909']
+
+# contracts = ['1809', '1901', '1905','1909']
 
 ############################################################################################
 w.start()
@@ -433,13 +428,13 @@ df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
 df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
 
 df_underlying_core = pcr(df_pcr)
-hist_vol(df_underlying_core)
+# hist_vol(df_underlying_core)
 print('Part [历史已实现波动率] completed')
-implied_vol_analysis(evalDate,w,namecode,exchange_code)
+# implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
-hist_atm_ivs(dt_date,dt_last_week,w,namecode,exchange_code,contracts,df_srf)
+hist_atm_ivs(dt_date,startDate,w,namecode,exchange_code,df_srf)
 print('Part [历史隐含波动率] completed')
-trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
+# trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
 print('Part [当日成交持仓量] completed')
 
 plt.show()

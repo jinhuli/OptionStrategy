@@ -59,7 +59,6 @@ class BktStrategyCollar(BktOptionStrategy):
         inv_fund = (1 - self.cash_reserve_pct) * bkt_account.cash
         evalDate = bkt_optionset.eval_date
         """Option: Select Strategy and Open Position"""
-        cd_underlying_price = 'close'
         cd_open_position_time = 'close'
         moneyness_call = self.moneyness_call
         moneyness_put = self.moneyness_put
@@ -71,15 +70,12 @@ class BktStrategyCollar(BktOptionStrategy):
             bkt_index, moneyness_call=moneyness_call,moneyness_put=moneyness_put)
 
         unit_underlying = np.floor(inv_fund / self.portfolio.underlying.mktprice_close())
-        bkt_account.update_invest_units_c2(self.portfolio, unit_underlying,call_ratio=write_ratio,put_ratio=buy_ratio)
+        bkt_account.portfolio_rebalancing_eqlunit(self.portfolio, unit_underlying,call_ratio=write_ratio,put_ratio=buy_ratio)
         bkt_account.open_portfolio(evalDate, self.portfolio, cd_open_by_price=cd_open_position_time)
         self.flag_trade = True
         bkt_account.mkm_update_portfolio(evalDate, self.portfolio)
         print(evalDate, bkt_optionset.eval_date, ' , ', bkt_account.npv, bkt_account.cash)
 
-        vol_status = self.util.neutrual
-        index_status = self.util.neutrual
-        flag_iv = self.util.neutrual
         flag_protect = False
         while bkt_optionset.index < len(bkt_optionset.dt_list):
             self.next()
@@ -165,7 +161,7 @@ class BktStrategyCollar(BktOptionStrategy):
                     moneyness_call=moneyness_call,moneyness_put=moneyness_put,
                     flag_protect=flag_protect)
                 self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
-                bkt_account.update_invest_units_c2(self.portfolio, unit_underlying,buy_ratio=buy_ratio, call_ratio=write_ratio,put_ratio=buy_ratio)
+                bkt_account.portfolio_rebalancing_eqlunit(self.portfolio, unit_underlying,buy_ratio=buy_ratio, call_ratio=write_ratio,put_ratio=buy_ratio)
                 bkt_account.rebalance_portfolio(evalDate, self.portfolio)
                 self.flag_trade = True
             else:
@@ -202,7 +198,8 @@ class BktStrategyCollar(BktOptionStrategy):
                         moneyness_call=moneyness_call, moneyness_put=moneyness_put,
                         flag_protect=flag_protect)
                     self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
-                    bkt_account.update_invest_units_c2(self.portfolio, unit_underlying,buy_ratio=buy_ratio, call_ratio=write_ratio,put_ratio=buy_ratio)
+                    bkt_account.portfolio_rebalancing_eqlunit(self.portfolio, unit_underlying,
+                                                              buy_ratio=buy_ratio, call_ratio=write_ratio,put_ratio=buy_ratio)
                     bkt_account.rebalance_portfolio(evalDate, self.portfolio)
             if self.portfolio.write_call == None or self.portfolio.buy_put==None:
                 self.flag_trade = False

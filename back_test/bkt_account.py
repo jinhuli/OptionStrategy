@@ -111,8 +111,9 @@ class BktAccount(object):
             return
         return mkt_price
 
-    " Given investment fund calculate portfolio units, adjust investment unit by given delta exposure "
-    def update_invest_units(self,option_port,cd_long_short,delta_exposure,cd_open_by_price=None, fund=None):
+    " Given INVESTMENT FUND calculate portfolio units, adjust investment unit by given delta exposure" \
+    " Do not change portfolio components. "
+    def portfolio_units_adjust(self,option_port,delta_exposure,cd_open_by_price=None, fund=None):
         if isinstance(option_port,BackSpread):
             option_long = option_port.option_long
             option_short = option_port.option_short
@@ -144,21 +145,21 @@ class BktAccount(object):
                        price_put*option_put.multiplier()*option_port.unit_put
             option_port.rebalancing(delta_exposure)
 
-            if cd_long_short == self.util.long:
+            if option_port.long_short == self.util.long:
                 fund0 = price_call*option_call.multiplier()*option_port.invest_ratio_call + \
                        price_put*option_put.multiplier()*option_port.invest_ratio_put
                 unit_straddle = fund / fund0
             else:
-                fund_straddle = option_call.get_init_margin()*option_call.multiplier()*\
+                fund_straddle = (option_call.get_init_margin()-price_call*option_call.multiplier())*\
                                 option_port.invest_ratio_call + \
-                                option_put.get_init_margin()*option_put.multiplier()*\
+                                (option_put.get_init_margin()-price_put*option_put.multiplier())*\
                                 option_port.invest_ratio_put
                 unit_straddle = fund / fund_straddle
             option_port.unit_portfolio = unit_straddle
             option_port.unit_call = unit_straddle*option_port.invest_ratio_call
             option_port.unit_put = unit_straddle*option_port.invest_ratio_put
         elif isinstance(option_port,Calls) or isinstance(option_port,Puts):
-            if option_port.cd_long_short == self.util.long:
+            if option_port.long_short == self.util.long:
                 if option_port.cd_weighted == 'equal_unit':
                     if fund == None:
                         fund = 0
@@ -191,8 +192,52 @@ class BktAccount(object):
             unit = fund / fund0
             option_port.unit_portfolio = unit
 
-    " Given units of total portfolio "
-    def update_invest_units_c2(self, option_port, unit, call_ratio=1.0, put_ratio=1.0):
+    " Given INVESTMENT FUND calculate portfolio units, adjust investment unit by given delta exposure" \
+    " CHANGE portfolio components. "
+    def portfolio_rebalancing_eqlfund(self,option_port,delta_exposure,cd_open_by_price=None, fund=None):
+        if isinstance(option_port, Straddle):
+            option_call = option_port.option_call
+            option_put = option_port.option_put
+            liquidite_call = option_port.liquidate_call
+            liquidite_put = option_port.liquidate_put
+            price_call = self.get_open_position_price(option_call, cd_open_by_price)
+            price_put = self.get_open_position_price(option_put, cd_open_by_price)
+            if fund == None:
+                # Collect fund based on PREVIOUS POSITION
+                if liquidite_call.trade_long_short == self.util.long:
+                    fund_call = self.get_open_position_price(liquidite_call, cd_open_by_price) \
+                                * option_call.multiplier() * option_port.unit_call
+                else:
+                    fund_call = liquidite_call.trade_margin_capital\
+                                - self.get_open_position_price(liquidite_call, cd_open_by_price)\
+                                * liquidite_call.multiplier()*option_port.unit_call
+                if liquidite_put.trade_long_short == self.util.long:
+                    fund_put = self.get_open_position_price(liquidite_put, cd_open_by_price) \
+                                * option_put.multiplier() * option_port.unit_put
+                else:
+                    fund_put = liquidite_put.trade_margin_capital \
+                                - self.get_open_position_price(liquidite_put, cd_open_by_price) \
+                                  * liquidite_put.multiplier() * option_port.unit_put
+                fund = fund_call+fund_put
+            option_port.rebalancing(delta_exposure)
+
+            if option_port.long_short == self.util.long:
+                fund0 = price_call * option_call.multiplier() * option_port.invest_ratio_call + \
+                        price_put * option_put.multiplier() * option_port.invest_ratio_put
+                unit_straddle = fund / fund0
+            else:
+                fund_straddle = (option_call.get_init_margin()-price_call*option_call.multiplier())*\
+                                option_port.invest_ratio_call + \
+                                (option_put.get_init_margin()-price_put*option_put.multiplier())*\
+                                option_port.invest_ratio_put
+                unit_straddle = fund / fund_straddle
+            option_port.unit_portfolio = unit_straddle
+            option_port.unit_call = unit_straddle * option_port.invest_ratio_call
+            option_port.unit_put = unit_straddle * option_port.invest_ratio_put
+
+    " Given INVESTMENT UNITs of total portfolio, do component rebalancing" \
+    " CHANGE portfolio components. "
+    def portfolio_rebalancing_eqlunit(self, option_port, unit, call_ratio=1.0, put_ratio=1.0):
         if isinstance(option_port,Collar):
             self.update_invest_units_collar(option_port, unit, call_ratio, put_ratio)
         elif isinstance(option_port, Straddle):
@@ -224,7 +269,7 @@ class BktAccount(object):
                 self.open_short_option(dt, portfolio.option_call, portfolio.unit_call, cd_open_by_price)
                 self.open_short_option(dt, portfolio.option_put, portfolio.unit_put, cd_open_by_price)
         elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
-            if portfolio.cd_long_short == self.util.long:
+            if portfolio.long_short == self.util.long:
                 for option in portfolio.optionset:
                     self.open_long_option(dt,option,portfolio.unit_portfolio[0],cd_open_by_price)
             else:
@@ -256,7 +301,6 @@ class BktAccount(object):
             for (i,option) in enumerate(portfolio.optionset):
                 self.rebalance_position_option(dt,option,portfolio.unit_portfolio[i])
 
-
     def rebalance_portfolio(self, dt, portfolio, cd_rebalance_by_price=None):
         if isinstance(portfolio, Collar):
             self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
@@ -268,12 +312,7 @@ class BktAccount(object):
         elif isinstance(portfolio, Straddle):
             self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
             self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
-            if portfolio.long_short == self.util.long:
-                self.open_long_option(dt, portfolio.option_call, portfolio.unit_call,cd_rebalance_by_price)
-                self.open_long_option(dt, portfolio.option_put, portfolio.unit_put,cd_rebalance_by_price)
-            else:
-                self.open_short_option(dt, portfolio.option_call, portfolio.unit_call, cd_rebalance_by_price)
-                self.open_short_option(dt, portfolio.option_put, portfolio.unit_put, cd_rebalance_by_price)
+            self.open_portfolio(dt,portfolio,cd_open_by_price=cd_rebalance_by_price)
             portfolio.liquidate_put = None
             portfolio.liquidate_call = None
 

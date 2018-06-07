@@ -277,8 +277,7 @@ class BktOptionSet(object):
         options_by_moneyness = self.get_moneyness_iv_by_mdt(mdt, cd_underlying_price)
         if moneyness_rank not in options_by_moneyness[self.util.type_call].keys() or \
                         moneyness_rank not in options_by_moneyness[self.util.type_put].keys():
-            option_call = None
-            option_put = None
+            return
         else:
             option_call = options_by_moneyness[self.util.type_call][moneyness_rank]
             option_put = options_by_moneyness[self.util.type_put][moneyness_rank]

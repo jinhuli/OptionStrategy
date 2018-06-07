@@ -84,7 +84,7 @@ class Calls(OptionPortfolio):
         OptionPortfolio.__init__(self,open_date)
         self.optionset = callset
         self.cd_weighted = cd_weighted
-        self.cd_long_short = cd_long_short
+        self.long_short = cd_long_short
 
 
 class Puts(OptionPortfolio):
@@ -93,7 +93,7 @@ class Puts(OptionPortfolio):
         OptionPortfolio.__init__(self,open_date)
         self.optionset = callset
         self.cd_weighted = cd_weighted
-        self.cd_long_short = cd_long_short
+        self.long_short = cd_long_short
 
 
 class CalandarSpread(OptionPortfolio):
@@ -108,11 +108,11 @@ class CalandarSpread(OptionPortfolio):
 
 class BackSpread(OptionPortfolio):
 
-    def __init__(self,open_date,long,short,option_type,delta_exposure=0.0):
+    def __init__(self,open_date,option_buy,option_write,option_type,delta_exposure=0.0):
         OptionPortfolio.__init__(self,open_date)
-        self.option_long = long
-        self.option_short = short
-        self.optionset = [long,short]
+        self.option_long = option_buy
+        self.option_short = option_write
+        self.optionset = [option_buy,option_write]
         self.invest_ratio_long = None
         self.unit_long = None
         self.invest_ratio_short = None
