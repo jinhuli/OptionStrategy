@@ -543,257 +543,257 @@ class BktOptionSet(object):
         return res_callput
 
 
-def get_mdt_keyvols(self, option_type):
-    keyvols_mdts = {}
-    df = self.get_duplicate_strikes_dropped(self.df_daily_state)
-    for mdt in self.eligible_maturities:
-        df_mdt = self.get_df_by_mdt_type(df, mdt, option_type)
-        df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_adj_strike])
-        spot = df_mdt[self.util.bktoption].values[0].underlying_price
+    def get_mdt_keyvols(self, option_type):
+        keyvols_mdts = {}
+        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        for mdt in self.eligible_maturities:
+            df_mdt = self.get_df_by_mdt_type(df, mdt, option_type)
+            df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_adj_strike])
+            spot = df_mdt[self.util.bktoption].values[0].underlying_price
+            strikes = []
+            vols = []
+            for (idx, row) in df.iterrows():
+                strike = row[self.util.col_adj_strike]
+                iv = row[self.util.col_implied_vol]
+                # if iv > 0:
+                strikes.append(float(strike))
+                vols.append(iv)
+                # else:
+                #     continue
+            volset = [vols]
+            m_list = [[mdt]]
+            vol_matrix = ql.Matrix(len(strikes), len(m_list))
+            for i in range(vol_matrix.rows()):
+                for j in range(vol_matrix.columns()):
+                    vol_matrix[i][j] = volset[j][i]
+            ql_evalDate = self.util.to_ql_date(self.eval_date)
+            ql_maturities = [ql.Date(mdt.day, mdt.month, mdt.year)]
+            try:
+                black_var_surface = ql.BlackVarianceSurface(
+                    ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+                keyvols_mdt = {}
+                try:
+                    if min(strikes) > spot:
+                        s = min(strikes)
+                    elif max(strikes) < spot:
+                        s = max(strikes)
+                    else:
+                        s = spot
+                    vol_100 = black_var_surface.blackVol(ql_maturities[0], s)
+                    keyvols_mdt.update({100: vol_100})
+                except Exception as e:
+                    print(e)
+                    pass
+                try:
+                    vol_110 = black_var_surface.blackVol(ql_maturities[0], spot * 1.1)
+                    keyvols_mdt.update({110: vol_110})
+                except Exception as e:
+                    pass
+                try:
+                    vol_105 = black_var_surface.blackVol(ql_maturities[0], spot * 1.05)
+                    keyvols_mdt.update({105: vol_105})
+                except Exception as e:
+                    pass
+                try:
+                    vol_90 = black_var_surface.blackVol(ql_maturities[0], spot * 0.9)
+                    keyvols_mdt.update({90: vol_90})
+                except Exception as e:
+                    pass
+                try:
+                    vol_95 = black_var_surface.blackVol(ql_maturities[0], spot * 0.95)
+                    keyvols_mdt.update({95: vol_95})
+                except Exception as e:
+                    pass
+                keyvols_mdts.update({mdt: keyvols_mdt})
+            except Exception as e:
+                print(e)
+        return keyvols_mdts
+
+
+    """ Get 1M atm vol by liner interpolation """
+
+
+    def get_interpolated_atm_1M(self, option_type):
+        keyvols_mdts = self.get_mdt_keyvols(option_type)
+        ql_evalDate = self.util.to_ql_date(self.eval_date)
+        mdt_1m = self.util.to_dt_date(self.calendar.advance(ql_evalDate, ql.Period(1, ql.Months)))
+        d0 = datetime.date(1999, 1, 1)
+        mdt_1m_num = (mdt_1m - d0).days
+        maturities_num = []
+        atm_vols = []
+        for m in self.eligible_maturities:
+            maturities_num.append((m - d0).days)
+            atm_vols.append(keyvols_mdts[m][100])  # atm vol : skrike is 100% spot
+        try:
+            x = np.interp(mdt_1m_num, maturities_num, atm_vols)
+        except Exception as e:
+            print(e)
+            return
+        return x
+
+
+    """ Get Call/Put volatility surface separately"""
+
+
+    def get_volsurface_squre(self, option_type):
+        ql_maturities = []
+        df = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, option_type))
+        df = self.calculate_implied_vol(df)
+        df_mdt_list = []
+        iv_name_list = []
+        maturity_list = []
+        for idx, mdt in enumerate(self.eligible_maturities):
+            iv_rename = 'implied_vol_' + str(idx)
+            df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
+                .rename(columns={self.util.col_implied_vol: iv_rename}) \
+                .set_index(self.util.col_adj_strike).sort_index()
+
+            if len(df_mkt) == 0: continue
+            df_mdt_list.append(df_mkt)
+            iv_name_list.append(iv_rename)
+            maturity_list.append(mdt)
+        df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
         strikes = []
-        vols = []
-        for (idx, row) in df.iterrows():
-            strike = row[self.util.col_adj_strike]
-            iv = row[self.util.col_implied_vol]
-            # if iv > 0:
-            strikes.append(float(strike))
-            vols.append(iv)
-            # else:
-            #     continue
-        volset = [vols]
-        m_list = [[mdt]]
-        vol_matrix = ql.Matrix(len(strikes), len(m_list))
+        for k in df_vol.index:
+            strikes.append(float(k))
+        volset = []
+        for name in iv_name_list:
+            volset.append(df_vol[name].tolist())
+        for mdate in maturity_list:
+            ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
+        vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
         for i in range(vol_matrix.rows()):
             for j in range(vol_matrix.columns()):
                 vol_matrix[i][j] = volset[j][i]
         ql_evalDate = self.util.to_ql_date(self.eval_date)
-        ql_maturities = [ql.Date(mdt.day, mdt.month, mdt.year)]
-        try:
-            black_var_surface = ql.BlackVarianceSurface(
-                ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-            keyvols_mdt = {}
-            try:
-                if min(strikes) > spot:
-                    s = min(strikes)
-                elif max(strikes) < spot:
-                    s = max(strikes)
-                else:
-                    s = spot
-                vol_100 = black_var_surface.blackVol(ql_maturities[0], s)
-                keyvols_mdt.update({100: vol_100})
-            except Exception as e:
-                print(e)
-                pass
-            try:
-                vol_110 = black_var_surface.blackVol(ql_maturities[0], spot * 1.1)
-                keyvols_mdt.update({110: vol_110})
-            except Exception as e:
-                pass
-            try:
-                vol_105 = black_var_surface.blackVol(ql_maturities[0], spot * 1.05)
-                keyvols_mdt.update({105: vol_105})
-            except Exception as e:
-                pass
-            try:
-                vol_90 = black_var_surface.blackVol(ql_maturities[0], spot * 0.9)
-                keyvols_mdt.update({90: vol_90})
-            except Exception as e:
-                pass
-            try:
-                vol_95 = black_var_surface.blackVol(ql_maturities[0], spot * 0.95)
-                keyvols_mdt.update({95: vol_95})
-            except Exception as e:
-                pass
-            keyvols_mdts.update({mdt: keyvols_mdt})
-        except Exception as e:
-            print(e)
-    return keyvols_mdts
+        black_var_surface = ql.BlackVarianceSurface(
+            ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+        return black_var_surface
 
 
-""" Get 1M atm vol by liner interpolation """
+    """ Get Integrate Volatility Surface by call/put mid vols"""
 
 
-def get_interpolated_atm_1M(self, option_type):
-    keyvols_mdts = self.get_mdt_keyvols(option_type)
-    ql_evalDate = self.util.to_ql_date(self.eval_date)
-    mdt_1m = self.util.to_dt_date(self.calendar.advance(ql_evalDate, ql.Period(1, ql.Months)))
-    d0 = datetime.date(1999, 1, 1)
-    mdt_1m_num = (mdt_1m - d0).days
-    maturities_num = []
-    atm_vols = []
-    for m in self.eligible_maturities:
-        maturities_num.append((m - d0).days)
-        atm_vols.append(keyvols_mdts[m][100])  # atm vol : skrike is 100% spot
-    try:
-        x = np.interp(mdt_1m_num, maturities_num, atm_vols)
-    except Exception as e:
-        print(e)
-        return
-    return x
-
-
-""" Get Call/Put volatility surface separately"""
-
-
-def get_volsurface_squre(self, option_type):
-    ql_maturities = []
-    df = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, option_type))
-    df = self.calculate_implied_vol(df)
-    df_mdt_list = []
-    iv_name_list = []
-    maturity_list = []
-    for idx, mdt in enumerate(self.eligible_maturities):
-        iv_rename = 'implied_vol_' + str(idx)
-        df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
-            .rename(columns={self.util.col_implied_vol: iv_rename}) \
-            .set_index(self.util.col_adj_strike).sort_index()
-
-        if len(df_mkt) == 0: continue
-        df_mdt_list.append(df_mkt)
-        iv_name_list.append(iv_rename)
-        maturity_list.append(mdt)
-    df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
-    strikes = []
-    for k in df_vol.index:
-        strikes.append(float(k))
-    volset = []
-    for name in iv_name_list:
-        volset.append(df_vol[name].tolist())
-    for mdate in maturity_list:
-        ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
-    vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
-    for i in range(vol_matrix.rows()):
-        for j in range(vol_matrix.columns()):
-            vol_matrix[i][j] = volset[j][i]
-    ql_evalDate = self.util.to_ql_date(self.eval_date)
-    black_var_surface = ql.BlackVarianceSurface(
-        ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-    return black_var_surface
-
-
-""" Get Integrate Volatility Surface by call/put mid vols"""
-
-
-def get_mid_volsurface_squre(self):
-    ql_maturities = []
-    call_list = []
-    put_list = []
-    df_mdt_list = []
-    iv_name_list = []
-    maturity_list = []
-    for option in self.bktoptionset:
-        if option.option_type == self.util.type_call:
-            call_list.append(option)
-        else:
-            put_list.append(option)
-    df_call = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_call))
-    df_put = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_put))
-    df_call = self.calculate_implied_vol(df_call)
-    df_put = self.calculate_implied_vol(df_put)
-    df_call['maturity_call'] = df_call[self.util.col_maturitydt]
-    df_call['adj_strike_call'] = df_call[self.util.col_adj_strike]
-    df_call = df_call.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
-        .rename(columns={self.util.col_implied_vol: 'iv_call'})
-    df_put = df_put.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
-        .rename(columns={self.util.col_implied_vol: 'iv_put'})
-    df = df_call[['adj_strike_call', 'maturity_call', 'iv_call']] \
-        .join(df_put[['iv_put']])
-    df['mid_vol'] = (df['iv_call'] + df['iv_put']) / 2
-    maturities = sorted(df['maturity_call'].unique())
-    for idx, mdt in enumerate(maturities):
-        if mdt <= self.eval_date: continue
-        iv_rename = 'implied_vol_' + str(idx)
-        df_mkt = df[(df['maturity_call'] == mdt)] \
-            .rename(columns={'mid_vol': iv_rename}).sort_values(by='adj_strike_call').set_index('adj_strike_call')
-        if len(df_mkt) == 0: continue
-        df_mdt_list.append(df_mkt)
-        iv_name_list.append(iv_rename)
-        maturity_list.append(mdt)
-    df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
-    strikes = []
-    for k in df_vol.index:
-        strikes.append(float(k))
-    volset = []
-    for name in iv_name_list:
-        volset.append(df_vol[name].tolist())
-    for mdate in maturity_list:
-        ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
-    vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
-    for i in range(vol_matrix.rows()):
-        for j in range(vol_matrix.columns()):
-            vol_matrix[i][j] = volset[j][i]
-    ql_evalDate = self.util.to_ql_date(self.eval_date)
-    black_var_surface = ql.BlackVarianceSurface(
-        ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
-    return black_var_surface
-
-
-def calculate_implied_vol(self, df):
-    for (idx, row) in df.iterrows():
-        option = row[self.util.bktoption]
-        iv = option.get_implied_vol()
-        df.loc[idx, self.util.col_implied_vol] = iv
-    return df
-
-
-def collect_option_metrics(self, hp=30):
-    res = []
-    df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
-    bktoption_list = self.bktoptionset
-    if len(bktoption_list) == 0: return df
-    bvs_call = self.get_volsurface_squre('call')
-    bvs_put = self.get_volsurface_squre('put')
-    for idx, option in enumerate(bktoption_list):
-        if option.option_price() > 0.0:
-            iv = option.get_implied_vol()
+    def get_mid_volsurface_squre(self):
+        ql_maturities = []
+        call_list = []
+        put_list = []
+        df_mdt_list = []
+        iv_name_list = []
+        maturity_list = []
+        for option in self.bktoptionset:
             if option.option_type == self.util.type_call:
-                carry = option.get_carry(bvs_call, hp)
+                call_list.append(option)
             else:
-                carry = option.get_carry(bvs_put, hp)
-            theta = option.get_theta()
-            vega = option.get_vega()
+                put_list.append(option)
+        df_call = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_call))
+        df_put = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_put))
+        df_call = self.calculate_implied_vol(df_call)
+        df_put = self.calculate_implied_vol(df_put)
+        df_call['maturity_call'] = df_call[self.util.col_maturitydt]
+        df_call['adj_strike_call'] = df_call[self.util.col_adj_strike]
+        df_call = df_call.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
+            .rename(columns={self.util.col_implied_vol: 'iv_call'})
+        df_put = df_put.set_index([self.util.col_maturitydt, self.util.col_adj_strike]) \
+            .rename(columns={self.util.col_implied_vol: 'iv_put'})
+        df = df_call[['adj_strike_call', 'maturity_call', 'iv_call']] \
+            .join(df_put[['iv_put']])
+        df['mid_vol'] = (df['iv_call'] + df['iv_put']) / 2
+        maturities = sorted(df['maturity_call'].unique())
+        for idx, mdt in enumerate(maturities):
+            if mdt <= self.eval_date: continue
+            iv_rename = 'implied_vol_' + str(idx)
+            df_mkt = df[(df['maturity_call'] == mdt)] \
+                .rename(columns={'mid_vol': iv_rename}).sort_values(by='adj_strike_call').set_index('adj_strike_call')
+            if len(df_mkt) == 0: continue
+            df_mdt_list.append(df_mkt)
+            iv_name_list.append(iv_rename)
+            maturity_list.append(mdt)
+        df_vol = pd.concat(df_mdt_list, axis=1, join='inner')
+        strikes = []
+        for k in df_vol.index:
+            strikes.append(float(k))
+        volset = []
+        for name in iv_name_list:
+            volset.append(df_vol[name].tolist())
+        for mdate in maturity_list:
+            ql_maturities.append(ql.Date(mdate.day, mdate.month, mdate.year))
+        vol_matrix = ql.Matrix(len(strikes), len(maturity_list))
+        for i in range(vol_matrix.rows()):
+            for j in range(vol_matrix.columns()):
+                vol_matrix[i][j] = volset[j][i]
+        ql_evalDate = self.util.to_ql_date(self.eval_date)
+        black_var_surface = ql.BlackVarianceSurface(
+            ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
+        return black_var_surface
 
-            delta = option.get_delta()
-            rho = option.get_rho()
-            gamma = option.get_gamma()
-            if carry == None or np.isnan(carry): carry = -999.0
-            if theta == None or np.isnan(theta): theta = -999.0
-            if vega == None or np.isnan(vega): vega = -999.0
-            if gamma == None or np.isnan(gamma): gamma = -999.0
-            if iv == None or np.isnan(iv): iv = -999.0
-            if delta == None or np.isnan(delta): delta = -999.0
-            if rho == None or np.isnan(rho): rho = -999.0
-        else:
+
+    def calculate_implied_vol(self, df):
+        for (idx, row) in df.iterrows():
+            option = row[self.util.bktoption]
             iv = option.get_implied_vol()
-            carry = theta = vega = gamma = delta = rho = -999.0
-            if iv == None or np.isnan(iv): iv = -999.0
-        if self.flag_calculate_iv:
-            datasource = 'calculated'
-        else:
-            if self.option_code == 'm':
-                datasource = 'dce'
+            df.loc[idx, self.util.col_implied_vol] = iv
+        return df
+
+
+    def collect_option_metrics(self, hp=30):
+        res = []
+        df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
+        bktoption_list = self.bktoptionset
+        if len(bktoption_list) == 0: return df
+        bvs_call = self.get_volsurface_squre('call')
+        bvs_put = self.get_volsurface_squre('put')
+        for idx, option in enumerate(bktoption_list):
+            if option.option_price() > 0.0:
+                iv = option.get_implied_vol()
+                if option.option_type == self.util.type_call:
+                    carry = option.get_carry(bvs_call, hp)
+                else:
+                    carry = option.get_carry(bvs_put, hp)
+                theta = option.get_theta()
+                vega = option.get_vega()
+
+                delta = option.get_delta()
+                rho = option.get_rho()
+                gamma = option.get_gamma()
+                if carry == None or np.isnan(carry): carry = -999.0
+                if theta == None or np.isnan(theta): theta = -999.0
+                if vega == None or np.isnan(vega): vega = -999.0
+                if gamma == None or np.isnan(gamma): gamma = -999.0
+                if iv == None or np.isnan(iv): iv = -999.0
+                if delta == None or np.isnan(delta): delta = -999.0
+                if rho == None or np.isnan(rho): rho = -999.0
             else:
-                datasource = 'czce'
-        db_row = {
-            self.util.col_date: self.eval_date,
-            self.util.col_id_instrument: option.id_instrument(),
-            'datasource': datasource,
-            'name_code': self.option_code,
-            'id_underlying': option.id_underlying(),
-            'amt_strike': float(option.strike()),
-            self.util.col_code_instrument: option.code_instrument(),
-            self.util.col_option_type: option.option_type(),
-            self.util.col_maturitydt: option.maturitydt(),
-            self.util.col_implied_vol: float(iv),
-            self.util.col_adj_strike: float(option.adj_strike()),
-            self.util.col_option_price: float(option.option_price()),
-            'amt_delta': float(delta),
-            self.util.col_vega: float(vega),
-            self.util.col_theta: float(theta),
-            'amt_rho': float(rho),
-            'amt_gamma': float(gamma),
-            'amt_carry_1M': float(carry),
-            'timestamp': datetime.datetime.today()
-        }
-        res.append(db_row)
-    return res
+                iv = option.get_implied_vol()
+                carry = theta = vega = gamma = delta = rho = -999.0
+                if iv == None or np.isnan(iv): iv = -999.0
+            if self.flag_calculate_iv:
+                datasource = 'calculated'
+            else:
+                if self.option_code == 'm':
+                    datasource = 'dce'
+                else:
+                    datasource = 'czce'
+            db_row = {
+                self.util.col_date: self.eval_date,
+                self.util.col_id_instrument: option.id_instrument(),
+                'datasource': datasource,
+                'name_code': self.option_code,
+                'id_underlying': option.id_underlying(),
+                'amt_strike': float(option.strike()),
+                self.util.col_code_instrument: option.code_instrument(),
+                self.util.col_option_type: option.option_type(),
+                self.util.col_maturitydt: option.maturitydt(),
+                self.util.col_implied_vol: float(iv),
+                self.util.col_adj_strike: float(option.adj_strike()),
+                self.util.col_option_price: float(option.option_price()),
+                'amt_delta': float(delta),
+                self.util.col_vega: float(vega),
+                self.util.col_theta: float(theta),
+                'amt_rho': float(rho),
+                'amt_gamma': float(gamma),
+                'amt_carry_1M': float(carry),
+                'timestamp': datetime.datetime.today()
+            }
+            res.append(db_row)
+        return res

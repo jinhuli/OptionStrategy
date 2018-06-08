@@ -56,7 +56,7 @@ class BktStrategyCollar(BktOptionStrategy):
         bkt_account = self.bkt_account
         print(bkt_optionset.dt_list)
         print(bkt_index.dt_list)
-        inv_fund = (1 - self.cash_reserve_pct) * bkt_account.cash
+        inv_fund = (1-self.cash_reserve_pct)*bkt_account.cash
         evalDate = bkt_optionset.eval_date
         """Option: Select Strategy and Open Position"""
         cd_open_position_time = 'close'

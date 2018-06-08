@@ -2,14 +2,15 @@ from back_test.bkt_option_set import BktOptionSet
 from back_test.bkt_util import BktUtil
 from back_test.data_option import get_50option_mktdata,get_comoption_mktdata
 import QuantLib as ql
+import pandas as pd
 from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
+from back_test.bkt_strategy_ivbymoneyness import BktStrategyMoneynessVol
+from back_test.data_option import get_50option_mktdata as get_mktdata
 
 
-
-
-start_date = datetime.date(2018,5,28)
-end_date = datetime.date(2018,6,1)
+start_date = datetime.date(2018,6,4)
+end_date = datetime.date(2018,6,8)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -100,3 +101,19 @@ while bkt_optionset.index <= len(bkt_optionset.dt_list):
     if evalDate == bkt_optionset.end_date:
         break
     bkt_optionset.next()
+
+""" Calculate ATM Implied Volatility"""
+
+df_option_metrics = get_mktdata(start_date, end_date)
+
+bkt = BktStrategyMoneynessVol(df_option_metrics)
+bkt.set_min_holding_days(8) # TODO: 选择期权最低到期日
+res = bkt.ivs_mdt1_run()
+table = Table('option_atm_iv', metadata, autoload=True)
+for r in res:
+    try:
+        conn.execute(table.insert(), r)
+        # r.to_sql(name='option_atm_iv', con=engine, if_exists='append', index=False)
+    except Exception as e:
+        print(e)
+        continue
