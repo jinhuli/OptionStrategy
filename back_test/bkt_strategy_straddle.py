@@ -1,10 +1,8 @@
-from back_test.bkt_strategy import BktOptionStrategy,BktOptionIndex
-from back_test.bkt_strategy import BktInstrument
-import numpy as np
+from back_test.BktOptionStrategy import BktOptionStrategy
 import pandas as pd
 import QuantLib as ql
 import datetime
-from back_test.data_option import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv,get_comoption_mktdata
+from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv,get_comoption_mktdata
 
 
 class BktStrategyStraddle(BktOptionStrategy):

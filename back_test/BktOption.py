@@ -1,11 +1,10 @@
 from OptionStrategyLib.OptionPricing.Options import OptionPlainEuropean
 from OptionStrategyLib.OptionPricing.OptionMetrics import OptionMetrics
 from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
-from back_test.bkt_util import BktUtil
+from back_test.BktUtil import BktUtil
 import QuantLib as ql
 import numpy as np
-from back_test.bkt_instrument import BktInstrument
-import datetime
+from back_test.BktInstrument import BktInstrument
 
 class BktOption(BktInstrument):
 
@@ -21,13 +20,14 @@ class BktOption(BktInstrument):
         self.daycounter = ql.ActualActual()
         self.calendar = ql.China()
         self.implied_vol = None
-        self.update_pricing_metrics()
+        self.evaluation = None
+        # self.update_pricing_metrics()
 
     def next(self):
         self.current_index = self.current_index + 1
         self.implied_vol = None
         self.update_current_state()
-        self.update_pricing_metrics()
+        # self.update_pricing_metrics()
 
     def update_evaluation(self):
         ql_evalDate = ql.Date(self.eval_date.day, self.eval_date.month, self.eval_date.year)
@@ -35,6 +35,9 @@ class BktOption(BktInstrument):
         self.evaluation = evaluation
 
     def update_pricing_metrics(self):
+        if self.evaluation != None and self.evaluation.evalDate == \
+                ql.Date(self.eval_date.day, self.eval_date.month, self.eval_date.year):
+            return
         self.update_evaluation()
         if self.pricing_metrics == None:
             if self.pricing_type == 'OptionPlainEuropean':
@@ -48,13 +51,22 @@ class BktOption(BktInstrument):
                 else:
                     print('No option type!')
                     return
-                option = OptionPlainEuropean(self.strike(), ql_maturitydt, ql_optiontype)
+                strike = self.util.get_applicable_strike(self)
+                option = OptionPlainEuropean(strike, ql_maturitydt, ql_optiontype)
             else:
                 print('Unsupported Option Type !')
                 option = None
             self.pricing_metrics = OptionMetrics(option, self.rf, self.engine_type).set_evaluation(self.evaluation)
         else:
             self.pricing_metrics.set_evaluation(self.evaluation)
+
+    def contract_month(self):
+        try:
+            contract_month = self.current_daily_state[self.util.col_name_contract_month]
+        except Exception as e:
+            print(e)
+            contract_month = None
+        return contract_month
 
     def strike(self):
         try:
@@ -157,6 +169,7 @@ class BktOption(BktInstrument):
             option_price = self.option_price()
         try:
             if self.flag_calculate_iv:
+                self.update_pricing_metrics()
                 implied_vol = self.pricing_metrics.implied_vol(spot,option_price)
             else:
                 implied_vol = self.implied_vol_given() / 100.0
@@ -185,6 +198,7 @@ class BktOption(BktInstrument):
         return self.implied_vol
 
     def get_delta(self,iv=None):
+        self.update_pricing_metrics()
         try:
             if iv == None:
                 if self.implied_vol == None: self.update_implied_vol()
@@ -197,6 +211,7 @@ class BktOption(BktInstrument):
         return delta
 
     def get_theta(self):
+        self.update_pricing_metrics()
         try:
             if self.implied_vol == None: self.update_implied_vol()
             theta = self.pricing_metrics.theta(self.underlying_close(), self.implied_vol)
@@ -206,6 +221,7 @@ class BktOption(BktInstrument):
         return theta
 
     def get_vega(self):
+        self.update_pricing_metrics()
         if self.implied_vol == None: self.update_implied_vol()
         try:
             vega = self.pricing_metrics.vega(self.underlying_close(), self.implied_vol)
@@ -215,6 +231,7 @@ class BktOption(BktInstrument):
         return vega
 
     def get_rho(self):
+        self.update_pricing_metrics()
         if self.implied_vol == None: self.update_implied_vol()
         try:
             rho = self.pricing_metrics.rho(self.underlying_close(), self.implied_vol)
@@ -224,6 +241,7 @@ class BktOption(BktInstrument):
         return rho
 
     def get_gamma(self):
+        self.update_pricing_metrics()
         if self.implied_vol == None: self.update_implied_vol()
         try:
             gamma = self.pricing_metrics.gamma(self.underlying_close(), self.implied_vol)
@@ -233,6 +251,7 @@ class BktOption(BktInstrument):
         return gamma
 
     def get_vomma(self):
+        self.update_pricing_metrics()
         if self.implied_vol == None: self.update_implied_vol()
         try:
             vomma = self.pricing_metrics.vomma( self.underlying_close(),  self.implied_vol)
@@ -326,6 +345,7 @@ class BktOption(BktInstrument):
         return unit
 
     def senario_calculate_option_price(self,underlying_price,vol):
+        self.update_pricing_metrics()
         try:
             p = self.pricing_metrics.option_price(self.evaluation, self.rf, underlying_price,
                                                   vol, self.engine_type)

@@ -1,7 +1,7 @@
-from back_test.bkt_util import BktUtil
+from back_test.BktUtil import BktUtil
 import datetime
 import numpy as np
-import pandas as pd
+
 
 class BktInstrument(object):
     """ Contain metrics and trading position info as attributes """

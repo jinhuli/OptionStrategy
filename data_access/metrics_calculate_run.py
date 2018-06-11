@@ -1,12 +1,11 @@
-from back_test.bkt_option_set import BktOptionSet
-from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata,get_comoption_mktdata
-import QuantLib as ql
-import pandas as pd
+from back_test.BktOptionSet import BktOptionSet
+from back_test.BktUtil import BktUtil
+from data_access.get_data import get_50option_mktdata,get_comoption_mktdata
 from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
-import datetime
 from back_test.bkt_strategy_ivbymoneyness import BktStrategyMoneynessVol
-from back_test.data_option import get_50option_mktdata as get_mktdata
+# from data_access.get_data import get_50option_mktdata as get_mktdata
+import QuantLib as ql
+import datetime
 
 
 start_date = datetime.date(2018,6,4)
@@ -104,7 +103,7 @@ while bkt_optionset.index <= len(bkt_optionset.dt_list):
 
 """ Calculate ATM Implied Volatility"""
 
-df_option_metrics = get_mktdata(start_date, end_date)
+df_option_metrics = get_50option_mktdata(start_date, end_date)
 
 bkt = BktStrategyMoneynessVol(df_option_metrics)
 bkt.set_min_holding_days(8) # TODO: 选择期权最低到期日

@@ -29,6 +29,7 @@ class OptionMetrics:
         process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, 0.0)
         engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
+        print('pricing metrics eval date : ',self.evaluation.evalDate)
         try:
             implied_vol = option.impliedVolatility(option_price, process, 1.0e-3, 300, 0.05, 5.0)
         except:

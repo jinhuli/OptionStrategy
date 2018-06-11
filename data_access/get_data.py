@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
-from back_test.bkt_util import BktUtil
+from back_test.BktUtil import BktUtil
 
 
 def get_eventsdata(start_date, end_date,flag_impact):
@@ -54,7 +54,7 @@ def get_50option_mktdata(start_date, end_date):
         .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
         .filter(Option_mkt.datasource == 'wind')
 
-    query_option = sess.query(options.id_instrument, options.cd_option_type, options.amt_strike,
+    query_option = sess.query(options.id_instrument, options.cd_option_type, options.amt_strike,options.name_contract_month,
                               options.dt_maturity, options.nbr_multiplier) \
         .filter(and_(options.dt_listed <= end_date, options.dt_maturity >= start_date))
 

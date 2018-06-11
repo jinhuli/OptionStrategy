@@ -1,10 +1,5 @@
-from back_test.bkt_strategy import BktOptionStrategy
-import QuantLib as ql
+from back_test.BktOptionStrategy import BktOptionStrategy
 import pandas as pd
-from sqlalchemy import create_engine, MetaData, Table
-import datetime
-from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata as get_mktdata
 
 
 class BktStrategyMoneynessVol(BktOptionStrategy):

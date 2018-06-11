@@ -6,8 +6,6 @@ from WindPy import w
 from data_access.db_data_collection import DataCollection
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
-from back_test.data_option import get_50option_mktdata
-from back_test.bkt_option_set import BktOptionSet
 
 
 w.start()

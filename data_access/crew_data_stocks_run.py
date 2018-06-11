@@ -3,13 +3,7 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
 from WindPy import w
-import pandas as pd
-from data_access import spider_api_dce as dce
-from data_access import spider_api_sfe as sfe
-from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
-from back_test.data_option import get_50option_mktdata
-from back_test.bkt_option_set import BktOptionSet
 
 w.start()
 

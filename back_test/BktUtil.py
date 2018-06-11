@@ -1,7 +1,7 @@
 import datetime
 import QuantLib as ql
 import hashlib
-import numpy as np
+import pandas as pd
 
 class BktUtil():
 
@@ -31,7 +31,7 @@ class BktUtil():
         self.col_id_instrument = 'id_instrument'
         self.col_id_underlying = 'id_underlying'
         self.col_option_type = 'cd_option_type'
-
+        self.col_name_contract_month = 'name_contract_month'
         self.col_strike = 'amt_strike'
         self.col_adj_strike = 'amt_adj_strike'
         self.col_close = 'amt_close'
@@ -155,6 +155,46 @@ class BktUtil():
     def to_dt_date(self,ql_date):
         return datetime.date(ql_date.year(),ql_date.month(),ql_date.dayOfMonth())
 
+    def get_duplicate_strikes_dropped(self, df_daily_state):
+        maturities = sorted(df_daily_state[self.col_maturitydt].unique())
+        df = pd.DataFrame()
+        for mdt in maturities:
+            df_mdt_call = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
+                                     (df_daily_state[self.col_option_type] == self.type_call)] \
+                .sort_values(by=self.col_trading_volume, ascending=False) \
+                .drop_duplicates(subset=[self.col_adj_strike])
+            df_mdt_put = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
+                                    (df_daily_state[self.col_option_type] == self.type_put)] \
+                .sort_values(by=self.col_trading_volume, ascending=False) \
+                .drop_duplicates(subset=[self.col_adj_strike])
+            df = df.append(df_mdt_call, ignore_index=True)
+            df = df.append(df_mdt_put, ignore_index=True)
+        return df
+
+    def dividend_dates(self):
+        """ 分红日前，使用调整前的行权价计算隐含波动率，例如，
+        分红日d1影响的合约'1612','1701','1703','1706'在分红日前需反算adj_strike,之后则不需要"""
+        d1 = datetime.date(2016,11,29)
+        d2 = datetime.date(2017,11,28)
+        res = {d1:['1612','1701','1703','1706'],d2:['1712','1801','1803','1806']}
+        return res
+
+    def get_applicable_strike(self,bktoption):
+        if bktoption.multiplier() == 10000 : return bktoption.strike() #非调整的合约直接去行权价
+        eval_date = bktoption.eval_date
+        contract_month = bktoption.contract_month()
+        dict = self.dividend_dates()
+        dates = sorted(dict.keys(),reverse=False)
+        if eval_date < dates[0]:
+            if contract_month in dict[eval_date]:
+                return bktoption.adj_strike() #分红除息日前反算调整前的行权价
+            else:
+                print('contract month not exist -- get_applicable_strike')
+        elif eval_date < dates[1]:
+            if contract_month in dict[eval_date]:
+                return bktoption.adj_strike() #分红除息日前反算调整前的行权价
+            else:
+                print('contract month not exist -- get_applicable_strike')
 
 
 

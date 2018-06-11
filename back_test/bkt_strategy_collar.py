@@ -1,9 +1,9 @@
-from back_test.bkt_strategy import BktOptionStrategy,BktOptionIndex
-from back_test.bkt_strategy import BktInstrument
+from back_test.BktOptionStrategy import BktOptionStrategy,BktOptionIndex
+from back_test.BktInstrument import BktInstrument
 import numpy as np
 import QuantLib as ql
 import datetime
-from back_test.data_option import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv
+from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv
 
 
 class BktStrategyCollar(BktOptionStrategy):
@@ -161,7 +161,8 @@ class BktStrategyCollar(BktOptionStrategy):
                     moneyness_call=moneyness_call,moneyness_put=moneyness_put,
                     flag_protect=flag_protect)
                 self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
-                bkt_account.portfolio_rebalancing_eqlunit(self.portfolio, unit_underlying,buy_ratio=buy_ratio, call_ratio=write_ratio,put_ratio=buy_ratio)
+                bkt_account.portfolio_rebalancing_eqlunit(self.portfolio, unit_underlying,
+                                                          call_ratio=write_ratio,put_ratio=buy_ratio)
                 bkt_account.rebalance_portfolio(evalDate, self.portfolio)
                 self.flag_trade = True
             else:
@@ -197,9 +198,10 @@ class BktStrategyCollar(BktOptionStrategy):
                         bkt_index,
                         moneyness_call=moneyness_call, moneyness_put=moneyness_put,
                         flag_protect=flag_protect)
-                    self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put, write_call=portfolio_new.write_call)
+                    self.portfolio.update_portfolio(buy_put=portfolio_new.buy_put,
+                                                    write_call=portfolio_new.write_call)
                     bkt_account.portfolio_rebalancing_eqlunit(self.portfolio, unit_underlying,
-                                                              buy_ratio=buy_ratio, call_ratio=write_ratio,put_ratio=buy_ratio)
+                                                              call_ratio=write_ratio,put_ratio=buy_ratio)
                     bkt_account.rebalance_portfolio(evalDate, self.portfolio)
             if self.portfolio.write_call == None or self.portfolio.buy_put==None:
                 self.flag_trade = False

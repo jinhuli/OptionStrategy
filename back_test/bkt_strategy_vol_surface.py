@@ -1,13 +1,8 @@
-from back_test.bkt_strategy import BktOptionStrategy
-from back_test.bkt_account import BktAccount
+from back_test.BktOptionStrategy import BktOptionStrategy
 import QuantLib as ql
-import numpy as np
 import datetime
-from back_test.bkt_util import BktUtil
-from back_test.data_option import get_50option_mktdata2 as get_mktdata, get_eventsdata, get_50etf_mktdata
+from data_access.get_data import get_50option_mktdata as get_mktdata, get_eventsdata, get_50etf_mktdata
 from back_test.OptionPortfolio import *
-from Utilities.PlotUtil import PlotUtil
-import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
