@@ -186,15 +186,14 @@ class BktUtil():
         dict = self.dividend_dates()
         dates = sorted(dict.keys(),reverse=False)
         if eval_date < dates[0]:
-            if contract_month in dict[eval_date]:
-                return bktoption.adj_strike() #分红除息日前反算调整前的行权价
-            else:
-                print('contract month not exist -- get_applicable_strike')
+            return bktoption.adj_strike() #分红除息日前反算调整前的行权价
         elif eval_date < dates[1]:
-            if contract_month in dict[eval_date]:
+            if contract_month in dict[dates[0]]:
+                return bktoption.strike() #分红除息日后用实际调整后的行权价
+            elif contract_month in dict[dates[1]]:
                 return bktoption.adj_strike() #分红除息日前反算调整前的行权价
             else:
-                print('contract month not exist -- get_applicable_strike')
+                print('contract month not exist recheck get_applicable_strike')
 
 
 

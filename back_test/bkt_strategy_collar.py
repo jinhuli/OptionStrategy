@@ -372,9 +372,9 @@ class BktStrategyCollar(BktOptionStrategy):
 
 
 """Back Test Settings"""
-start_date = datetime.date(2015, 3, 1)
-# start_date = datetime.date(2017, 5, 20)
-end_date = datetime.date(2018, 5, 21)
+# start_date = datetime.date(2015, 3, 1)
+start_date = datetime.date(2017, 10, 1)
+end_date = datetime.date(2018, 1, 21)
 
 
 """Collect Mkt Date"""
