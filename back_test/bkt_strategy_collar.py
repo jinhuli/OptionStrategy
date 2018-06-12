@@ -3,7 +3,7 @@ from back_test.BktInstrument import BktInstrument
 import numpy as np
 import QuantLib as ql
 import datetime
-from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata,get_put_call_iv
+from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata,get_pciv_ratio
 
 
 class BktStrategyCollar(BktOptionStrategy):
@@ -13,7 +13,7 @@ class BktStrategyCollar(BktOptionStrategy):
         self.validate_data(df_option, df_index)
         BktOptionStrategy.__init__(self, self.df_option, money_utilization=money_utilization,
                                        init_fund=init_fund)
-        self.bkt_index = BktInstrument('daily', self.df_index)
+        self.bkt_index = BktInstrument(self.df_index)
         self.cash_reserve_pct = cash_reserve_pct
         self.moneyness_call = -2
         self.moneyness_put = -2
@@ -54,8 +54,8 @@ class BktStrategyCollar(BktOptionStrategy):
         bkt_optionset = self.bkt_optionset
         bkt_index = self.bkt_index
         bkt_account = self.bkt_account
-        print(bkt_optionset.dt_list)
-        print(bkt_index.dt_list)
+        # print(bkt_optionset.dt_list)
+        # print(bkt_index.dt_list)
         inv_fund = (1-self.cash_reserve_pct)*bkt_account.cash
         evalDate = bkt_optionset.eval_date
         """Option: Select Strategy and Open Position"""
@@ -80,7 +80,6 @@ class BktStrategyCollar(BktOptionStrategy):
         while bkt_optionset.index < len(bkt_optionset.dt_list):
             self.next()
             evalDate = bkt_optionset.eval_date
-            print(evalDate)
             """ 回测期最后一天全部清仓 """
             if evalDate == bkt_optionset.end_date:
                 print(' Liquidate all positions !!! ')
@@ -391,7 +390,7 @@ bkt_strategy.set_min_holding_days(8)
 df_index_ma = bkt_strategy.get_moving_average_signal(get_index_ma(start_date,end_date,'index_50etf'))
 df_vix_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_cvix'),cd_long='60')
 df_index_boll = bkt_strategy.get_bollinger_signal(get_index_ma(start_date,end_date,'index_50etf'),cd_long='60')
-df_iv = bkt_strategy.get_bollinger_signal_calculate(get_put_call_iv(end_date),start_date)
+df_iv = bkt_strategy.get_bollinger_signal_calculate(get_pciv_ratio(end_date),start_date)
 # df_iv = bkt_strategy.get_percentile_signal(get_put_call_iv(end_date),start_date)
 
 bkt_strategy.set_index_ma(df_index_ma)

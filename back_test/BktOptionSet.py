@@ -14,7 +14,7 @@ class BktOptionSet(object):
     To Manage Back Test State of all BktOption Objects
     """
 
-    def __init__(self, cd_frequency, df_option_metrics, flag_calculate_iv=True, min_ttm=2,
+    def __init__(self, df_option_metrics, cd_frequency='daily', flag_calculate_iv=True, min_ttm=2,
                  pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine', rf=0.03):
         self.util = BktUtil()
         tmp = df_option_metrics.loc[0, self.util.id_instrument]
@@ -31,8 +31,6 @@ class BktOptionSet(object):
         self.calendar = ql.China()
         self.bktoptionset = set()
         self.eligible_maturities = []
-        # self.atm_delta_min = 0.4
-        # self.atm_delta_max = 0.6
         self.index = 0
         self.start()
 
@@ -41,8 +39,8 @@ class BktOptionSet(object):
         self.start_date = self.dt_list[0]  # 0
         self.end_date = self.dt_list[-1]  # len(self.dt_list)-1
         self.eval_date = self.start_date
-        self.validate_data()
-        self.add_bktoption_column()
+        # self.validate_data()
+        # self.add_bktoption_column()
         self.df_last_state = pd.DataFrame()
         self.update_multiplier_adjustment()
         self.update_current_daily_state()
@@ -82,42 +80,10 @@ class BktOptionSet(object):
                 else:
                     df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index(
                         drop=True)
-                    bktoption = BktOption(self.frequency, df_option, self.flag_calculate_iv, rf=self.rf)
+                    bktoption = BktOption(df_option, self.flag_calculate_iv, rf=self.rf)
                     self.df_daily_state.loc[idx, self.util.bktoption] = bktoption
             self.bktoptionset = set(self.df_daily_state[self.util.bktoption].tolist())
 
-    def get_df_by_mdt_type(self, df, mdt, option_type):
-        if option_type == self.util.type_call:
-            return self.get_df_call_by_mdt(mdt, df)
-        elif option_type == self.util.type_put:
-            return self.get_df_put_by_mdt(mdt, df)
-        else:
-            return "Unsupport Option Type!"
-
-    def get_df_by_type(self, df, option_type):
-        if option_type == self.util.type_call:
-            c = df[self.util.col_option_type] == self.util.type_call
-        elif option_type == self.util.type_put:
-            c = df[self.util.col_option_type] == self.util.type_put
-        else:
-            return "Unsupport Option Type!"
-        df = df[c].reset_index(drop=True)
-        return df
-
-    def get_df_by_mdt(self, df, mdt):
-        c = df[self.util.col_maturitydt] == mdt
-        df = df[c].reset_index(drop=True)
-        return df
-
-    def get_df_call_by_mdt(self, df, mdt):
-        c = (df[self.util.col_option_type] == self.util.type_call) & (df[self.util.col_maturitydt] == mdt)
-        df = df[c].reset_index(drop=True)
-        return df
-
-    def get_df_put_by_mdt(self, df, mdt):
-        c = (df[self.util.col_option_type] == self.util.type_put) & (df[self.util.col_maturitydt] == mdt)
-        df = df[c].reset_index(drop=True)
-        return df
 
     def validate_data(self):
         underlyingids = self.df_data[self.util.col_id_underlying].unique()
@@ -205,31 +171,11 @@ class BktOptionSet(object):
             self.df_data[self.util.col_adj_strike] = self.df_data[self.util.col_strike]
             self.df_data[self.util.col_adj_option_price] = self.df_data[self.util.col_settlement]
 
-    """ 50ETF期权分红后会产生同样行权价的两个期权，选择trading volume较大的一个。 """
-
-    def get_duplicate_strikes_dropped(self, df_metrics):
-        maturities = sorted(df_metrics[self.util.col_maturitydt].unique())
-        df = pd.DataFrame()
-        for mdt in maturities:
-            df_mdt_call = df_metrics[(df_metrics[self.util.col_maturitydt] == mdt) &
-                                     (df_metrics[self.util.col_option_type] == self.util.type_call)] \
-                .sort_values(by=self.util.col_trading_volume, ascending=False) \
-                .drop_duplicates(subset=[self.util.col_adj_strike])
-            df_mdt_put = df_metrics[(df_metrics[self.util.col_maturitydt] == mdt) &
-                                    (df_metrics[self.util.col_option_type] == self.util.type_put)] \
-                .sort_values(by=self.util.col_trading_volume, ascending=False) \
-                .drop_duplicates(subset=[self.util.col_adj_strike])
-            df = df.append(df_mdt_call, ignore_index=True)
-            df = df.append(df_mdt_put, ignore_index=True)
-        return df
-
     def add_dtdate_column(self):
         if self.util.col_date not in self.df_data.columns.tolist():
             for (idx, row) in self.df_data.iterrows():
                 self.df_data.loc[idx, self.util.col_date] = row[self.util.col_datetime].date()
 
-    def add_bktoption_column(self):
-        self.df_data[self.util.bktoption] = pd.Series(np.zeros(len(self.df_data)), index=self.df_data.index)
 
     def get_put(self, moneyness_rank, mdt, cd_long_short, cd_underlying_price='open'):
         # moneyness_rank：
@@ -357,11 +303,11 @@ class BktOptionSet(object):
         * ATM defined as FIRST OTM  """
 
     def update_options_by_moneyness_1(self, cd_underlying_price):
-        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
         options_by_moneyness = {}
         for mdt in self.eligible_maturities:
-            df_call = self.get_df_call_by_mdt(df, mdt)
-            df_put = self.get_df_put_by_mdt(df, mdt)
+            df_call = self.util.get_df_call_by_mdt(df, mdt)
+            df_put = self.util.get_df_put_by_mdt(df, mdt)
             optionset_call = df_call[self.util.bktoption]
             optionset_put = df_put[self.util.bktoption]
             dict_call = {}
@@ -408,11 +354,11 @@ class BktOptionSet(object):
         * ATM defined as THAT WITH STRIKE CLOSEST WITH UNDERLYING PRICE """
 
     def update_options_by_moneyness_2(self, cd_underlying_price):
-        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
         options_by_moneyness = {}
         for mdt in self.eligible_maturities:
-            df_call = self.get_df_call_by_mdt(df, mdt)
-            df_put = self.get_df_put_by_mdt(df, mdt)
+            df_call = self.util.get_df_call_by_mdt(df, mdt)
+            df_put = self.util.get_df_put_by_mdt(df, mdt)
             optionset_call = df_call[self.util.bktoption]
             optionset_put = df_put[self.util.bktoption]
             dict_call = {}
@@ -457,9 +403,9 @@ class BktOptionSet(object):
         * ATM defined as FIRST OTM  """
 
     def get_moneyness_iv_by_mdt_1(self, mdt, cd_underlying_price):
-        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
-        df_call = self.get_df_call_by_mdt(df, mdt)
-        df_put = self.get_df_put_by_mdt(df, mdt)
+        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+        df_call = self.util.get_df_call_by_mdt(df, mdt)
+        df_put = self.util.get_df_put_by_mdt(df, mdt)
         optionset_call = df_call[self.util.bktoption]
         optionset_put = df_put[self.util.bktoption]
         dict_call = {}
@@ -505,9 +451,9 @@ class BktOptionSet(object):
         * ATM defined as THAT WITH STRIKE CLOSEST WITH UNDERLYING PRICE """
 
     def get_moneyness_iv_by_mdt_2(self, mdt, cd_underlying_price):
-        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
-        df_call = self.get_df_call_by_mdt(df, mdt)
-        df_put = self.get_df_put_by_mdt(df, mdt)
+        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+        df_call = self.util.get_df_call_by_mdt(df, mdt)
+        df_put = self.util.get_df_put_by_mdt(df, mdt)
         optionset_call = df_call[self.util.bktoption]
         optionset_put = df_put[self.util.bktoption]
         dict_call = {}
@@ -543,9 +489,9 @@ class BktOptionSet(object):
 
     def get_mdt_keyvols(self, option_type):
         keyvols_mdts = {}
-        df = self.get_duplicate_strikes_dropped(self.df_daily_state)
+        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
         for mdt in self.eligible_maturities:
-            df_mdt = self.get_df_by_mdt_type(df, mdt, option_type)
+            df_mdt = self.util.get_df_by_mdt_type(df, mdt, option_type)
             df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_adj_strike])
             spot = df_mdt[self.util.bktoption].values[0].underlying_price
             strikes = []
@@ -635,7 +581,7 @@ class BktOptionSet(object):
 
     def get_volsurface_squre(self, option_type):
         ql_maturities = []
-        df = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, option_type))
+        df = self.util.get_duplicate_strikes_dropped(self.util.get_df_by_type(self.df_daily_state, option_type))
         df = self.calculate_implied_vol(df)
         df_mdt_list = []
         iv_name_list = []
@@ -684,8 +630,8 @@ class BktOptionSet(object):
                 call_list.append(option)
             else:
                 put_list.append(option)
-        df_call = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_call))
-        df_put = self.get_duplicate_strikes_dropped(self.get_df_by_type(self.df_daily_state, self.util.type_put))
+        df_call = self.util.get_duplicate_strikes_dropped(self.util.get_df_by_type(self.df_daily_state, self.util.type_call))
+        df_put = self.util.get_duplicate_strikes_dropped(self.util.get_df_by_type(self.df_daily_state, self.util.type_put))
         df_call = self.calculate_implied_vol(df_call)
         df_put = self.calculate_implied_vol(df_put)
         df_call['maturity_call'] = df_call[self.util.col_maturitydt]

@@ -6,7 +6,7 @@ import numpy as np
 class BktInstrument(object):
     """ Contain metrics and trading position info as attributes """
 
-    def __init__(self, cd_frequency, df_daily_metrics, df_intraday_metrics=None, rf = 0.03):
+    def __init__(self, df_daily_metrics, df_intraday_metrics=None, cd_frequency='daily', rf = 0.03):
         self.util = BktUtil()
         self.rf = rf
         self.frequency = cd_frequency

@@ -14,11 +14,10 @@ end_date = datetime.date(2018,6,11)
 calendar = ql.China()
 daycounter = ql.ActualActual()
 util = BktUtil()
-engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
-conn = engine.connect()
-metadata = MetaData(engine)
-optionMetrics = admin.table_option_metrics()
 
+
+optionMetrics = admin.table_option_metrics()
+conn = admin.conn_mktdata()
 
 name_option = 'sr'
 df_option_metrics = get_comoption_mktdata(start_date,end_date,name_option)
@@ -108,7 +107,7 @@ df_option_metrics = get_50option_mktdata(start_date, end_date)
 bkt = BktStrategyMoneynessVol(df_option_metrics)
 bkt.set_min_holding_days(8) # TODO: 选择期权最低到期日
 res = bkt.ivs_mdt1_run()
-table = Table('option_atm_iv', metadata, autoload=True)
+table = admin.table_option_atm_iv()
 for r in res:
     try:
         conn.execute(table.insert(), r)

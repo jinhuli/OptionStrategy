@@ -3,6 +3,7 @@ import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 import numpy as np
+from Utilities import admin_util as admin
 
 def average(df):
     if df.empty: return -999.0
@@ -26,26 +27,18 @@ def percentile(df,n,percent):
 # beg_date = datetime.date(2014, 6, 1)
 date = datetime.date(2015, 1, 1)
 
-engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
-engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
-Session = sessionmaker(bind=engine)
-sess = Session()
-metadata = MetaData(engine)
-Session1 = sessionmaker(bind=engine_metrics)
-sess1 = Session1()
-metadata_metrics = MetaData(engine_metrics)
-index_mktdata = Table('indexes_mktdata', metadata, autoload=True)
-ma_metrics = Table('moving_average', metadata_metrics, autoload=True)
+index_mktdata = admin.table_indexes_mktdata()
+ma_metrics = admin.table_moving_average()
 
 
-# query_mkt = sess.query(index_mktdata.c.dt_date,index_mktdata.c.id_instrument,
+# query_mkt = admin.session_mktdata().query(index_mktdata.c.dt_date,index_mktdata.c.id_instrument,
 #                        index_mktdata.c.amt_close) \
 #     .filter(index_mktdata.c.datasource == 'wind')\
 #     .filter(index_mktdata.c.id_instrument == 'index_50etf')\
 #     .filter(index_mktdata.c.dt_date >= date)
 # df_dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
 
-query_mkt = sess1.query(ma_metrics.c.dt_date,ma_metrics.c.id_instrument,
+query_mkt = admin.session_metrics().query(ma_metrics.c.dt_date,ma_metrics.c.id_instrument,
                        ma_metrics.c.amt_close) \
     .filter(ma_metrics.c.cd_period == 'ma_3')\
     .filter(ma_metrics.c.id_instrument == 'index_cvix')

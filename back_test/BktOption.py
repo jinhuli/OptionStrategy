@@ -10,9 +10,9 @@ class BktOption(BktInstrument):
 
     """ Contain metrics and trading position info as attributes """
 
-    def __init__(self, cd_frequency, df_daily_metrics, flag_calculate_iv,
+    def __init__(self, df_daily_metrics, flag_calculate_iv, cd_frequency='daily',
                  pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine', rf = 0.03):
-        BktInstrument.__init__(self,cd_frequency,df_daily_metrics,rf=rf)
+        BktInstrument.__init__(self,df_daily_metrics,rf=rf)
         self.util = BktUtil()
         self.flag_calculate_iv = flag_calculate_iv
         self.pricing_type = pricing_type
@@ -53,6 +53,7 @@ class BktOption(BktInstrument):
                     return
                 strike = self.util.get_applicable_strike(self)
                 option = OptionPlainEuropean(strike, ql_maturitydt, ql_optiontype)
+
             else:
                 print('Unsupported Option Type !')
                 option = None

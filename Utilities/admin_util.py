@@ -3,16 +3,26 @@ from sqlalchemy.orm import sessionmaker
 
 
 engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
-conn = engine.connect()
+# conn = engine.connect()
 metadata = MetaData(engine)
 
 engine_intraday = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata_intraday', echo=False)
-conn_intraday = engine_intraday.connect()
+# conn_intraday = engine_intraday.connect()
 metadata_intraday = MetaData(engine_intraday)
 
 engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
-conn_metrics = engine_metrics.connect()
+# conn_metrics = engine_metrics.connect()
 metadata_metrics = MetaData(engine_metrics)
+
+
+def conn_mktdata():
+    return engine.connect()
+
+def conn_intraday():
+    return engine_intraday.connect()
+
+def conn_metrics():
+    return engine_metrics.connect()
 
 def session_mktdata():
     Session = sessionmaker(bind=engine)
@@ -64,3 +74,6 @@ def table_moving_average():
 
 def table_option_iv_by_moneyness():
     return Table('option_iv_by_moneyness', metadata_metrics, autoload=True)
+
+def table_option_atm_iv():
+    return Table('option_atm_iv',metadata_metrics, autoload=True)

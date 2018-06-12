@@ -26,7 +26,7 @@ class BktOptionStrategy(object):
                                       margin_rate=margin_rate, init_fund=init_fund, tick_size=tick_size,
                                       contract_multiplier=contract_multiplier, fee_rate=fee_rate,
                                       nbr_slippage=nbr_slippage, rf = rf)
-        self.bkt_optionset = BktOptionSet('daily', df_option_metrics,flag_calculate_iv=flag_calculate_iv,
+        self.bkt_optionset = BktOptionSet(df_option_metrics,flag_calculate_iv=flag_calculate_iv,
                                           min_ttm=min_ttm, pricing_type=pricing_type, engine_type=engine_type)
         self.option_type = None
         self.min_holding_days = 1
@@ -45,46 +45,6 @@ class BktOptionStrategy(object):
     def set_min_trading_volume(self, min_volume):
         self.min_volume = min_volume
 
-    # def get_candidate_set(self, eval_date, option_set):
-    #     candidate_set = option_set.copy()
-    #
-    #     if self.min_holding_days != None:
-    #         for option in option_set:
-    #             if option not in candidate_set: continue
-    #             min_maturity = self.util.to_dt_date(
-    #                 self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
-    #             if option.maturitydt < min_maturity:
-    #                 candidate_set.remove(option)
-    #
-    #     if self.max_holding_days != None:
-    #         for option in option_set:
-    #             if option not in candidate_set: continue
-    #             max_maturity = self.util.to_dt_date(
-    #                 self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.max_holding_days, ql.Days)))
-    #             if option.maturitydt > max_maturity:
-    #                 candidate_set.remove(option)
-    #
-    #     if self.min_volume != None:
-    #         for option in option_set:
-    #             if option not in candidate_set: continue
-    #             if option.get_trading_volume() < self.min_volume:
-    #                 candidate_set.remove(option)
-    #
-    #     return candidate_set
-
-    # def get_mdt1_candidate_set(self,eval_date,option_set):
-    #     candidate_set = option_set.copy()
-    #     maturities = sorted(self.bkt_optionset.eligible_maturities)
-    #     min_maturity = self.util.to_dt_date(
-    #         self.calendar.advance(self.util.to_ql_date(eval_date), ql.Period(self.min_holding_days, ql.Days)))
-    #     mdt = maturities[0]
-    #     for mdt in maturities:
-    #         if mdt > min_maturity: break
-    #     for option in option_set:
-    #         if option not in candidate_set: continue
-    #         if option.maturitydt != mdt:
-    #             candidate_set.remove(option)
-    #     return candidate_set
 
     def get_1st_eligible_maturity(self, eval_date):
         maturities = sorted(self.bkt_optionset.eligible_maturities)

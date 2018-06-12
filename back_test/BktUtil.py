@@ -155,6 +155,40 @@ class BktUtil():
     def to_dt_date(self,ql_date):
         return datetime.date(ql_date.year(),ql_date.month(),ql_date.dayOfMonth())
 
+    def get_df_by_mdt_type(self, df, mdt, option_type):
+        if option_type == self.type_call:
+            return self.get_df_call_by_mdt(mdt, df)
+        elif option_type == self.type_put:
+            return self.get_df_put_by_mdt(mdt, df)
+        else:
+            return "Unsupport Option Type!"
+
+    def get_df_by_type(self, df, option_type):
+        if option_type == self.type_call:
+            c = df[self.col_option_type] == self.type_call
+        elif option_type == self.type_put:
+            c = df[self.col_option_type] == self.type_put
+        else:
+            return "Unsupport Option Type!"
+        df = df[c].reset_index(drop=True)
+        return df
+
+    def get_df_by_mdt(self, df, mdt):
+        c = df[self.col_maturitydt] == mdt
+        df = df[c].reset_index(drop=True)
+        return df
+
+    def get_df_call_by_mdt(self, df, mdt):
+        c = (df[self.col_option_type] == self.type_call) & (df[self.col_maturitydt] == mdt)
+        df = df[c].reset_index(drop=True)
+        return df
+
+    def get_df_put_by_mdt(self, df, mdt):
+        c = (df[self.col_option_type] == self.type_put) & (df[self.col_maturitydt] == mdt)
+        df = df[c].reset_index(drop=True)
+        return df
+
+    """ 50ETF期权分红后会产生同样行权价的两个期权，选择trading volume较大的一个。 """
     def get_duplicate_strikes_dropped(self, df_daily_state):
         maturities = sorted(df_daily_state[self.col_maturitydt].unique())
         df = pd.DataFrame()
@@ -180,7 +214,8 @@ class BktUtil():
         return res
 
     def get_applicable_strike(self,bktoption):
-        if bktoption.multiplier() == 10000 : return bktoption.strike() #非调整的合约直接去行权价
+        if bktoption.multiplier() == 10000 :
+            return bktoption.strike() #非调整的合约直接去行权价
         eval_date = bktoption.eval_date
         contract_month = bktoption.contract_month()
         dict = self.dividend_dates()
@@ -188,13 +223,12 @@ class BktUtil():
         if eval_date < dates[0]:
             return bktoption.adj_strike() #分红除息日前反算调整前的行权价
         elif eval_date < dates[1]:
-            if contract_month in dict[dates[0]]:
-                return bktoption.strike() #分红除息日后用实际调整后的行权价
-            elif contract_month in dict[dates[1]]:
+            if contract_month in dict[dates[1]]:
                 return bktoption.adj_strike() #分红除息日前反算调整前的行权价
             else:
-                print('contract month not exist recheck get_applicable_strike')
-
+                return bktoption.strike()  # 分红除息日后用实际调整后的行权价
+        else:
+            return bktoption.strike() # 分红除息日后用实际调整后的行权价
 
 
     def get_sha(self):

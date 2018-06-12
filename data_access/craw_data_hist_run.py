@@ -10,24 +10,19 @@ from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
+from Utilities import admin_util as admin
 
 w.start()
 
-engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata', echo=False)
-conn = engine.connect()
-metadata = MetaData(engine)
-options_mktdata_daily = Table('options_mktdata', metadata, autoload=True)
-futures_mktdata_daily = Table('futures_mktdata', metadata, autoload=True)
-futures_institution_positions = Table('futures_institution_positions', metadata, autoload=True)
+conn = admin.conn_mktdata()
+options_mktdata_daily = admin.table_options_mktdata()
+futures_mktdata_daily = admin.table_futures_mktdata()
+futures_institution_positions = admin.table_futures_institution_positions()
 
-engine_intraday = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata_intraday', echo=False)
-conn_intraday = engine_intraday.connect()
-metadata_intraday = MetaData(engine_intraday)
-equity_index_intraday = Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
-option_mktdata_intraday = Table('option_mktdata_intraday', metadata_intraday, autoload=True)
-# option_tick_data = Table('option_tick_data', metadata_intraday, autoload=True)
-# future_tick_data = Table('future_tick_data', metadata_intraday, autoload=True)
-index_daily = Table('indexes_mktdata', metadata, autoload=True)
+conn_intraday = admin.conn_intraday()
+equity_index_intraday = admin.table_equity_index_mktdata_intraday()
+option_mktdata_intraday = admin.table_option_mktdata_intraday()
+index_daily = admin.table_indexes_mktdata()
 
 dc = DataCollection()
 #####################################################################################
