@@ -58,7 +58,7 @@ class SkewIndexing(BktOptionStrategy):
         u = (p3-3*p1*p2+2*p1**3)
         x = p1**2
         y = p2-p1**2
-        d = (p2-p1**2)**1.5 # TODO: 被开放数字为负
+        d = (p2-p1**2)**1.5 # TODO: 被开方数字为负
         return (p3-3*p1*p2+2*p1**3)/(p2-p1**2)**1.5
 
     def for_calculation(self, df_mdt, atm_k, F):
