@@ -155,6 +155,17 @@ class BktUtil():
     def to_dt_date(self,ql_date):
         return datetime.date(ql_date.year(),ql_date.month(),ql_date.dayOfMonth())
 
+    def fun_option_price(self,df):
+        if df[self.col_close] != self.nan_value:
+            option_price = df[self.col_close]
+        elif df[self.col_settlement] != self.nan_value:
+            option_price = df[self.col_settlement]
+        else:
+            print('amt_close and amt_settlement are null!')
+            print(df)
+            option_price = None
+        return option_price
+
     def get_df_by_mdt_type(self, df, mdt, option_type):
         if option_type == self.type_call:
             return self.get_df_call_by_mdt(mdt, df)

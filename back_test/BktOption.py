@@ -11,8 +11,8 @@ class BktOption(BktInstrument):
     """ Contain metrics and trading position info as attributes """
 
     def __init__(self, df_daily_metrics, flag_calculate_iv, cd_frequency='daily',
-                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine', rf = 0.03):
-        BktInstrument.__init__(self,df_daily_metrics,rf=rf)
+                 pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
+        BktInstrument.__init__(self,df_daily_metrics)
         self.util = BktUtil()
         self.flag_calculate_iv = flag_calculate_iv
         self.pricing_type = pricing_type
@@ -102,18 +102,22 @@ class BktOption(BktInstrument):
 
     """ 如果close price为空，使用settlement price作为option price """
     def option_price(self):
+        # try:
+        #     settle = self.current_state[self.util.col_settlement]
+        #     close = self.current_state[self.util.col_close]
+        #     if close != self.util.nan_value:
+        #         option_price = close
+        #     elif settle != self.util.nan_value:
+        #         option_price = settle
+        #     else:
+        #         print(self.id_instrument, ' : amt_close and amt_settlement are null!', )
+        #         option_price = None
+        # except Exception as e:
+        #     print('Option close price and settlement price are both nan. ', e)
+        #     option_price = None
         try:
-            settle = self.current_state[self.util.col_settlement]
-            close = self.current_state[self.util.col_close]
-            if close != self.util.nan_value:
-                option_price = close
-            elif settle != self.util.nan_value:
-                option_price = settle
-            else:
-                print(self.id_instrument, ' : amt_close and amt_settlement are null!', )
-                option_price = None
-        except Exception as e:
-            print('Option close price and settlement price are both nan. ', e)
+            option_price = self.current_state[self.util.col_option_price]
+        except:
             option_price = None
         return option_price
 

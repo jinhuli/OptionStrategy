@@ -27,7 +27,7 @@ class BktOptionStrategy(object):
                                       contract_multiplier=contract_multiplier, fee_rate=fee_rate,
                                       nbr_slippage=nbr_slippage, rf = rf)
         self.bkt_optionset = BktOptionSet(df_option_metrics,flag_calculate_iv=flag_calculate_iv,
-                                          min_ttm=min_ttm, pricing_type=pricing_type, engine_type=engine_type)
+                                          min_ttm=min_ttm, pricing_type=pricing_type, engine_type=engine_type,rf=rf)
         self.option_type = None
         self.min_holding_days = 1
         self.max_holding_days = 252

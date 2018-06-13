@@ -694,7 +694,7 @@ class BktAccount(object):
         unrealized_pnl = 0.0
         mtm_long_positions = 0.0
         mtm_short_positions = 0.0
-        self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
+        self.cash = self.cash * (1 + (1.0 / 252) * self.rf)
         port_delta = 0.0
         # holdings = []
         for bktoption in portfolio.optionset:
@@ -741,7 +741,7 @@ class BktAccount(object):
         """ For long positions only, total_asset = cash + mtm_long_positions(i.e., total premiums);
             For short positions only, total_asset = cash + margin_capital + short posiitons pnl(unrealized)"""
         self.total_premiums_long = mtm_long_positions
-        interest = self.cash * (1.0 / 365) * self.rf
+        interest = self.cash * (1.0 / 252) * self.rf
         # total_asset1 = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
         # total_asset2 = self.total_asset - self.total_transaction_cost + unrealized_pnl + interest
         self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
@@ -767,7 +767,7 @@ class BktAccount(object):
         unrealized_pnl = 0.0
         mtm_long_positions = 0.0
         mtm_short_positions = 0.0
-        self.cash = self.cash * (1 + (1.0 / 365) * self.rf)
+        self.cash = self.cash * (1 + (1.0 / 252) * self.rf)
         port_delta = 0.0
         holdings = []
         for bktoption in self.holdings:

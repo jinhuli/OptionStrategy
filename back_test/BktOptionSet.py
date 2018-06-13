@@ -39,7 +39,7 @@ class BktOptionSet(object):
         self.start_date = self.dt_list[0]  # 0
         self.end_date = self.dt_list[-1]  # len(self.dt_list)-1
         self.eval_date = self.start_date
-        # self.validate_data()
+        self.validate_data()
         # self.add_bktoption_column()
         self.df_last_state = pd.DataFrame()
         self.update_multiplier_adjustment()
@@ -80,62 +80,62 @@ class BktOptionSet(object):
                 else:
                     df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index(
                         drop=True)
-                    bktoption = BktOption(df_option, self.flag_calculate_iv, rf=self.rf)
+                    bktoption = BktOption(df_option, self.flag_calculate_iv)
                     self.df_daily_state.loc[idx, self.util.bktoption] = bktoption
             self.bktoptionset = set(self.df_daily_state[self.util.bktoption].tolist())
 
 
     def validate_data(self):
-        underlyingids = self.df_data[self.util.col_id_underlying].unique()
-        for underlying_id in underlyingids:
-            c = self.df_data[self.util.col_id_underlying] == underlying_id
-            df_tmp = self.df_data[c]
-            mdt = df_tmp[self.util.col_maturitydt].values[0]
-            """Check Null Maturity"""
-            if pd.isnull(mdt):
-                m1 = int(underlying_id[-2:])
-                y1 = int(str(20) + underlying_id[-4:-2])
-                dt1 = ql.Date(1, m1, y1)
-                if self.option_code == 'sr':
-                    mdt = self.util.to_dt_date(self.calendar.advance(dt1, ql.Period(-5, ql.Days)))
-                elif self.option_code == 'm':
-                    tmp = self.calendar.advance(dt1, ql.Period(-1, ql.Months))
-                    mdt = self.util.to_dt_date(self.calendar.advance(tmp, ql.Period(5, ql.Days)))
-                self.df_data.loc[c, self.util.col_maturitydt] = mdt
-        for (idx, row) in self.df_data.iterrows():
-            """Check Null Option Type"""
-            option_type = row[self.util.col_option_type]
-            id_instrument = row[self.util.col_id_instrument]
-            if pd.isnull(option_type):
-                if self.option_code in ['sr', 'm']:
-                    if id_instrument[-6] == 'c':
-                        option_type = self.util.type_call
-                    elif id_instrument[-6] == 'p':
-                        option_type = self.util.type_put
-                    else:
-                        print(id_instrument, ',', id_instrument[-6])
-                        continue
-                    self.df_data.loc[idx, self.util.col_option_type] = option_type
-                else:
-                    continue
-            """Check Null Strike"""
-            strike = row[self.util.col_strike]
-            if pd.isnull(strike):
-                if self.option_code in ['sr', 'm']:
-                    strike = float(id_instrument[-4:])
-                    self.df_data.loc[idx, self.util.col_strike] = strike
-                else:
-                    continue
-            """Check Null Multuplier"""
-            multiplier = row[self.util.col_multiplier]
-            if pd.isnull(multiplier):
-                if self.option_code in ['sr', 'm']:
-                    multiplier = 10
-                else:
-                    multiplier = 10000
-                self.df_data.loc[idx, self.util.col_multiplier] = multiplier
+        self.df_data[self.util.col_option_price] = self.df_data.apply(self.util.fun_option_price, axis=1)
+        # underlyingids = self.df_data[self.util.col_id_underlying].unique()
+        # for underlying_id in underlyingids:
+        #     c = self.df_data[self.util.col_id_underlying] == underlying_id
+        #     df_tmp = self.df_data[c]
+        #     mdt = df_tmp[self.util.col_maturitydt].values[0]
+        #     """Check Null Maturity"""
+        #     if pd.isnull(mdt):
+        #         m1 = int(underlying_id[-2:])
+        #         y1 = int(str(20) + underlying_id[-4:-2])
+        #         dt1 = ql.Date(1, m1, y1)
+        #         if self.option_code == 'sr':
+        #             mdt = self.util.to_dt_date(self.calendar.advance(dt1, ql.Period(-5, ql.Days)))
+        #         elif self.option_code == 'm':
+        #             tmp = self.calendar.advance(dt1, ql.Period(-1, ql.Months))
+        #             mdt = self.util.to_dt_date(self.calendar.advance(tmp, ql.Period(5, ql.Days)))
+        #         self.df_data.loc[c, self.util.col_maturitydt] = mdt
+        # for (idx, row) in self.df_data.iterrows():
+        #     """Check Null Option Type"""
+        #     option_type = row[self.util.col_option_type]
+        #     id_instrument = row[self.util.col_id_instrument]
+        #     if pd.isnull(option_type):
+        #         if self.option_code in ['sr', 'm']:
+        #             if id_instrument[-6] == 'c':
+        #                 option_type = self.util.type_call
+        #             elif id_instrument[-6] == 'p':
+        #                 option_type = self.util.type_put
+        #             else:
+        #                 print(id_instrument, ',', id_instrument[-6])
+        #                 continue
+        #             self.df_data.loc[idx, self.util.col_option_type] = option_type
+        #         else:
+        #             continue
+        #     """Check Null Strike"""
+        #     strike = row[self.util.col_strike]
+        #     if pd.isnull(strike):
+        #         if self.option_code in ['sr', 'm']:
+        #             strike = float(id_instrument[-4:])
+        #             self.df_data.loc[idx, self.util.col_strike] = strike
+        #         else:
+        #             continue
+        #     """Check Null Multuplier"""
+        #     multiplier = row[self.util.col_multiplier]
+        #     if pd.isnull(multiplier):
+        #         if self.option_code in ['sr', 'm']:
+        #             multiplier = 10
+        #         else:
+        #             multiplier = 10000
+        #         self.df_data.loc[idx, self.util.col_multiplier] = multiplier
 
-    """ 合约期权最低为 min_ttm """
 
     def update_eligible_maturities(self):  # n: 要求合约剩余期限大于n（天）
         underlyingids = self.df_daily_state[self.util.col_id_underlying].unique()
@@ -556,7 +556,6 @@ class BktOptionSet(object):
 
     """ Get 1M atm vol by liner interpolation """
 
-
     def get_interpolated_atm_1M(self, option_type):
         keyvols_mdts = self.get_mdt_keyvols(option_type)
         ql_evalDate = self.util.to_ql_date(self.eval_date)
@@ -577,7 +576,6 @@ class BktOptionSet(object):
 
 
     """ Get Call/Put volatility surface separately"""
-
 
     def get_volsurface_squre(self, option_type):
         ql_maturities = []
@@ -616,7 +614,6 @@ class BktOptionSet(object):
 
 
     """ Get Integrate Volatility Surface by call/put mid vols"""
-
 
     def get_mid_volsurface_squre(self):
         ql_maturities = []
