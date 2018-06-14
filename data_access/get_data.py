@@ -41,7 +41,8 @@ def get_50option_mktdata(start_date, end_date):
                                               Option_mkt.amt_open,
                                               Option_mkt.amt_close, Option_mkt.amt_settlement,
                                               Option_mkt.amt_last_settlement,
-                                              Option_mkt.amt_trading_volume, Option_mkt.pct_implied_vol
+                                              Option_mkt.amt_trading_volume, Option_mkt.amt_holding_volume,
+                                              Option_mkt.pct_implied_vol
                                               ) \
         .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
         .filter(Option_mkt.datasource == 'wind')

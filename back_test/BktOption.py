@@ -10,7 +10,7 @@ class BktOption(BktInstrument):
 
     """ Contain metrics and trading position info as attributes """
 
-    def __init__(self, df_daily_metrics, flag_calculate_iv, cd_frequency='daily',
+    def __init__(self, df_daily_metrics, flag_calculate_iv,rf=0.03, cd_frequency='daily',
                  pricing_type='OptionPlainEuropean', engine_type='AnalyticEuropeanEngine'):
         BktInstrument.__init__(self,df_daily_metrics)
         self.util = BktUtil()
@@ -21,6 +21,7 @@ class BktOption(BktInstrument):
         self.calendar = ql.China()
         self.implied_vol = None
         self.evaluation = None
+        self.rf = rf
         # self.update_pricing_metrics()
 
     def next(self):
@@ -51,7 +52,8 @@ class BktOption(BktInstrument):
                 else:
                     print('No option type!')
                     return
-                strike = self.util.get_applicable_strike(self)
+                # strike = self.util.get_applicable_strike(self)
+                strike = self.applicable_strike()
                 option = OptionPlainEuropean(strike, ql_maturitydt, ql_optiontype)
 
             else:
@@ -84,6 +86,15 @@ class BktOption(BktInstrument):
             print(e)
             adj_strike = None
         return adj_strike
+
+    """ 应对分红调整，为metrics计算实际使用的行权价 """
+    def applicable_strike(self):
+        try:
+            strike = self.current_daily_state[self.util.col_applicable_strike]
+        except Exception as e:
+            print(e)
+            strike = None
+        return strike
 
     def maturitydt(self):
         try:

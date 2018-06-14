@@ -3,8 +3,8 @@ import QuantLib as ql
 import hashlib
 import pandas as pd
 
-class BktUtil():
 
+class BktUtil():
     def __init__(self):
 
         self.long = 1
@@ -18,8 +18,8 @@ class BktUtil():
         self.type_all = 'all'
         self.method_1 = 0
         self.method_2 = 1
-        self.cd_frequency_low = ['daily','weekly','monthly','yearly']
-        self.cd_frequency_intraday = ['1min','5min']
+        self.cd_frequency_low = ['daily', 'weekly', 'monthly', 'yearly']
+        self.cd_frequency_intraday = ['1min', '5min']
 
         """database column names"""
 
@@ -61,73 +61,71 @@ class BktUtil():
         self.col_carry = 'amt_carry'
         self.col_iv_roll_down = 'amt_iv_roll_down'
 
-        self.nbr_invest_days='nbr_invest_days'
+        self.nbr_invest_days = 'nbr_invest_days'
         self.col_rf = 'risk_free_rate'
-
-
+        self.col_applicable_strike = 'amt_applicable_strike'
 
         """output dataframe column names"""
 
-        self.id_position='id_position'
-        self.id_instrument='id_instrument'
-        self.multiplier='multiplier'
+        self.id_position = 'id_position'
+        self.id_instrument = 'id_instrument'
+        self.multiplier = 'multiplier'
         self.mkt_price = 'mkt_price'
-        self.dt_open='dt_open'
-        self.long_short='long_short'
-        self.open_price='open_price'
-        self.premium='premium'
+        self.dt_open = 'dt_open'
+        self.long_short = 'long_short'
+        self.open_price = 'open_price'
+        self.premium = 'premium'
         # self.open_trading_cost='open_trading_cost'
-        self.unit='unit'
-        self.npv='npv'
-        self.margin_capital='margin_capital'
-        self.dt_close='dt_close'
-        self.days_holding='days_holding'
-        self.close_price='close_price'
+        self.unit = 'unit'
+        self.npv = 'npv'
+        self.margin_capital = 'margin_capital'
+        self.dt_close = 'dt_close'
+        self.days_holding = 'days_holding'
+        self.close_price = 'close_price'
         # self.close_trading_cost='close_trading_cost'
-        self.realized_pnl='realized_pnl'
-        self.unrealized_pnl='unrealized_pnl'
+        self.realized_pnl = 'realized_pnl'
+        self.unrealized_pnl = 'unrealized_pnl'
         self.flag_open = 'flag_open'
 
-        self.dt_date='dt_date'
-        self.nbr_trade='nbr_trade'
-        self.margin_capital='margin_capital'
-        self.mkm_pnl='mkm_pnl'
-        self.realized_pnl='realized_pnl'
+        self.dt_date = 'dt_date'
+        self.nbr_trade = 'nbr_trade'
+        self.margin_capital = 'margin_capital'
+        self.mkm_pnl = 'mkm_pnl'
+        self.realized_pnl = 'realized_pnl'
         # self.mkm_portfolio_value='mkm_portfolio_value'
         self.mtm_short_positions = 'mtm_short_positions'
         self.mtm_long_positions = 'mtm_long_positions'
 
-        self.cash='cash'
-        self.money_utilization='money_utilization'
+        self.cash = 'cash'
+        self.money_utilization = 'money_utilization'
         self.total_asset = 'total_asset'
         self.npv = 'npv'
         self.benchmark = 'benchmark'
 
         self.dt_trade = 'dt_trade'
-        self.trading_type='trading_type'
-        self.trade_price='trade_price'
-        self.trading_cost='trading_cost'
+        self.trading_type = 'trading_type'
+        self.trade_price = 'trade_price'
+        self.trading_cost = 'trading_cost'
         self.bktoption = 'bktoption'
 
-
         self.tb_columns = [
-                           self.id_instrument,
-                           self.multiplier,
-                           self.mkt_price,
-                           self.dt_open,
-                           self.long_short,
-                           self.open_price,
-                           self.premium,
-                           # self.open_trading_cost,
-                           self.unit,
-                           self.margin_capital,
-                           self.dt_close,
-                           self.days_holding,
-                           self.close_price,
-                           # self.close_trading_cost,
-                           self.realized_pnl,
-                           self.unrealized_pnl,
-                           self.flag_open]
+            self.id_instrument,
+            self.multiplier,
+            self.mkt_price,
+            self.dt_open,
+            self.long_short,
+            self.open_price,
+            self.premium,
+            # self.open_trading_cost,
+            self.unit,
+            self.margin_capital,
+            self.dt_close,
+            self.days_holding,
+            self.close_price,
+            # self.close_trading_cost,
+            self.realized_pnl,
+            self.unrealized_pnl,
+            self.flag_open]
 
         self.account_columns = [self.dt_date,
                                 self.npv,
@@ -149,13 +147,13 @@ class BktUtil():
                                self.trading_cost,
                                self.unit]
 
-    def to_ql_date(self,date):
-        return ql.Date(date.day,date.month,date.year)
+    def to_ql_date(self, date):
+        return ql.Date(date.day, date.month, date.year)
 
-    def to_dt_date(self,ql_date):
-        return datetime.date(ql_date.year(),ql_date.month(),ql_date.dayOfMonth())
+    def to_dt_date(self, ql_date):
+        return datetime.date(ql_date.year(), ql_date.month(), ql_date.dayOfMonth())
 
-    def fun_option_price(self,df):
+    def fun_option_price(self, df):
         if df[self.col_close] != self.nan_value:
             option_price = df[self.col_close]
         elif df[self.col_settlement] != self.nan_value:
@@ -199,48 +197,76 @@ class BktUtil():
         df = df[c].reset_index(drop=True)
         return df
 
-    """ 50ETF期权分红后会产生同样行权价的两个期权，选择trading volume较大的一个。 """
-    def get_duplicate_strikes_dropped(self, df_daily_state):
+    """ 50ETF期权分红后会产生同样行权价的两个期权，选择holding volume较大的一个。 """
+
+    def get_duplicate_strikes_dropped(self, df_daily_state, eval_date):
+        df_daily_state = self.get_applicable_strike_df(df_daily_state, eval_date)
         maturities = sorted(df_daily_state[self.col_maturitydt].unique())
-        df = pd.DataFrame()
+        df_res = pd.DataFrame()
         for mdt in maturities:
-            df_mdt_call = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
-                                     (df_daily_state[self.col_option_type] == self.type_call)] \
-                .sort_values(by=self.col_trading_volume, ascending=False) \
-                .drop_duplicates(subset=[self.col_adj_strike])
-            df_mdt_put = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
-                                    (df_daily_state[self.col_option_type] == self.type_put)] \
-                .sort_values(by=self.col_trading_volume, ascending=False) \
-                .drop_duplicates(subset=[self.col_adj_strike])
-            df = df.append(df_mdt_call, ignore_index=True)
-            df = df.append(df_mdt_put, ignore_index=True)
-        return df
+            # 保持Call/Put行权价一致。
+            df = pd.DataFrame()
+            df_call = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
+                                     (df_daily_state[self.col_option_type] == self.type_call)].reset_index(drop=True)
+            df_put = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
+                                    (df_daily_state[self.col_option_type] == self.type_put)].reset_index(drop=True)
+            df[self.col_applicable_strike] = df_call[self.col_applicable_strike]
+            # df[self.col_adj_strike] = df_call[self.col_adj_strike]
+            df['id_call'] = df_call[self.col_id_instrument]
+            df['id_put'] = df_put[self.col_id_instrument]
+            df[self.col_holding_volume] = df_call[self.col_holding_volume] + df_put[self.col_holding_volume]
+            # 保持applicable strike不重复，applicable strike即后续计算使用的实际strike price
+            df = df.sort_values(by=self.col_holding_volume, ascending=False).drop_duplicates(subset=[self.col_applicable_strike])
+            df_mdt_call = pd.merge(df[['id_call']].rename(columns={'id_call':self.col_id_instrument}), df_call, how='left', on=self.col_id_instrument)
+            df_mdt_put = pd.merge(df[['id_put']].rename(columns={'id_put':self.col_id_instrument}), df_put, how='left', on=self.col_id_instrument)
+            df_res = df_res.append(df_mdt_call, ignore_index=True)
+            df_res = df_res.append(df_mdt_put, ignore_index=True)
+        return df_res
 
     def dividend_dates(self):
         """ 分红日前，使用调整前的行权价计算隐含波动率，例如，
         分红日d1影响的合约'1612','1701','1703','1706'在分红日前需反算adj_strike,之后则不需要"""
-        d1 = datetime.date(2016,11,29)
-        d2 = datetime.date(2017,11,28)
-        res = {d1:['1612','1701','1703','1706'],d2:['1712','1801','1803','1806']}
+        d1 = datetime.date(2016, 11, 29)
+        d2 = datetime.date(2017, 11, 28)
+        res = {d1: ['1612', '1701', '1703', '1706'], d2: ['1712', '1801', '1803', '1806']}
         return res
 
-    def get_applicable_strike(self,bktoption):
-        if bktoption.multiplier() == 10000 :
-            return bktoption.strike() #非调整的合约直接去行权价
+    def get_applicable_strike(self, bktoption):
+        if bktoption.multiplier() == 10000:
+            return bktoption.strike()  # 非调整的合约直接去行权价
         eval_date = bktoption.eval_date
         contract_month = bktoption.contract_month()
         dict = self.dividend_dates()
-        dates = sorted(dict.keys(),reverse=False)
+        dates = sorted(dict.keys(), reverse=False)
         if eval_date < dates[0]:
-            return bktoption.adj_strike() #分红除息日前反算调整前的行权价
+            return bktoption.adj_strike()  # 分红除息日前反算调整前的行权价
         elif eval_date < dates[1]:
             if contract_month in dict[dates[1]]:
-                return bktoption.adj_strike() #分红除息日前反算调整前的行权价
+                return bktoption.adj_strike()  # 分红除息日前反算调整前的行权价
             else:
                 return bktoption.strike()  # 分红除息日后用实际调整后的行权价
         else:
-            return bktoption.strike() # 分红除息日后用实际调整后的行权价
+            return bktoption.strike()  # 分红除息日后用实际调整后的行权价
 
+    def fun_applicable_strikes(self, df):
+        eval_date = df[self.col_date]
+        contract_month = df[self.col_name_contract_month]
+        dividend_dates = self.dividend_dates()
+        dates = sorted(dividend_dates.keys(), reverse=False)
+        if eval_date < dates[0]:
+            return df[self.col_adj_strike]  # 分红除息日前反算调整前的行权价
+        elif eval_date < dates[1]:
+            if contract_month in dividend_dates[dates[1]]:
+                return df[self.col_adj_strike]  # 分红除息日前反算调整前的行权价
+            else:
+                return df[self.col_strike]  # 分红除息日后用实际调整后的行权价
+        else:
+            return df[self.col_strike]  # 分红除息日后用实际调整后的行权价
+
+    def get_applicable_strike_df(self, df_mdt, eval_date):
+        df_mdt[self.col_date] = eval_date
+        df_mdt[self.col_applicable_strike] = df_mdt.apply(self.fun_applicable_strikes, axis=1)
+        return df_mdt
 
     def get_sha(self):
 
@@ -249,21 +275,3 @@ class BktUtil():
         sha.update(now)
         id_position = sha.hexdigest()
         return id_position
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

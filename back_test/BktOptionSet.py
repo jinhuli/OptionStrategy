@@ -80,7 +80,7 @@ class BktOptionSet(object):
                 else:
                     df_option = self.df_data[self.df_data[self.util.col_id_instrument] == id_inst].reset_index(
                         drop=True)
-                    bktoption = BktOption(df_option, self.flag_calculate_iv)
+                    bktoption = BktOption(df_option, self.flag_calculate_iv, rf=self.rf)
                     self.df_daily_state.loc[idx, self.util.bktoption] = bktoption
             self.bktoptionset = set(self.df_daily_state[self.util.bktoption].tolist())
 
