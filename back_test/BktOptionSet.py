@@ -42,10 +42,11 @@ class BktOptionSet(object):
         self.validate_data()
         # self.add_bktoption_column()
         self.df_last_state = pd.DataFrame()
-        self.update_multiplier_adjustment()
+        self.update_adjustment()
         self.update_current_daily_state()
         self.update_eligible_maturities()
         self.update_bktoption()
+
 
     def next(self):
         if self.frequency in self.util.cd_frequency_low:
@@ -161,15 +162,24 @@ class BktOptionSet(object):
 
     """ 主要针对50ETF期权分红 """
 
+    def update_adjustment(self):
+        self.update_multiplier_adjustment()
+        self.update_applicable_strikes()
+
     def update_multiplier_adjustment(self):
         if self.option_code == '50etf':
             self.df_data[self.util.col_adj_strike] = \
                 round(self.df_data[self.util.col_strike] * self.df_data[self.util.col_multiplier] / 10000, 2)
             self.df_data[self.util.col_adj_option_price] = \
                 round(self.df_data[self.util.col_settlement] * self.df_data[self.util.col_multiplier] / 10000, 2)
+
         else:
             self.df_data[self.util.col_adj_strike] = self.df_data[self.util.col_strike]
             self.df_data[self.util.col_adj_option_price] = self.df_data[self.util.col_settlement]
+
+    def update_applicable_strikes(self):
+        if self.option_code == '50etf':
+            self.df_data = self.util.get_applicable_strike_df(self.df_data)
 
     def add_dtdate_column(self):
         if self.util.col_date not in self.df_data.columns.tolist():
@@ -489,15 +499,15 @@ class BktOptionSet(object):
 
     def get_mdt_keyvols(self, option_type):
         keyvols_mdts = {}
-        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+        df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state,self.eval_date)
         for mdt in self.eligible_maturities:
-            df_mdt = self.util.get_df_by_mdt_type(df, mdt, option_type)
-            df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_adj_strike])
-            spot = df_mdt[self.util.bktoption].values[0].underlying_price
+            df_mdt = self.util.get_df_by_mdt_type(df_data, mdt, option_type)
+            df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_applicable_strike])
+            spot = df_mdt[self.util.bktoption].values[0].underlying_close()
             strikes = []
             vols = []
             for (idx, row) in df.iterrows():
-                strike = row[self.util.col_adj_strike]
+                strike = row[self.util.col_applicable_strike]
                 iv = row[self.util.col_implied_vol]
                 # if iv > 0:
                 strikes.append(float(strike))

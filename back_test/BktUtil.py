@@ -64,6 +64,7 @@ class BktUtil():
         self.nbr_invest_days = 'nbr_invest_days'
         self.col_rf = 'risk_free_rate'
         self.col_applicable_strike = 'amt_applicable_strike'
+        self.col_applicable_multiplier = 'amt_applicable_multiplier'
 
         """output dataframe column names"""
 
@@ -166,9 +167,9 @@ class BktUtil():
 
     def get_df_by_mdt_type(self, df, mdt, option_type):
         if option_type == self.type_call:
-            return self.get_df_call_by_mdt(mdt, df)
+            return self.get_df_call_by_mdt(df, mdt)
         elif option_type == self.type_put:
-            return self.get_df_put_by_mdt(mdt, df)
+            return self.get_df_put_by_mdt(df, mdt)
         else:
             return "Unsupport Option Type!"
 
@@ -200,7 +201,7 @@ class BktUtil():
     """ 50ETF期权分红后会产生同样行权价的两个期权，选择holding volume较大的一个。 """
 
     def get_duplicate_strikes_dropped(self, df_daily_state, eval_date):
-        df_daily_state = self.get_applicable_strike_df(df_daily_state, eval_date)
+        # df_daily_state = self.get_applicable_strike_df(df_daily_state, eval_date)
         maturities = sorted(df_daily_state[self.col_maturitydt].unique())
         df_res = pd.DataFrame()
         for mdt in maturities:
@@ -211,12 +212,14 @@ class BktUtil():
             df_put = df_daily_state[(df_daily_state[self.col_maturitydt] == mdt) &
                                     (df_daily_state[self.col_option_type] == self.type_put)].reset_index(drop=True)
             df[self.col_applicable_strike] = df_call[self.col_applicable_strike]
-            # df[self.col_adj_strike] = df_call[self.col_adj_strike]
+            df[self.col_adj_strike] = df_call[self.col_adj_strike]
             df['id_call'] = df_call[self.col_id_instrument]
             df['id_put'] = df_put[self.col_id_instrument]
             df[self.col_holding_volume] = df_call[self.col_holding_volume] + df_put[self.col_holding_volume]
-            # 保持applicable strike不重复，applicable strike即后续计算使用的实际strike price
-            df = df.sort_values(by=self.col_holding_volume, ascending=False).drop_duplicates(subset=[self.col_applicable_strike])
+            # 保持adj_strike,applicable strike不重复，applicable strike即后续计算使用的实际strike price
+            df = df.sort_values(by=self.col_holding_volume, ascending=False)\
+                .drop_duplicates(subset=[self.col_applicable_strike])\
+                .drop_duplicates(subset=[self.col_adj_strike])
             df_mdt_call = pd.merge(df[['id_call']].rename(columns={'id_call':self.col_id_instrument}), df_call, how='left', on=self.col_id_instrument)
             df_mdt_put = pd.merge(df[['id_put']].rename(columns={'id_put':self.col_id_instrument}), df_put, how='left', on=self.col_id_instrument)
             df_res = df_res.append(df_mdt_call, ignore_index=True)
@@ -231,22 +234,22 @@ class BktUtil():
         res = {d1: ['1612', '1701', '1703', '1706'], d2: ['1712', '1801', '1803', '1806']}
         return res
 
-    def get_applicable_strike(self, bktoption):
-        if bktoption.multiplier() == 10000:
-            return bktoption.strike()  # 非调整的合约直接去行权价
-        eval_date = bktoption.eval_date
-        contract_month = bktoption.contract_month()
-        dict = self.dividend_dates()
-        dates = sorted(dict.keys(), reverse=False)
-        if eval_date < dates[0]:
-            return bktoption.adj_strike()  # 分红除息日前反算调整前的行权价
-        elif eval_date < dates[1]:
-            if contract_month in dict[dates[1]]:
-                return bktoption.adj_strike()  # 分红除息日前反算调整前的行权价
-            else:
-                return bktoption.strike()  # 分红除息日后用实际调整后的行权价
-        else:
-            return bktoption.strike()  # 分红除息日后用实际调整后的行权价
+    # def get_applicable_strike(self, bktoption):
+    #     if bktoption.multiplier() == 10000:
+    #         return bktoption.strike()  # 非调整的合约直接去行权价
+    #     eval_date = bktoption.eval_date
+    #     contract_month = bktoption.contract_month()
+    #     dict = self.dividend_dates()
+    #     dates = sorted(dict.keys(), reverse=False)
+    #     if eval_date < dates[0]:
+    #         return bktoption.adj_strike()  # 分红除息日前反算调整前的行权价
+    #     elif eval_date < dates[1]:
+    #         if contract_month in dict[dates[1]]:
+    #             return bktoption.adj_strike()  # 分红除息日前反算调整前的行权价
+    #         else:
+    #             return bktoption.strike()  # 分红除息日后用实际调整后的行权价
+    #     else:
+    #         return bktoption.strike()  # 分红除息日后用实际调整后的行权价
 
     def fun_applicable_strikes(self, df):
         eval_date = df[self.col_date]
@@ -263,10 +266,25 @@ class BktUtil():
         else:
             return df[self.col_strike]  # 分红除息日后用实际调整后的行权价
 
-    def get_applicable_strike_df(self, df_mdt, eval_date):
-        df_mdt[self.col_date] = eval_date
-        df_mdt[self.col_applicable_strike] = df_mdt.apply(self.fun_applicable_strikes, axis=1)
-        return df_mdt
+    def fun_applicable_multiplier(self, df):
+        eval_date = df[self.col_date]
+        contract_month = df[self.col_name_contract_month]
+        dividend_dates = self.dividend_dates()
+        dates = sorted(dividend_dates.keys(), reverse=False)
+        if eval_date < dates[0]:
+            return 10000  # 分红除息日前
+        elif eval_date < dates[1]:
+            if contract_month in dividend_dates[dates[1]]:
+                return 10000  # 分红除息日前
+            else:
+                return df[self.col_multiplier]  # 分红除息日后用实际multiplier
+        else:
+            return df[self.col_multiplier]  # 分红除息日后用实际multiplier
+
+    def get_applicable_strike_df(self, df):
+        df[self.col_applicable_strike] = df.apply(self.fun_applicable_strikes, axis=1)
+        df[self.col_applicable_multiplier] = df.apply(self.fun_applicable_multiplier, axis=1)
+        return df
 
     def get_sha(self):
 
