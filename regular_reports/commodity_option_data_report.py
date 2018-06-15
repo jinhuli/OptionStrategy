@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 import QuantLib as ql
 from Utilities.calculate import calculate_histvol
+from Utilities import admin_util as admin
+
 
 """成交持仓认沽认购比P/C"""
 def pcr(df_pcr):
@@ -161,24 +163,16 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
 
 """历史隐含波动率"""
 def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,df_future):
-    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
-                           echo=False)
-    Session = sessionmaker(bind=engine)
-    sess = Session()
-    engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics',
-                           echo=False)
-    Session2 = sessionmaker(bind=engine2)
-    sess2 = Session2()
 
     optionMetrics = dbt.OptionMetrics
     options_table = dbt.Options
 
-    query_sro = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
+    query_sro = admin.session_metrics().query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
                             optionMetrics.amt_strike,
                            optionMetrics.cd_option_type,optionMetrics.pct_implied_vol)\
         .filter(optionMetrics.name_code == nameCode).filter(optionMetrics.dt_date >= dt_last_week)
 
-    query_mdt = sess.query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
+    query_mdt = admin.session_mktdata().query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
         .filter(options_table.cd_exchange == exchangeCode)
 
     df_srf = df_future
@@ -270,21 +264,14 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,df_future):
 
 """当日成交持仓数据"""
 def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
-    w.start()
     pu = PlotUtil()
-    engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
-                           echo=False)
-    metadata = MetaData(engine)
-    Session = sessionmaker(bind=engine)
-    sess = Session()
-    options_mkt = Table('options_mktdata', metadata, autoload=True)
-
+    options_mkt = admin.table_options_mktdata()
     evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
     plt.rcParams['font.sans-serif'] = ['STKaiti']
     plt.rcParams.update({'font.size': 15})
 
     """当日成交持仓量 """
-    query_volume = sess.query(options_mkt.c.dt_date,
+    query_volume = admin.session_mktdata().query(options_mkt.c.dt_date,
                               options_mkt.c.cd_option_type,
                               options_mkt.c.amt_strike,
                               options_mkt.c.amt_holding_volume,
@@ -372,20 +359,16 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
                  format='png',bbox_inches='tight')
 
 
-
 ############################################################################################
 # Eval Settings
-
-dt_date = datetime.date(2018, 6, 8)  # Set as Friday
-dt_last_week = datetime.date(2018, 6, 4)
-current_core_underlying = 'sr_1809'
-namecode = 'sr'
-exchange_code = 'czce'
-# current_core_underlying = 'm_1809'
-# namecode = 'm'
-# exchange_code = 'dce'
-
-# contracts = ['1809', '1901', '1905','1909']
+dt_date = datetime.date(2018, 6, 15)  # Set as Friday
+dt_last_week = datetime.date(2018, 6, 8)
+# current_core_underlying = 'sr_1809'
+# namecode = 'sr'
+# exchange_code = 'czce'
+current_core_underlying = 'm_1809'
+namecode = 'm'
+exchange_code = 'dce'
 
 ############################################################################################
 w.start()
@@ -400,17 +383,17 @@ bd_6m = 6 * bd_1m
 calendar = ql.China()
 pu = PlotUtil()
 ###########################################################################################
-engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
-metadata2 = MetaData(engine2)
-Session2 = sessionmaker(bind=engine2)
-sess2 = Session2()
+# engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+# metadata2 = MetaData(engine2)
+# Session2 = sessionmaker(bind=engine2)
+# sess2 = Session2()
 futureMkt = dbt.FutureMkt
 optionMkt = dbt.OptionMkt
 
 futuremkt_table = dbt.FutureMkt
 options_table = dbt.Options
 
-query_pcr = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id_underlying,
+query_pcr = admin.session_mktdata().query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id_underlying,
                            func.sum(optionMkt.amt_holding_volume).label('total_holding_volume'),
                            func.sum(optionMkt.amt_trading_volume).label('total_trading_volume')
                            ) \
@@ -418,7 +401,7 @@ query_pcr = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id
     .filter(optionMkt.name_code == namecode) \
     .group_by(optionMkt.cd_option_type, optionMkt.dt_date,optionMkt.id_underlying)
 
-query_srf = sess2.query(futureMkt.dt_date, futureMkt.id_instrument,
+query_srf = admin.session_mktdata().query(futureMkt.dt_date, futureMkt.id_instrument,
                         futureMkt.amt_close, futureMkt.amt_trading_volume,
                         futureMkt.amt_settlement) \
     .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == namecode)\

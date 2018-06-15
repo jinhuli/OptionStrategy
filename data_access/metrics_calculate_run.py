@@ -8,8 +8,8 @@ import QuantLib as ql
 import datetime
 from Utilities import admin_util as admin
 
-start_date = datetime.date(2015,1,1)
-end_date = datetime.date(2018,6,11)
+start_date = datetime.date(2018,6,8)
+end_date = datetime.date(2018,6,15)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()
@@ -21,7 +21,7 @@ conn = admin.conn_mktdata()
 
 name_option = 'sr'
 df_option_metrics = get_comoption_mktdata(start_date,end_date,name_option)
-bkt_optionset = BktOptionSet('daily', df_option_metrics)
+bkt_optionset = BktOptionSet(df_option_metrics)
 while bkt_optionset.index <= len(bkt_optionset.dt_list):
     evalDate = bkt_optionset.eval_date
 
@@ -46,7 +46,7 @@ while bkt_optionset.index <= len(bkt_optionset.dt_list):
 
 name_option = 'm'
 df_option_metrics = get_comoption_mktdata(start_date,end_date,name_option)
-bkt_optionset = BktOptionSet('daily', df_option_metrics)
+bkt_optionset = BktOptionSet(df_option_metrics)
 
 while bkt_optionset.index <= len(bkt_optionset.dt_list):
     # if bkt_optionset.index == 0:
@@ -75,7 +75,7 @@ while bkt_optionset.index <= len(bkt_optionset.dt_list):
 
 
 df_option_metrics = get_50option_mktdata(start_date,end_date)
-bkt_optionset = BktOptionSet('daily', df_option_metrics)
+bkt_optionset = BktOptionSet(df_option_metrics)
 
 while bkt_optionset.index <= len(bkt_optionset.dt_list):
     #     continue

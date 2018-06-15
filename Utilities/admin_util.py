@@ -16,10 +16,10 @@ metadata_metrics = MetaData(engine_metrics)
 
 
 def conn_mktdata():
-    return engine.connect()
+    return create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata', echo=False).connect()
 
 def conn_intraday():
-    return engine_intraday.connect()
+    return create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata_intraday', echo=False).connect()
 
 def conn_metrics():
     return engine_metrics.connect()

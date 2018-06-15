@@ -26,8 +26,8 @@ index_daily = admin.table_indexes_mktdata()
 
 dc = DataCollection()
 #####################################################################################
-beg_date = datetime.date(2012, 1, 1)
-end_date = datetime.date(2012, 5, 31)
+beg_date = datetime.date(2004, 1, 1)
+end_date = datetime.date(2004, 12, 31)
 
 
 windcode = "510050.SH"
@@ -46,7 +46,7 @@ db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_
 
 try:
     conn.execute(index_daily.insert(), db_data)
-    print('equity_index-50etf -- inserted into data base succefully')
+    print('equity_index-50sh -- inserted into data base succefully')
 except Exception as e:
     print(e)
 
@@ -57,7 +57,7 @@ db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_
 
 try:
     conn.execute(index_daily.insert(), db_data)
-    print('equity_index-50etf -- inserted into data base succefully')
+    print('equity_index-300sh -- inserted into data base succefully')
 except Exception as e:
     print(e)
 

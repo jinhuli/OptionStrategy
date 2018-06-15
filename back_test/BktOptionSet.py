@@ -499,7 +499,7 @@ class BktOptionSet(object):
 
     def get_mdt_keyvols(self, option_type):
         keyvols_mdts = {}
-        df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state,self.eval_date)
+        df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
         for mdt in self.eligible_maturities:
             df_mdt = self.util.get_df_by_mdt_type(df_data, mdt, option_type)
             df = self.calculate_implied_vol(df_mdt).sort_values(by=[self.util.col_applicable_strike])
@@ -589,7 +589,9 @@ class BktOptionSet(object):
 
     def get_volsurface_squre(self, option_type):
         ql_maturities = []
-        df = self.util.get_duplicate_strikes_dropped(self.util.get_df_by_type(self.df_daily_state, option_type))
+        df = self.util.get_df_by_type(self.df_daily_state, option_type)
+        if self.option_code == '50etf':
+            df = self.util.get_duplicate_strikes_dropped(df)
         df = self.calculate_implied_vol(df)
         df_mdt_list = []
         iv_name_list = []

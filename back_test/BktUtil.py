@@ -200,7 +200,7 @@ class BktUtil():
 
     """ 50ETF期权分红后会产生同样行权价的两个期权，选择holding volume较大的一个。 """
 
-    def get_duplicate_strikes_dropped(self, df_daily_state, eval_date):
+    def get_duplicate_strikes_dropped(self, df_daily_state):
         # df_daily_state = self.get_applicable_strike_df(df_daily_state, eval_date)
         maturities = sorted(df_daily_state[self.col_maturitydt].unique())
         df_res = pd.DataFrame()

@@ -971,11 +971,11 @@ class DataCollection():
                 close = row['CLOSE']
                 volume = row['VOLUME']
                 amt = row['AMT']
-                if np.isnan(volume): volume = 0.0
-                if np.isnan(amt): amt = 0.0
-                if np.isnan(low): low = -1.0
-                if np.isnan(high): high = -1.0
-                if np.isnan(open_price): open_price = -1.0
+                if volume==None: volume = 0.0
+                if amt==None: amt = 0.0
+                if low==None: low = -1.0
+                if high==None: high = -1.0
+                if open_price==None: open_price = -1.0
                 db_row = {'dt_date': dt,
                           'id_instrument': id_instrument,
                           'datasource': datasource,

@@ -53,6 +53,7 @@ class BktOption(BktInstrument):
                     print('No option type!')
                     return
                 # strike = self.util.get_applicable_strike(self)
+
                 strike = self.applicable_strike()
                 option = OptionPlainEuropean(strike, ql_maturitydt, ql_optiontype)
 
@@ -92,8 +93,8 @@ class BktOption(BktInstrument):
         try:
             strike = self.current_daily_state[self.util.col_applicable_strike]
         except Exception as e:
-            print(e)
-            strike = None
+            strike = self.current_daily_state[self.util.col_strike]
+            print('use origin strike')
         return strike
 
     def maturitydt(self):
