@@ -587,11 +587,9 @@ class BktOptionSet(object):
 
     """ Get Call/Put volatility surface separately"""
 
-    def get_volsurface_squre(self, option_type):
+    def get_volsurface_squre(self, df):
         ql_maturities = []
-        df = self.util.get_df_by_type(self.df_daily_state, option_type)
-        if self.option_code == '50etf':
-            df = self.util.get_duplicate_strikes_dropped(df)
+
         df = self.calculate_implied_vol(df)
         df_mdt_list = []
         iv_name_list = []
@@ -600,8 +598,7 @@ class BktOptionSet(object):
             iv_rename = 'implied_vol_' + str(idx)
             df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
                 .rename(columns={self.util.col_implied_vol: iv_rename}) \
-                .set_index(self.util.col_adj_strike).sort_index()
-
+                .set_index(self.util.col_applicable_strike).sort_index()
             if len(df_mkt) == 0: continue
             df_mdt_list.append(df_mkt)
             iv_name_list.append(iv_rename)
@@ -694,8 +691,14 @@ class BktOptionSet(object):
         df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
         bktoption_list = self.bktoptionset
         if len(bktoption_list) == 0: return df
-        bvs_call = self.get_volsurface_squre('call')
-        bvs_put = self.get_volsurface_squre('put')
+        if self.option_code == '50etf':
+            df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+        else:
+            df_data = self.df_daily_state
+        df_data_call = self.util.get_df_by_type(df_data, self.util.type_call)
+        df_data_put = self.util.get_df_by_type(df_data, self.util.type_put)
+
+        bvs_put = self.get_volsurface_squre(df_data_put)
         for idx, option in enumerate(bktoption_list):
             if option.option_price() > 0.0:
                 iv = option.get_implied_vol()

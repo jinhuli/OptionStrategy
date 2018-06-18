@@ -63,6 +63,11 @@ class BktInstrument(object):
             dt_datetime = None
         self.dt_datetime = dt_datetime
 
+    def name_code(self):
+        id_instrumnt = self.id_instrument()
+        code = id_instrumnt[0: id_instrumnt.index('_')]
+        return code
+
     def id_instrument(self):
         try:
             id_instrument = self.current_daily_state[self.util.id_instrument]

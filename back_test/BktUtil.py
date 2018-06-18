@@ -224,6 +224,7 @@ class BktUtil():
             df_mdt_put = pd.merge(df[['id_put']].rename(columns={'id_put':self.col_id_instrument}), df_put, how='left', on=self.col_id_instrument)
             df_res = df_res.append(df_mdt_call, ignore_index=True)
             df_res = df_res.append(df_mdt_put, ignore_index=True)
+        df_res = df_res.dropna(how='all')
         return df_res
 
     def dividend_dates(self):

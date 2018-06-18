@@ -53,8 +53,10 @@ class BktOption(BktInstrument):
                     print('No option type!')
                     return
                 # strike = self.util.get_applicable_strike(self)
-
-                strike = self.applicable_strike()
+                if self.name_code() == '50etf':
+                    strike = self.applicable_strike()
+                else:
+                    strike = self.strike()
                 option = OptionPlainEuropean(strike, ql_maturitydt, ql_optiontype)
 
             else:
