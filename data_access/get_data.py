@@ -63,6 +63,23 @@ def get_50option_mktdata(start_date, end_date):
     return df_option_metrics
 
 
+def get_future_mktdata(start_date, end_date, name_code):
+    Futures_mkt = dbt.FutureMkt
+    Futures = dbt.Futures
+    query_mkt = admin.session_mktdata().query(Futures_mkt.dt_date,Futures_mkt.id_instrument,Futures_mkt.name_code,
+                                              Futures_mkt.amt_close,Futures_mkt.amt_trading_volume,Futures_mkt.amt_settlement) \
+        .filter(Futures_mkt.dt_date >= start_date) \
+        .filter(Futures_mkt.dt_date <= end_date)\
+        .filter(Futures_mkt.name_code == name_code)\
+        .filter(Futures_mkt.datasource == 'wind')
+    query_c = admin.session_mktdata().query(Futures.dt_maturity,Futures.id_instrument)\
+        .filter(Futures.name_code == name_code)
+    df_mkt = pd.read_sql(query_mkt.statement, query_mkt.session.bind)
+    df_c = pd.read_sql(query_c.statement, query_c.session.bind)
+    df = df_mkt.join(df_c.set_index('id_instrument'),how='left',on='id_instrument')
+    return df
+
+
 def get_50option_metricdata(start_date, end_date):
     Index_mkt = dbt.IndexMkt
     Option_mkt = dbt.OptionMktGolden

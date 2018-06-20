@@ -215,9 +215,9 @@ class BktUtil():
             df[self.col_adj_strike] = df_call[self.col_adj_strike]
             df['id_call'] = df_call[self.col_id_instrument]
             df['id_put'] = df_put[self.col_id_instrument]
-            df[self.col_holding_volume] = df_call[self.col_holding_volume] + df_put[self.col_holding_volume]
+            df[self.col_trading_volume] = df_call[self.col_trading_volume] + df_put[self.col_trading_volume]
             # 保持adj_strike,applicable strike不重复，applicable strike即后续计算使用的实际strike price
-            df = df.sort_values(by=self.col_holding_volume, ascending=False)\
+            df = df.sort_values(by=self.col_trading_volume, ascending=False)\
                 .drop_duplicates(subset=[self.col_applicable_strike])\
                 .drop_duplicates(subset=[self.col_adj_strike])
             df_mdt_call = pd.merge(df[['id_call']].rename(columns={'id_call':self.col_id_instrument}), df_call, how='left', on=self.col_id_instrument)
@@ -287,8 +287,13 @@ class BktUtil():
         df[self.col_applicable_multiplier] = df.apply(self.fun_applicable_multiplier, axis=1)
         return df
 
-    def get_sha(self):
+    """ Get 1st contract based on highest trading volume """
+    def get_futures_c1(self,df):
+        df = df.sort_values(by=[self.dt_date,self.col_trading_volume], ascending=False)
+        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date,ascending=True)
+        return df_rs
 
+    def get_sha(self):
         sha = hashlib.sha256()
         now = str(datetime.datetime.now()).encode('utf-8')
         sha.update(now)
