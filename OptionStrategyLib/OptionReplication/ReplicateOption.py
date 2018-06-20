@@ -10,6 +10,7 @@ from data_access.get_data import get_future_mktdata, get_index_mktdata
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 
+
 class ReplicateOption():
     def __init__(self, strike, dt_issue, dt_maturity, vol=0.2, rf=0.03, multiplier=100):
         self.utl = BktUtil()
@@ -26,18 +27,19 @@ class ReplicateOption():
         self.multiplier = multiplier
         self.pricing = None
 
-    def replicate_put(self, dt_date,df_data):
+    def replicate_put(self, dt_date, df_data):
         option = Options.OptionPlainEuropean(self.strike, self.maturitydt, ql.Option.Put)
         pricing = OptionMetrics(option, self.rf, self.engineType)
         spot = df_index[df_index[utl.dt_date] == dt_date][utl.col_close].values[0]
         delta_init, option_init = self.get_delta(dt_date, spot, option, pricing)
         replication_init = - delta_init * spot
         dt_list = list(df_data[(df_data[self.utl.dt_date] <= self.dt_maturity) &
-                                  (df_data[self.utl.dt_date] >= self.dt_issue)][self.utl.dt_date])
+                               (df_data[self.utl.dt_date] >= self.dt_issue)][self.utl.dt_date])
         delta0 = 0.0
         cashflowA = 0.0
         transaction_fee = 0.0
         replicate_value = 0.0
+        option_value = 0.0
         print('init option : ', option_init)
         print('init replication : ', replication_init)
         print('-' * 150)
@@ -46,20 +48,21 @@ class ReplicateOption():
         print('-' * 150)
         for (i, dt) in enumerate(dt_list):
             spot = df_index[df_index[utl.dt_date] == dt][utl.col_close].values[0]
-            delta,option_price = self.get_delta(dt,spot,option,pricing)
-            unit = delta * self.multiplier
-            unit_chg = (delta - delta0) * self.multiplier
+            delta, option_value = self.get_delta(dt, spot, option, pricing)
+            unit = -delta
+            unit_chg = (delta - delta0)
             cashflow = - unit_chg * spot
             cashflowA += cashflow
             delta0 = delta
             transaction_fee += fee * cashflow
-            replicate_value = cashflowA + delta * spot * self.multiplier - transaction_fee
-            replicate_pnl = cashflowA-replication_init
-            option_pnl = option_price - option_init
+            replicate_value = cashflowA + delta * spot - transaction_fee
+            replication_pnl = unit * spot - replication_init
+            option_pnl = option_value - option_init
             print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-                  (dt, spot, round(delta * 100, 2), round(cashflowA, 1), round(unit, 0), round(replicate_pnl, 0),
+                  (dt, spot, round(delta * 100, 2), round(cashflowA, 1), round(cashflowA, 0), round(replication_pnl, 0),
                    round(option_pnl, 0), round(transaction_fee, 0)))
-
+        print('-' * 150)
+        print('replication cost : ', replicate_value - option_value)
 
     def get_delta(self, dt_date, spot, option, pricing):
         eval_date = self.utl.to_ql_date(dt_date)
@@ -87,7 +90,8 @@ class ReplicateOption():
         #         delta = pricing.delta(spot, self.vol)
         # else:
         #     return
-        return delta,option_price
+        return delta, option_price
+
 
 plot_utl = PlotUtil()
 utl = BktUtil()
@@ -103,7 +107,7 @@ rf = 0.03
 fee = 5.0 / 10000.0
 strike = df_index[df_index[utl.dt_date] == dt_issue][utl.col_close].values[0]  # ATM Strike
 replication = ReplicateOption(strike, dt_issue, dt_maturity)
-replication.replicate_put(dt_issue,df_index)
+replication.replicate_put(dt_issue, df_index)
 
 # plot_utl.plot_line_chart(underlyings,[replicate_pnl],['replicate_values'])
 # plot_utl.plot_line_chart(underlyings,[deltas],['delta'])
