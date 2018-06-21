@@ -66,17 +66,18 @@ def get_50option_mktdata(start_date, end_date):
 def get_future_mktdata(start_date, end_date, name_code):
     Futures_mkt = dbt.FutureMkt
     Futures = dbt.Futures
-    query_mkt = admin.session_mktdata().query(Futures_mkt.dt_date,Futures_mkt.id_instrument,Futures_mkt.name_code,
-                                              Futures_mkt.amt_close,Futures_mkt.amt_trading_volume,Futures_mkt.amt_settlement) \
+    query_mkt = admin.session_mktdata().query(Futures_mkt.dt_date, Futures_mkt.id_instrument, Futures_mkt.name_code,
+                                              Futures_mkt.amt_close, Futures_mkt.amt_trading_volume,
+                                              Futures_mkt.amt_settlement) \
         .filter(Futures_mkt.dt_date >= start_date) \
-        .filter(Futures_mkt.dt_date <= end_date)\
-        .filter(Futures_mkt.name_code == name_code)\
+        .filter(Futures_mkt.dt_date <= end_date) \
+        .filter(Futures_mkt.name_code == name_code) \
         .filter(Futures_mkt.datasource == 'wind')
-    query_c = admin.session_mktdata().query(Futures.dt_maturity,Futures.id_instrument)\
+    query_c = admin.session_mktdata().query(Futures.dt_maturity, Futures.id_instrument) \
         .filter(Futures.name_code == name_code)
     df_mkt = pd.read_sql(query_mkt.statement, query_mkt.session.bind)
     df_c = pd.read_sql(query_c.statement, query_c.session.bind)
-    df = df_mkt.join(df_c.set_index('id_instrument'),how='left',on='id_instrument')
+    df = df_mkt.join(df_c.set_index('id_instrument'), how='left', on='id_instrument')
     return df
 
 
@@ -122,6 +123,16 @@ def get_index_mktdata(start_date, end_date, id_index):
         .filter(Index_mkt.c.id_instrument == id_index)
     df_index = pd.read_sql(query_etf.statement, query_etf.session.bind)
     return df_index
+
+
+def get_index_intraday(start_date, end_date, id_index):
+    Index = admin.table_index_mktdata_intraday()
+    query = admin.session_intraday().query(Index.c.dt_datetime, Index.c.id_instrument, Index.c.amt_close,
+                                           Index.c.amt_trading_volume, Index.c.amt_trading_value) \
+        .filter(Index.c.dt_datetime >= start_date).filter(Index.c.dt_datetime <= end_date) \
+        .filter(Index.c.id_instrument == id_index)
+    df = pd.read_sql(query.statement, query.session.bind)
+    return df
 
 
 def get_index_ma(start_date, end_date, id_index):

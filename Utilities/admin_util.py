@@ -60,7 +60,7 @@ def table_stocks_mktdata():
 def table_events():
     return Table('events', metadata, autoload=True)
 
-def table_equity_index_mktdata_intraday():
+def table_index_mktdata_intraday():
     return Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
 
 def table_option_mktdata_intraday():
