@@ -24,7 +24,6 @@ def to_dt_date(ql_date):
     dt = datetime.date(ql_date.year(), ql_date.month(), ql_date.dayOfMonth())
     return dt
 
-
 def get_mdate_by_contractid(commodityType,contractId,calendar):
     maturity_date = 0
     if commodityType == 'm':

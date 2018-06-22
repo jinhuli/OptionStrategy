@@ -134,6 +134,10 @@ def get_index_intraday(start_date, end_date, id_index):
     df = pd.read_sql(query.statement, query.session.bind)
     return df
 
+def get_future_intraday(start_date, end_date, id_index):
+    # TODO
+    return
+
 
 def get_index_ma(start_date, end_date, id_index):
     Index_mkt = admin.table_moving_average()

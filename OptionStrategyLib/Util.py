@@ -1,8 +1,12 @@
 import datetime
 import math
+from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
+from back_test.BktUtil import BktUtil
 
 
 class PricingUtil(object):
+
+
     def get_blackcalculator_std(self, dt_eval, dt_maturity, annualized_vol):
         stdDev = annualized_vol * math.sqrt(self.get_ttm(dt_eval,dt_maturity))
         return stdDev
@@ -16,6 +20,37 @@ class PricingUtil(object):
         N365 = 365 * 1440.0
         ttm = N/N365
         return ttm
+
+    def get_blackcalculator(self, dt_date, spot, option, rf, vol):
+        stdDev = self.get_blackcalculator_std(dt_date, option.dt_maturity, vol)
+        discount = self.get_discount(dt_date, option.dt_maturity, rf)
+        black = BlackCalculator(option.strike, spot, stdDev, discount, False)
+        # alpha is component shares of stock, N(d1) for call / -N(-d1) for put
+        # beta id component shares of borrowing/lending -N(d2) for call / N(-d2) for put
+        return black
+
+    def get_maturity_metrics(self, dt_date, spot, option):
+        strike = option.strike
+        if option.option_type == BktUtil().type_put:
+            if strike > spot:
+                delta = -1.0
+            elif strike < spot:
+                delta = 1.0
+            else:
+                delta = 0.5
+            option_price = max(strike - spot, 0)
+        else:
+            if strike < spot:
+                delta = -1.0
+            elif strike > spot:
+                delta = 1.0
+            else:
+                delta = 0.5
+            option_price = max(spot - strike, 0)
+        delta = delta
+        option_price = option_price
+        return delta, option_price
+
 
 class Calendar(object):
     def leepDates(self, dt1, dt2):

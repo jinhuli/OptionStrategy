@@ -62,7 +62,10 @@ class BlackCalculator:
         # -N(d2) for call / N(-d2) for put
         return self.beta
 
-    def delta(self, spot):
+    def Cash(self):
+        return self.beta * self.strike * self.discount
+
+    def Delta(self, spot):
         if spot <= 0.0:
             return
         else:
@@ -72,10 +75,19 @@ class BlackCalculator:
             DbetaDs = self.dBeta_dD2 / temp
             temp2 = DalphaDs * self.forward + self.alpha * DforwardDs + DbetaDs * self.x \
                     + self.beta * self.dX_dS
-            return self.discount * temp2
+            delta = self.discount * temp2
+            return delta
 
     # 全Delta: dOption/dS = dOption/dS + dOption/dSigma * dSigma/dK
     # 根据SVI模型校准得到的隐含波动率的参数表达式，计算隐含波动率对行权价的一阶倒数（dSigma_dK）
     def delta_total(self, spot, dSigma_dK):
-        delta = self.delta(spot)
+        delta = self.Delta(spot)
         return delta + delta * dSigma_dK
+
+
+class EuropeanOption:
+    def __init__(self, strike, dt_maturity, optionType,dt_issue=None,init_price=None):
+        self.strike = strike
+        self.dt_maturity = dt_maturity
+        self.option_type = optionType
+        self.init_price = init_price
