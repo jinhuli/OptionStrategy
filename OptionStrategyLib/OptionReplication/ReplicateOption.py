@@ -35,7 +35,11 @@ class ReplicateOption():
         df_today = df_data[df_data[self.utl.col_date] == dt_date]
         if df_today.empty:
             df_today = df_data[df_data[self.utl.col_date] <= dt_date].iloc[0]
-        vix = df_today[self.utl.col_close].values[0]
+        try:
+            vix = df_today[self.utl.col_close].values[0]
+        except:
+            print('get_vol')
+            return
         return vix
 
     def calculate_hist_vol(self, cd_period, df_data):
@@ -109,7 +113,7 @@ class ReplicateOption():
         # print('init replication : ', replicate0)
         # print('terminal option value : ', option_price)
         # print('terminal replicate value : ', replicate)
-        # print('replication cost : ', pct_replication_cost * 100, '%')
+        # print(self.dt_issue,' replication cost : ', pct_replication_cost * 100, '%')
         # print('-' * 150)
         return pct_replication_cost
 

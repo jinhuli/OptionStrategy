@@ -35,6 +35,8 @@ def senario_analysis(dt1, dt2, df_daily, df_intraday, df_vix):
         res_dic1.update({'dt_date':dt,'cd_vol':'vix'})
         res.append(res_dic1)
         res.append(res_dic1)
+        print(res_dic1)
+        print(res_dic2)
     df_res = pd.DataFrame(res)
     return df_res
 
@@ -55,7 +57,7 @@ dt_end = dt2 + datetime.timedelta(days=31)
 df_index = get_index_mktdata(dt_start, dt_end, id_index)
 df_future = get_future_mktdata(dt_start, dt_end, name_code)
 df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-df_vix = get_index_mktdata(dt1, dt2, 'index_cvix')
+df_vix = get_index_mktdata(dt1, dt_end, 'index_cvix')
 df_vix[utl.col_close] = df_vix[utl.col_close] / 100.0
 
 # strike = df_index[df_index[utl.dt_date] == dt_issue][utl.col_close].values[-1]  # ATM Strike

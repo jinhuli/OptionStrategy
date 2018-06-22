@@ -589,16 +589,19 @@ class BktOptionSet(object):
 
     def get_volsurface_squre(self, df):
         ql_maturities = []
-
         df = self.calculate_implied_vol(df)
         df_mdt_list = []
         iv_name_list = []
         maturity_list = []
         for idx, mdt in enumerate(self.eligible_maturities):
             iv_rename = 'implied_vol_' + str(idx)
+            if self.option_code == '50etf':
+                col_strike = self.util.col_applicable_strike
+            else:
+                col_strike = self.util.col_strike
             df_mkt = df[(df[self.util.col_maturitydt] == mdt)] \
                 .rename(columns={self.util.col_implied_vol: iv_rename}) \
-                .set_index(self.util.col_applicable_strike).sort_index()
+                .set_index(col_strike).sort_index()
             if len(df_mkt) == 0: continue
             df_mdt_list.append(df_mkt)
             iv_name_list.append(iv_rename)
@@ -697,7 +700,7 @@ class BktOptionSet(object):
             df_data = self.df_daily_state
         df_data_call = self.util.get_df_by_type(df_data, self.util.type_call)
         df_data_put = self.util.get_df_by_type(df_data, self.util.type_put)
-
+        bvs_call = self.get_volsurface_squre(df_data_call)
         bvs_put = self.get_volsurface_squre(df_data_put)
         for idx, option in enumerate(bktoption_list):
             if option.option_price() > 0.0:

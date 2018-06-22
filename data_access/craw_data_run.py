@@ -10,7 +10,7 @@ from Utilities import admin_util as admin
 
 w.start()
 
-date = datetime.date(2018, 6, 15)
+date = datetime.date(2018, 6, 21)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
@@ -24,7 +24,7 @@ option_contracts = admin.table_option_contracts()
 future_contracts = admin.table_future_contracts()
 index_daily = admin.table_indexes_mktdata()
 
-equity_index_intraday = admin.table_equity_index_mktdata_intraday()
+equity_index_intraday = admin.table_index_mktdata_intraday()
 option_mktdata_intraday = admin.table_option_mktdata_intraday()
 
 dc = DataCollection()
