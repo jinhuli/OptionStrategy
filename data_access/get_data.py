@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
 from back_test.BktUtil import BktUtil
 from Utilities import admin_util as admin
+import datetime
 
 
 def get_eventsdata(start_date, end_date, flag_impact):
@@ -81,6 +82,31 @@ def get_future_mktdata(start_date, end_date, name_code):
     return df
 
 
+def get_dzqh_cf_minute(start_date, end_date, name_code):
+    utl = BktUtil()
+    table_cf = admin.table_cf_minute_1()
+    query = admin.session_dzqh().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
+                                       table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
+        filter((table_cf.c.dt_datetime >= start_date)&(table_cf.c.dt_datetime <= end_date)&(table_cf.c.name_code == name_code))
+    # print(datetime.datetime.now())
+    df = pd.read_sql(query.statement, query.session.bind)
+    # print(datetime.datetime.now())
+    df = df[df['id_instrument'].str.contains("_")]
+    df = utl.get_futures_minute_c1(df)
+    return df
+
+def get_dzqh_cf_daily(start_date, end_date, name_code):
+    utl = BktUtil()
+    table_cf = admin.table_cf_daily()
+    query = admin.session_dzqh().query(table_cf.c.dt_date, table_cf.c.id_instrument,
+                                       table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
+        filter((table_cf.c.dt_date >= start_date)&(table_cf.c.dt_date <= end_date)). \
+        filter(table_cf.c.name_code == name_code)
+    df = pd.read_sql(query.statement, query.session.bind)
+    df = df[df['id_instrument'].str.contains("_")]
+    df = utl.get_futures_daily_c1(df)
+    return df
+
 def get_50option_metricdata(start_date, end_date):
     Index_mkt = dbt.IndexMkt
     Option_mkt = dbt.OptionMktGolden
@@ -133,10 +159,6 @@ def get_index_intraday(start_date, end_date, id_index):
         .filter(Index.c.id_instrument == id_index)
     df = pd.read_sql(query.statement, query.session.bind)
     return df
-
-def get_future_intraday(start_date, end_date, id_index):
-    # TODO
-    return
 
 
 def get_index_ma(start_date, end_date, id_index):
@@ -200,3 +222,17 @@ def get_comoption_mktdata(start_date, end_date, name_code):
     df_option = df_mkt.join(df_contract.set_index('id_instrument'), how='left', on='id_instrument')
     df_option_metrics = pd.merge(df_option, df_srf, how='left', on=['dt_date', 'id_underlying'], suffixes=['', '_r'])
     return df_option_metrics
+
+
+def get_vix(start_date, end_date):
+    df1 = get_index_mktdata(start_date, datetime.date(2017, 6, 1), 'index_cvix')[['dt_date', 'amt_close', 'id_instrument']]
+    xl = pd.ExcelFile('../data/VIX_daily.xlsx')
+    df2 = xl.parse("Sheet1", header=None)
+    df2['dt_date'] = df2[0]
+    df2['amt_close'] = df2[1]
+    df2 = df2[['dt_date', 'amt_close']]
+    df2['dt_date'] = df2['dt_date'].apply(lambda x : x.date())
+    df2 = df2[(df2['dt_date'] > datetime.date(2017, 6, 1)) & (df2['dt_date'] <= end_date)]
+    df2['id_instrument'] = 'index_cvix'
+    df = pd.concat([df1, df2]).sort_values(by='dt_date').reset_index(drop=True)
+    return df

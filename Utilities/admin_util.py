@@ -14,15 +14,25 @@ engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/met
 # conn_metrics = engine_metrics.connect()
 metadata_metrics = MetaData(engine_metrics)
 
+engine_dzqh = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/dzqh', echo=False)
+
+metadata_dzqh = MetaData(engine_dzqh)
+
+def conn_dzqh():
+    return engine_dzqh.connect()
 
 def conn_mktdata():
-    return create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata', echo=False).connect()
+    return engine.connect()
 
 def conn_intraday():
-    return create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata_intraday', echo=False).connect()
+    return engine_intraday.connect()
 
 def conn_metrics():
     return engine_metrics.connect()
+
+def session_dzqh():
+    Session = sessionmaker(bind=engine_dzqh)
+    return Session()
 
 def session_mktdata():
     Session = sessionmaker(bind=engine)
@@ -77,3 +87,9 @@ def table_option_iv_by_moneyness():
 
 def table_option_atm_iv():
     return Table('option_atm_iv',metadata_metrics, autoload=True)
+
+def table_cf_minute_1():
+    return Table('cf_minute_1',metadata_dzqh, autoload=True)
+
+def table_cf_daily():
+    return Table('cf_day',metadata_dzqh, autoload=True)

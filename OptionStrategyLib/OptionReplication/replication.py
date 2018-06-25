@@ -1,88 +1,199 @@
-from data_access.get_data import get_future_mktdata, get_index_mktdata
-from back_test.BktUtil import BktUtil
-from OptionStrategyLib.OptionPricing import Options
-from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
-from OptionStrategyLib.OptionPricing.OptionMetrics import OptionMetrics
 import datetime
 import pandas as pd
 import numpy as np
-import QuantLib as ql
+from back_test.BktUtil import BktUtil
+from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
+from OptionStrategyLib.OptionPricing.OptionMetrics import OptionMetrics
+from data_access.get_data import get_future_mktdata, get_index_mktdata, get_index_intraday, get_dzqh_cf_daily, \
+    get_dzqh_cf_minute
+import matplotlib.pyplot as plt
+from Utilities.PlotUtil import PlotUtil
+from OptionStrategyLib.Util import PricingUtil
+from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator, EuropeanOption
+from Utilities.calculate import calculate_histvol
 
+
+class Replication():
+    def __init__(self, strike, dt_issue, dt_maturity, vol=0.2, rf=0.03, multiplier=1, fee=5.0 / 10000.0):
+        self.utl = BktUtil()
+        self.pricing_utl = PricingUtil()
+        self.strike = strike
+        self.dt_issue = dt_issue
+        self.dt_maturity = dt_maturity
+        self.vol = vol
+        self.rf = rf
+        self.fee = fee
+        self.multiplier = multiplier
+        self.pricing = None
+        self.dt_eval = None
+        # self.df_vix = df_vix
+
+    def synsetic_payoff(self, df_data, df_vol):
+        strikes = np.arange(self.strike * 0.8, self.strike * 1.2, 100.0)
+        option_payoffs = []
+        replicate_payoffs = []
+        for k in strikes:
+            self.strike = k
+            c,option,replicate = self.replicate_put(df_data, df_vol)
+            option_payoffs.append(option)
+            replicate_payoffs.append(replicate)
+        return strikes, option_payoffs,replicate_payoffs
+
+    def get_vol(self, dt_date, df_data):
+        df_today = df_data[df_data[self.utl.col_date] == dt_date]
+        if df_today.empty:
+            df_today = df_data[df_data[self.utl.col_date] <= dt_date].iloc[0]
+        try:
+            vix = df_today[self.utl.col_close].values[0]
+        except:
+            print('get_vol')
+            return
+        return vix
+
+    def calculate_hist_vol(self, cd_period, df_data):
+        if cd_period == '1M':
+            dt_start = self.dt_issue - datetime.timedelta(days=50)
+            df = df_data[df_data[self.utl.col_date] >= dt_start]
+            histvol = calculate_histvol(df[self.utl.col_close], 20)
+            df[self.utl.col_close] = histvol
+            df = df[[self.utl.col_date, self.utl.col_close]].dropna()
+        else:
+            return
+        return df
+
+    def replicate_put(self, df_data, df_vol):
+        df_data[self.utl.col_date] = df_data[self.utl.col_datetime].apply(
+            lambda x: datetime.date(x.year, x.month, x.day))
+        df_data = df_data[(df_data[self.utl.col_date] > self.dt_issue) & (
+            df_data[self.utl.col_date] <= self.dt_maturity)]  # cut useful data
+        dt_date = self.dt_issue  # Use Close price of option issue date to start replication.
+        Option = EuropeanOption(self.strike, self.dt_maturity, self.utl.type_put)
+        spot = self.strike
+        vol = self.get_vol(dt_date, df_vol)
+        black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
+        option0 = black.NPV()
+        cash = black.Cash()
+        delta0 = black.Delta(spot)
+        replicate0 = cash + delta0 * spot
+        dt_times = df_data[self.utl.col_datetime]
+        unit = -delta0
+        transaction_fee = abs(delta0) * self.fee
+        option_price = 0.0
+        replicate = 0.0
+        delta = 0.0  # Unit of underlyings/futures in replicate portfolio
+        cash = 0.0  # cash in replicate portfolio
+        dt_last = dt_date
+        # print('-' * 150)
+        # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
+        #       ('日期', 'Spot', 'Delta', 'Cashflow A', 'Unit', 'replicate', 'option', 'total fee'))
+        # print('-' * 150)
+        # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
+        #       (dt_date, spot, round(delta0, 2), round(cash, 1), round(unit, 2), round(replicate0, 0),
+        #        round(option0, 0), round(transaction_fee, 0)))
+        for (i, dt_time) in enumerate(dt_times):
+            dt_time = pd.to_datetime(dt_time)
+            if dt_time.time() < datetime.time(9, 30, 0) or dt_time.time() > datetime.time(15, 0, 0): continue
+            if dt_time.minute % 5 != 0: continue  # 5min调整一次delta
+            spot = df_data[df_data[self.utl.col_datetime] == dt_time][self.utl.col_close].values[0]
+            if dt_time.date() == self.dt_maturity:
+                replicate = cash + delta * spot
+                delta, option_price = self.pricing_utl.get_maturity_metrics(dt_date, spot, Option)
+                break
+            else:
+                vol = self.get_vol(dt_time.date(), df_vol)
+                black = self.pricing_utl.get_blackcalculator(dt_time.date(), spot, Option, self.rf, vol)
+                cash = black.Cash()
+                delta = black.Delta(spot)
+                replicate = cash + delta * spot
+                option_price = black.NPV()
+                unit = -delta
+            transaction_fee += abs(delta - delta0) * self.fee
+            delta0 = delta0
+            replicate_pnl = replicate - replicate0
+            option_pnl = option_price - option0
+            if dt_time.date() != dt_last:
+                cash = cash * (1 + self.rf * self.pricing_utl.get_ttm(dt_last, dt_time.date()))
+                dt_last = dt_time.date()
+                # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
+                #       (dt_time, spot, round(delta, 2), round(cash, 1), round(unit, 2), round(replicate, 0),
+                #        round(option_price, 0), round(transaction_fee, 2)))
+        pct_replication_cost = (option_price - replicate + transaction_fee) / option0
+        # print('-' * 150)
+        # print('init option : ', option0)
+        # print('init replication : ', replicate0)
+        # print('terminal option value : ', option_price)
+        # print('terminal replicate value : ', replicate)
+        # print(self.dt_issue,' replication cost : ', pct_replication_cost * 100, '%')
+        # print('-' * 150)
+        payoff_option = option_price
+        payoff_replicate = replicate - transaction_fee
+        return pct_replication_cost, payoff_option, payoff_replicate
+
+        # def replicate_put_daily(self, dt_date, df_data):
+        #     option = Options.OptionPlainEuropean(self.strike, self.maturitydt, ql.Option.Put)
+        #     pricing = OptionMetrics(option, self.rf, self.engineType)
+        #     spot = df_data[df_data[utl.dt_date] == dt_date][utl.col_close].values[0]
+        #     delta_init, option_init = self.get_delta(dt_date, spot, option, pricing)
+        #     replication_init = - delta_init * spot
+        #     dt_list = list(df_data[(df_data[self.utl.dt_date] <= self.dt_maturity) &
+        #                            (df_data[self.utl.dt_date] >= self.dt_issue)][self.utl.dt_date])
+        #     delta0 = 0.0
+        #     cashflowA = 0.0
+        #     transaction_fee = 0.0
+        #     replicate_value = 0.0
+        #     option_value = 0.0
+        #
+        #     print('-' * 150)
+        #     print("%10s %20s %20s %20s %20s %20s %20s %20s" %
+        #           ('日期', 'Spot', 'Delta', 'Cashflow A', 'Unit', 'replicate', 'option', 'transaction fee A'))
+        #     print('-' * 150)
+        #     for (i, dt) in enumerate(dt_list):
+        #         spot = df_index[df_index[utl.dt_date] == dt][utl.col_close].values[0]
+        #         delta, option_value = self.get_delta(dt, spot, option, pricing)
+        #         unit = -delta
+        #         unit_chg = (delta - delta0)
+        #         cashflow = - unit_chg * spot
+        #         cashflowA += cashflow
+        #         delta0 = delta
+        #         transaction_fee += fee * cashflow
+        #         replicate_value = cashflowA + delta * spot - transaction_fee
+        #         replicate_pnl = unit * spot - replication_init
+        #         option_pnl = option_value - option_init
+        #         print("%10s %20s %20s %20s %20s %20s %20s %20s" %
+        #               (dt, spot, round(delta * 100, 2), round(cashflowA, 1), round(cashflowA, 0), round(replicate_value, 0),
+        #                round(option_value, 0), round(transaction_fee, 0)))
+        #     print('-' * 150)
+        #     print('init option : ', option_init)
+        #     print('init replication : ', replication_init)
+        #     print('terminal option value : ', option_value)
+        #     print('terminal replicate value : ', replicate_value)
+        #     print('replication cost (replicate_value - option_value) : ', replicate_value - option_value)
+        #     print('-' * 150)
+
+plot_utl = PlotUtil()
 utl = BktUtil()
 name_code = 'IF'
 id_index = 'index_300sh'
-start_date = datetime.date(2018, 1, 1)
-end_date = datetime.date.today()
-df = get_future_mktdata(start_date, end_date, name_code)
-df_future1 = utl.get_futures_c1(df)  # 基于成交量的主力连续
-df_index = get_index_mktdata(start_date, end_date, id_index)
-
-""" Option Basics """
-issuedt = datetime.date(2018, 3, 1)
-maturitydt = datetime.date(2018, 4, 27)
-calendar = ql.China()
-daycounter = ql.ActualActual()
-engineType = 'AnalyticEuropeanEngine'
+dt_issue = datetime.date(2018, 3, 1)
+dt_maturity = datetime.date(2018, 4, 13)
+dt_start = dt_issue - datetime.timedelta(days=50)
+dt_end = dt_maturity
+df_index = get_index_mktdata(dt_start, dt_end, id_index)
+df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+df_vix = get_index_mktdata(dt_start, dt_end, 'index_cvix')
+df_vix[utl.col_close] = df_vix[utl.col_close] / 100.0
 vol = 0.2
 rf = 0.03
 fee = 5.0 / 10000.0
-spot = strike = df_index[df_index[utl.dt_date] == issuedt][utl.col_close].values[0]  # ATM Strike
-option = Options.OptionPlainEuropean(strike, utl.to_ql_date(maturitydt), ql.Option.Put)
-pricing = OptionMetrics(option, rf, engineType)
-beg = utl.to_ql_date(issuedt)
-end = utl.to_ql_date(maturitydt)
+strike = df_index[df_index[utl.dt_date] == dt_issue][utl.col_close].values[-1]  # ATM Strike
+replication = Replication(strike, dt_issue, dt_maturity)
+# df_vol = replication.calculate_hist_vol('1M', df_index)
+# res,y,yy = replication.replicate_put(df_intraday, df_vix)
+#
+# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+# res_fut,x,xx = replication.replicate_put(df_cf_minute, df_vix)
 
-""" Underlying Holdings """
-multiplier = 100
-unit = 0.0  # 合约乘数100
-portfolio = 100 * spot
-dt_list = list(df_future1[(df_future1[utl.dt_date] <= maturitydt) &
-                          (df_future1[utl.dt_date] >= issuedt)][utl.dt_date])
-option_init = 0.0
-delta = delta0 = 0.0
-cashflowA = 0.0
-transaction_fee = 0.0
-replicate_value = 0.0
-""" Replicate """
-print('-' * 150)
-print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-      ('日期', 'Spot', 'Delta', 'Cashflow', 'Unit', 'replicate value', 'option value', 'transaction fee'))
-print('-' * 150)
-for (i, dt) in enumerate(dt_list):
-    eval_date = utl.to_ql_date(dt)
-    evaluation = Evaluation(eval_date, daycounter, calendar)
-    pricing.set_evaluation(evaluation)
-    spot = df_index[df_index[utl.dt_date] == dt][utl.col_close].values[0]
-    if dt == maturitydt:
-        if strike > spot: delta = -1.0
-        elif strike < spot: delta = 1.0
-        else: delta = 0.5
-        option_price = max(strike - spot, 0) * multiplier
-    else:
-        delta = pricing.delta(spot, vol)
-        option_price = pricing.option_price(spot, vol) * multiplier
-    if i == 0: option_init = option_price
-    unit = delta * multiplier
-    unit_chg = (delta - delta0) * multiplier
-    cashflow = - unit_chg * spot
-    cashflowA += cashflow
-    delta0 = delta
-    transaction_fee += fee * cashflow
-    replicate_value = cashflowA + delta * spot * multiplier - transaction_fee
-    print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-          (dt, spot, round(delta * 100, 2), round(cashflowA, 1), round(unit, 0), round(replicate_value, 0),
-           round(option_price, 0), round(transaction_fee, 0)))
-
-option_value = max((strike - spot) * multiplier, 0)
-# replicate_value = cashflowA + delta * spot * multiplier - transaction_fee
-print('-' * 150)
-print('strike : ', strike * 100)
-print('option init value : ', option_init)
-print('option terminal value : ', option_value)
-print('replicate terminal value : ', replicate_value)
-print('replication cost : ', replicate_value - option_value)
-print('-' * 150)
-
-
-
-
+strikes, option_payoffs,replicate_payoffs = replication.synsetic_payoff(df_intraday,df_vix)
+plot_utl.plot_line_chart(strikes,[option_payoffs,replicate_payoffs],['option payoff','replicate portfolio'])
+plt.show()

@@ -217,11 +217,13 @@ class BktUtil():
             df['id_put'] = df_put[self.col_id_instrument]
             df[self.col_trading_volume] = df_call[self.col_trading_volume] + df_put[self.col_trading_volume]
             # 保持adj_strike,applicable strike不重复，applicable strike即后续计算使用的实际strike price
-            df = df.sort_values(by=self.col_trading_volume, ascending=False)\
-                .drop_duplicates(subset=[self.col_applicable_strike])\
+            df = df.sort_values(by=self.col_trading_volume, ascending=False) \
+                .drop_duplicates(subset=[self.col_applicable_strike]) \
                 .drop_duplicates(subset=[self.col_adj_strike])
-            df_mdt_call = pd.merge(df[['id_call']].rename(columns={'id_call':self.col_id_instrument}), df_call, how='left', on=self.col_id_instrument)
-            df_mdt_put = pd.merge(df[['id_put']].rename(columns={'id_put':self.col_id_instrument}), df_put, how='left', on=self.col_id_instrument)
+            df_mdt_call = pd.merge(df[['id_call']].rename(columns={'id_call': self.col_id_instrument}), df_call,
+                                   how='left', on=self.col_id_instrument)
+            df_mdt_put = pd.merge(df[['id_put']].rename(columns={'id_put': self.col_id_instrument}), df_put, how='left',
+                                  on=self.col_id_instrument)
             df_res = df_res.append(df_mdt_call, ignore_index=True)
             df_res = df_res.append(df_mdt_put, ignore_index=True)
         df_res = df_res.dropna(how='all')
@@ -288,10 +290,20 @@ class BktUtil():
         return df
 
     """ Get 1st contract based on highest trading volume """
-    def get_futures_c1(self,df):
-        df = df.sort_values(by=[self.dt_date,self.col_trading_volume], ascending=False)
-        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date,ascending=True)
+
+    def get_futures_daily_c1(self, df):
+        df = df.sort_values(by=[self.dt_date, self.col_trading_volume], ascending=False)
+        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True)
         return df_rs
+
+    def get_futures_minute_c1(self, df):
+        tmp = df.groupby([self.dt_date,self.id_instrument]).sum()[self.col_trading_volume].to_frame()
+        tmp = tmp.reset_index(level=[self.dt_date,self.id_instrument]).sort_values(by=self.col_trading_volume,ascending=False)
+        tmp = tmp.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True)
+        df0 = tmp.rename(columns={self.id_instrument: 'id_core'})
+        df2 = pd.merge(df, df0, on=self.dt_date, how='left')
+        df2 = df2[df2[self.id_instrument] == df2['id_core']].reset_index(drop=True)
+        return df2
 
     def get_sha(self):
         sha = hashlib.sha256()
@@ -299,3 +311,6 @@ class BktUtil():
         sha.update(now)
         id_position = sha.hexdigest()
         return id_position
+
+
+
