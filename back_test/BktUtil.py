@@ -300,7 +300,7 @@ class BktUtil():
         tmp = df.groupby([self.dt_date,self.id_instrument]).sum()[self.col_trading_volume].to_frame()
         tmp = tmp.reset_index(level=[self.dt_date,self.id_instrument]).sort_values(by=self.col_trading_volume,ascending=False)
         tmp = tmp.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True)
-        df0 = tmp.rename(columns={self.id_instrument: 'id_core'})
+        df0 = tmp[[self.dt_date,self.id_instrument]].rename(columns={self.id_instrument: 'id_core'})
         df2 = pd.merge(df, df0, on=self.dt_date, how='left')
         df2 = df2[df2[self.id_instrument] == df2['id_core']].reset_index(drop=True)
         return df2

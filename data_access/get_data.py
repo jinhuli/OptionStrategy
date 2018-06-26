@@ -87,7 +87,7 @@ def get_dzqh_cf_minute(start_date, end_date, name_code):
     table_cf = admin.table_cf_minute_1()
     query = admin.session_dzqh().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
                                        table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
-        filter((table_cf.c.dt_datetime >= start_date)&(table_cf.c.dt_datetime <= end_date)&(table_cf.c.name_code == name_code))
+        filter((table_cf.c.dt_date >= start_date)&(table_cf.c.dt_date <= end_date)&(table_cf.c.name_code == name_code))
     # print(datetime.datetime.now())
     df = pd.read_sql(query.statement, query.session.bind)
     # print(datetime.datetime.now())

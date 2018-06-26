@@ -1,5 +1,8 @@
 import numpy as np
 import scipy.stats as ss
+import datetime
+import pandas as pd
+
 
 
 def calculate_histvol(data, n):
@@ -9,27 +12,51 @@ def calculate_histvol(data, n):
     return vol
 
 
-def simulate_minute(spot0, annualized_vol, T, mu=0.05, N=10000):
+def simulate(S0, sigma, N, mu=0.05):
     dt = 1.0 / (365 * 1440.0)  # 1min
-    T_minutes = T * 1440
     t = 1
-    S = spot0
+    S = S0
     path = [S]
-    seeds = list(np.random.normal(0, 1, T_minutes))
-    while t < T_minutes:
+    seeds = list(np.random.normal(0, 1, N))
+    while t < N:
         normal = seeds[t - 1]
-        ds = mu * S * dt + annualized_vol * S * normal * np.sqrt(dt)
+        ds = mu * S * dt + sigma * S * normal * np.sqrt(dt)
         S += ds
         t += 1
         path.append(S)
     return S, path
 
 
-def montecarlo(S0, sigma, T, mu=0.05, N=10000):
-    pts = np.random.random((N, 2))
+def montecarlo(S0, sigma, dates, mu=0.05, N=10000):
+    datetimes = generate_times(dates)
+    N = len(datetimes)
+    S, path = simulate(S0, sigma, N)
+    df = pd.DataFrame()
+    df['dt_datetime'] = datetimes
+    df['amt_close'] = path
+    df['dt_date'] = df['dt_datetime'].apply(lambda x: x.date())
+    return df
 
 
-s, path = simulate_minute(3000, 0.2, 30)
+def generate_times(dt_dates):
+    dt_times = []
+    for dt_date in dt_dates:
+        dt_time = datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 9, 30, 0)
+        dt_times.append(dt_time)
+        while dt_time < datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 11, 30, 0):
+            dt_time = dt_time + datetime.timedelta(minutes=1)
+            dt_times.append(dt_time)
+        dt_time = datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 13, 0, 0)
+        dt_times.append(dt_time)
+        while dt_time < datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 15, 0, 0):
+            dt_time = dt_time + datetime.timedelta(minutes=1)
+            dt_times.append(dt_time)
+    return dt_times
 
-print(s)
-print(path)
+
+# t = generate_times([datetime.date(2018, 1, 1), datetime.date(2018, 1, 2)])
+# print(t)
+montecarlo(3000, 0.2,[datetime.date(2018, 1, 1), datetime.date(2018, 1, 2)])
+# s, path = simulate_minute(3000, 0.2, 30)
+# print(s)
+# print(path)
