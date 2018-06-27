@@ -85,7 +85,7 @@ class BktInstrument(object):
     def mktprice_close(self):
         try:
             close = self.current_state[self.util.col_close]
-            if close == self.util.nan_value:return
+            if close == self.util.nan_value: return
         except Exception as e:
             print(e)
             close = None
@@ -94,7 +94,7 @@ class BktInstrument(object):
     def mktprice_open(self):
         try:
             amt_open = self.current_state[self.util.col_open]
-            if amt_open == self.util.nan_value:return
+            if amt_open == self.util.nan_value: return
         except:
             amt_open = None
         return amt_open
@@ -178,6 +178,7 @@ class BktInstrument(object):
         return trading_volume
 
     """ last settlement, daily"""
+
     def mktprice_last_settlement(self):
         amt = None
         # tmp = pd.DataFrame(self.current_daily_state)
@@ -196,6 +197,7 @@ class BktInstrument(object):
         return amt
 
     """ last bar/state, not necessarily daily"""
+
     def mktprice_last_close(self):
         amt = None
         if self.util.col_last_close in self.current_daily_state.index.values:
@@ -203,7 +205,7 @@ class BktInstrument(object):
         if amt == None or amt == np.nan:
             try:
                 if self.current_index == 0: return
-                df_last_state = self.df_metrics.loc[self.current_index-1]
+                df_last_state = self.df_metrics.loc[self.current_index - 1]
                 amt = df_last_state[self.util.col_close]
             except Exception as e:
                 print(e)

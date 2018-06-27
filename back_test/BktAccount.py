@@ -30,14 +30,13 @@ class BktAccount(object):
         self.df_trading_book = pd.DataFrame()  # 持仓信息
         self.df_account = pd.DataFrame()  # 交易账户
         self.df_trading_records = pd.DataFrame()  # 交易记录
-        self.df_ivs = pd.DataFrame() # 交易期权的隐含波动率
+        self.df_ivs = pd.DataFrame()  # 交易期权的隐含波动率
         self.holdings = []  # 当前持仓
         self.pu = PlotUtil()
         self.trade_order_dict = {}
         self.total_premiums_long = 0.0
 
-
-    def get_open_position_price(self, bktoption,cd_open_by_price):
+    def get_open_position_price(self, bktoption, cd_open_by_price):
         if cd_open_by_price == 'open':
             mkt_price = bktoption.mktprice_open()
         elif cd_open_by_price == 'close':
@@ -52,14 +51,14 @@ class BktAccount(object):
             elif bktoption.mktprice_daily_avg() != self.util.nan_value:
                 mkt_price = bktoption.mktprice_daily_avg()
             else:
-                print(bktoption.id_instrument,'No volume to open position')
+                print(bktoption.id_instrument, 'No volume to open position')
                 mkt_price = bktoption.option_price()
 
         elif cd_open_by_price == 'afternoon_close_15min':
             if bktoption.mktprice_afternoon_close_15min() != self.util.nan_value:
                 mkt_price = bktoption.mktprice_afternoon_close_15min()
             else:
-                print(bktoption.id_instrument,'No volume to open position')
+                print(bktoption.id_instrument, 'No volume to open position')
                 mkt_price = bktoption.option_price()
 
         elif cd_open_by_price == 'daily_avg':
@@ -74,7 +73,7 @@ class BktAccount(object):
             return
         return mkt_price
 
-    def get_close_position_price(self, bktoption,cd_close_by_price=None):
+    def get_close_position_price(self, bktoption, cd_close_by_price=None):
         if cd_close_by_price == 'open':
             mkt_price = bktoption.mktprice_price_open()
         elif cd_close_by_price == 'close':
@@ -87,7 +86,7 @@ class BktAccount(object):
             elif bktoption.mktprice_daily_avg() != self.util.nan_value:
                 mkt_price = bktoption.mktprice_daily_avg()
             else:
-                print(bktoption.id_instrument,'No volume to close position')
+                print(bktoption.id_instrument, 'No volume to close position')
                 mkt_price = bktoption.option_price()
         elif cd_close_by_price == 'afternoon_close_15min':
             if bktoption.mktprice_afternoon_close_15min() != self.util.nan_value:
@@ -97,7 +96,7 @@ class BktAccount(object):
             elif bktoption.mktprice_daily_avg() != -999.0:
                 mkt_price = bktoption.mktprice_daily_avg()
             else:
-                print(bktoption.id_instrument,'No volume to close position')
+                print(bktoption.id_instrument, 'No volume to close position')
                 mkt_price = bktoption.option_price()
         else:
             mkt_price = bktoption.option_price()
@@ -108,88 +107,90 @@ class BktAccount(object):
 
     " Given INVESTMENT FUND calculate portfolio units, adjust investment unit by given delta exposure" \
     " Do not change portfolio components. "
-    def portfolio_units_adjust(self,option_port,delta_exposure,cd_open_by_price=None, fund=None):
-        if isinstance(option_port,BackSpread):
+
+    def portfolio_units_adjust(self, option_port, delta_exposure, cd_open_by_price=None, fund=None):
+        if isinstance(option_port, BackSpread):
             option_long = option_port.option_long
             option_short = option_port.option_short
-            plong = self.get_open_position_price(option_long,cd_open_by_price)
-            pshort = self.get_open_position_price(option_short,cd_open_by_price)
+            plong = self.get_open_position_price(option_long, cd_open_by_price)
+            pshort = self.get_open_position_price(option_short, cd_open_by_price)
             option_port.rebalancing(delta_exposure)
             if fund == None:
-                fund = plong*option_long.multiplier()*option_port.unit_long + \
-                       option_short.trade_margin_capital-pshort*option_short.multiplier()*\
-                       option_port.unit_short
+                fund = plong * option_long.multiplier() * option_port.unit_long + \
+                       option_short.trade_margin_capital - pshort * option_short.multiplier() * \
+                                                           option_port.unit_short
                 fund0 = plong * option_long.multiplier() * option_port.invest_ratio_long + \
-                        (option_short.get_maintain_margin() - pshort*option_short.multiplier())*\
+                        (option_short.get_maintain_margin() - pshort * option_short.multiplier()) * \
                         option_port.invest_ratio_short
             else:
                 fund0 = plong * option_long.multiplier() * option_port.invest_ratio_long + \
-                        (option_short.get_init_margin()-pshort*option_short.multiplier())*\
+                        (option_short.get_init_margin() - pshort * option_short.multiplier()) * \
                         option_port.invest_ratio_short
             unit = fund / fund0
             option_port.unit_portfolio = unit
-            option_port.unit_long = unit*option_port.invest_ratio_long
-            option_port.unit_short = unit*option_port.invest_ratio_short
-        if isinstance(option_port,Straddle):
+            option_port.unit_long = unit * option_port.invest_ratio_long
+            option_port.unit_short = unit * option_port.invest_ratio_short
+        if isinstance(option_port, Straddle):
             option_call = option_port.option_call
             option_put = option_port.option_put
             price_call = self.get_open_position_price(option_call, cd_open_by_price)
             price_put = self.get_open_position_price(option_put, cd_open_by_price)
             if fund == None:
-                fund = price_call*option_call.multiplier()*option_port.unit_call + \
-                       price_put*option_put.multiplier()*option_port.unit_put
+                fund = price_call * option_call.multiplier() * option_port.unit_call + \
+                       price_put * option_put.multiplier() * option_port.unit_put
             option_port.rebalancing(delta_exposure)
 
             if option_port.long_short == self.util.long:
-                fund0 = price_call*option_call.multiplier()*option_port.invest_ratio_call + \
-                       price_put*option_put.multiplier()*option_port.invest_ratio_put
+                fund0 = price_call * option_call.multiplier() * option_port.invest_ratio_call + \
+                        price_put * option_put.multiplier() * option_port.invest_ratio_put
                 unit_straddle = fund / fund0
             else:
-                fund_straddle = (option_call.get_init_margin()-price_call*option_call.multiplier())*\
+                fund_straddle = (option_call.get_init_margin() - price_call * option_call.multiplier()) * \
                                 option_port.invest_ratio_call + \
-                                (option_put.get_init_margin()-price_put*option_put.multiplier())*\
+                                (option_put.get_init_margin() - price_put * option_put.multiplier()) * \
                                 option_port.invest_ratio_put
                 unit_straddle = fund / fund_straddle
             option_port.unit_portfolio = unit_straddle
-            option_port.unit_call = unit_straddle*option_port.invest_ratio_call
-            option_port.unit_put = unit_straddle*option_port.invest_ratio_put
-        elif isinstance(option_port,Calls) or isinstance(option_port,Puts):
+            option_port.unit_call = unit_straddle * option_port.invest_ratio_call
+            option_port.unit_put = unit_straddle * option_port.invest_ratio_put
+        elif isinstance(option_port, Calls) or isinstance(option_port, Puts):
             if option_port.long_short == self.util.long:
                 if option_port.cd_weighted == 'equal_unit':
                     if fund == None:
                         fund = 0
-                        for (idx,option) in enumerate(option_port.optionset):
+                        for (idx, option) in enumerate(option_port.optionset):
                             price = self.get_open_position_price(option, cd_open_by_price)
-                            fund += price*option.multiplier()*option_port.unit_portfolio[idx]
+                            fund += price * option.multiplier() * option_port.unit_portfolio[idx]
                     fund0 = 0
-                    for option in option_port.optionset: # equal weighted by mkt value
+                    for option in option_port.optionset:  # equal weighted by mkt value
                         price = self.get_open_position_price(option, cd_open_by_price)
-                        fund0 += price*option.multiplier()
-                    unit_calls = fund/fund0
-                    option_port.unit_portfolio = [unit_calls]*len(option_port.optionset)
+                        fund0 += price * option.multiplier()
+                    unit_calls = fund / fund0
+                    option_port.unit_portfolio = [unit_calls] * len(option_port.optionset)
             else:
                 if fund == None:
                     fund = 0
                     for (idx, option) in enumerate(option_port.optionset):
                         price = self.get_open_position_price(option, cd_open_by_price)
-                        fund += (option.get_maintain_margin()-price*option.multiplier())*\
+                        fund += (option.get_maintain_margin() - price * option.multiplier()) * \
                                 option_port.unit_portfolio[idx]
                 fund0 = 0
-                for (idx,option) in enumerate(option_port.optionset):  # equal weighted by mkt value
+                for (idx, option) in enumerate(option_port.optionset):  # equal weighted by mkt value
                     price = self.get_open_position_price(option, cd_open_by_price)
-                    fund0 += option.get_init_margin()-price*option.multiplier()
+                    fund0 += option.get_init_margin() - price * option.multiplier()
                 unit_calls = fund / fund0
                 option_port.unit_portfolio = [unit_calls] * len(option_port.optionset)
-        elif isinstance(option_port,CalandarSpread):
+        elif isinstance(option_port, CalandarSpread):
             p1 = self.get_open_position_price(option_port.option_mdt1, cd_open_by_price)
             p2 = self.get_open_position_price(option_port.option_mdt2, cd_open_by_price)
-            fund0 = p1+p2
+            fund0 = p1 + p2
             unit = fund / fund0
             option_port.unit_portfolio = unit
 
     " Given INVESTMENT FUND calculate portfolio units, adjust investment unit by given delta exposure" \
     " CHANGE portfolio components. "
-    def portfolio_rebalancing_eqlfund(self,option_port,delta_exposure,cd_open_by_price=None, fund=None):
+
+    def portfolio_rebalancing_eqlfund(self, option_port, delta_exposure, cd_open_by_price=None, fund=None):
         if isinstance(option_port, Straddle):
             option_call = option_port.option_call
             option_put = option_port.option_put
@@ -203,17 +204,17 @@ class BktAccount(object):
                     fund_call = self.get_open_position_price(liquidite_call, cd_open_by_price) \
                                 * option_call.multiplier() * option_port.unit_call
                 else:
-                    fund_call = liquidite_call.trade_margin_capital\
-                                - self.get_open_position_price(liquidite_call, cd_open_by_price)\
-                                * liquidite_call.multiplier()*option_port.unit_call
+                    fund_call = liquidite_call.trade_margin_capital \
+                                - self.get_open_position_price(liquidite_call, cd_open_by_price) \
+                                  * liquidite_call.multiplier() * option_port.unit_call
                 if liquidite_put.trade_long_short == self.util.long:
                     fund_put = self.get_open_position_price(liquidite_put, cd_open_by_price) \
-                                * option_put.multiplier() * option_port.unit_put
+                               * option_put.multiplier() * option_port.unit_put
                 else:
                     fund_put = liquidite_put.trade_margin_capital \
-                                - self.get_open_position_price(liquidite_put, cd_open_by_price) \
-                                  * liquidite_put.multiplier() * option_port.unit_put
-                fund = fund_call+fund_put
+                               - self.get_open_position_price(liquidite_put, cd_open_by_price) \
+                                 * liquidite_put.multiplier() * option_port.unit_put
+                fund = fund_call + fund_put
             option_port.rebalancing(delta_exposure)
 
             if option_port.long_short == self.util.long:
@@ -221,9 +222,9 @@ class BktAccount(object):
                         price_put * option_put.multiplier() * option_port.invest_ratio_put
                 unit_straddle = fund / fund0
             else:
-                fund_straddle = (option_call.get_init_margin()-price_call*option_call.multiplier())*\
+                fund_straddle = (option_call.get_init_margin() - price_call * option_call.multiplier()) * \
                                 option_port.invest_ratio_call + \
-                                (option_put.get_init_margin()-price_put*option_put.multiplier())*\
+                                (option_put.get_init_margin() - price_put * option_put.multiplier()) * \
                                 option_port.invest_ratio_put
                 unit_straddle = fund / fund_straddle
             option_port.unit_portfolio = unit_straddle
@@ -232,27 +233,28 @@ class BktAccount(object):
 
     " Given INVESTMENT UNITs of total portfolio, do component rebalancing" \
     " CHANGE portfolio components. "
+
     def portfolio_rebalancing_eqlunit(self, option_port, unit, call_ratio=1.0, put_ratio=1.0):
-        if isinstance(option_port,Collar):
+        if isinstance(option_port, Collar):
             self.update_invest_units_collar(option_port, unit, call_ratio, put_ratio)
         elif isinstance(option_port, Straddle):
-            self.update_invest_units_straddle(option_port,unit,call_ratio,put_ratio)
+            self.update_invest_units_straddle(option_port, unit, call_ratio, put_ratio)
 
     def update_invest_units_collar(self, option_port, unit_underlying, write_ratio, buy_ratio):
         call = option_port.write_call
         put = option_port.buy_put
         if call != None:
-            option_port.unit_call = np.floor(unit_underlying/call.multiplier())*write_ratio
+            option_port.unit_call = np.floor(unit_underlying / call.multiplier()) * write_ratio
         if put != None:
-            option_port.unit_put = np.floor(unit_underlying/put.multiplier())*buy_ratio
+            option_port.unit_put = np.floor(unit_underlying / put.multiplier()) * buy_ratio
         option_port.unit_underlying = unit_underlying
 
     def update_invest_units_straddle(self, option_port, unit, call_ratio, put_ratio):
-        option_port.unit_call = unit*option_port.invest_ratio_call
-        option_port.unit_put = unit*option_port.invest_ratio_put
+        option_port.unit_call = unit * option_port.invest_ratio_call
+        option_port.unit_put = unit * option_port.invest_ratio_put
 
-    def open_portfolio(self, dt, portfolio,unit=None, cd_open_by_price=None):
-        if isinstance(portfolio,BktOption):
+    def open_portfolio(self, dt, portfolio, unit=None, cd_open_by_price=None):
+        if isinstance(portfolio, BktOption):
             self.open_long_option(dt, portfolio, unit, cd_open_by_price)
         elif type(portfolio) == dict:
             self.option_long_index(portfolio)
@@ -263,65 +265,65 @@ class BktAccount(object):
             else:
                 self.open_short_option(dt, portfolio.option_call, portfolio.unit_call, cd_open_by_price)
                 self.open_short_option(dt, portfolio.option_put, portfolio.unit_put, cd_open_by_price)
-        elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
+        elif isinstance(portfolio, Calls) or isinstance(portfolio, Puts):
             if portfolio.long_short == self.util.long:
                 for option in portfolio.optionset:
-                    self.open_long_option(dt,option,portfolio.unit_portfolio[0],cd_open_by_price)
+                    self.open_long_option(dt, option, portfolio.unit_portfolio[0], cd_open_by_price)
             else:
                 for option in portfolio.optionset:
                     self.open_short_option(dt, option, portfolio.unit_portfolio[0], cd_open_by_price)
-        elif isinstance(portfolio,CalandarSpread):
+        elif isinstance(portfolio, CalandarSpread):
             self.open_long_option(dt, portfolio.option_mdt1, portfolio.unit_portfolio, cd_open_by_price)
             self.open_long_option(dt, portfolio.option_mdt2, portfolio.unit_portfolio, cd_open_by_price)
-        elif isinstance(portfolio,BackSpread):
-            self.open_long_option(dt,portfolio.option_long,portfolio.unit_long,cd_open_by_price)
-            self.open_short_option(dt,portfolio.option_short,portfolio.unit_short,cd_open_by_price)
-        elif isinstance(portfolio,Collar):
-            self.open_long_option(dt,portfolio.buy_put,portfolio.unit_put,cd_open_by_price)
-            self.open_short_option(dt,portfolio.write_call,portfolio.unit_call,cd_open_by_price)
-            self.open_long_underlying(dt,portfolio.underlying,portfolio.unit_underlying,cd_open_by_price)
+        elif isinstance(portfolio, BackSpread):
+            self.open_long_option(dt, portfolio.option_long, portfolio.unit_long, cd_open_by_price)
+            self.open_short_option(dt, portfolio.option_short, portfolio.unit_short, cd_open_by_price)
+        elif isinstance(portfolio, Collar):
+            self.open_long_option(dt, portfolio.buy_put, portfolio.unit_put, cd_open_by_price)
+            self.open_short_option(dt, portfolio.write_call, portfolio.unit_call, cd_open_by_price)
+            self.open_long_underlying(dt, portfolio.underlying, portfolio.unit_underlying, cd_open_by_price)
 
-    def rebalance_position(self, dt, portfolio,unit=None,cd_rebalance_by_price=None):
-        if isinstance(portfolio,BktOption):
+    def rebalance_position(self, dt, portfolio, unit=None, cd_rebalance_by_price=None):
+        if isinstance(portfolio, BktOption):
             self.rebalance_position_option(dt, portfolio, unit)
         elif type(portfolio) == dict:
             self.rebalance_position_index(dt, portfolio)
-        elif isinstance(portfolio,Straddle):
-            self.rebalance_position_option(dt,portfolio.option_call,portfolio.unit_call)
-            self.rebalance_position_option(dt,portfolio.option_put,portfolio.unit_put)
-        elif isinstance(portfolio,BackSpread):
-            self.rebalance_position_option(dt,portfolio.option_long,portfolio.unit_long)
-            self.rebalance_position_option(dt,portfolio.option_short,portfolio.unit_short)
-        elif isinstance(portfolio,Calls) or isinstance(portfolio,Puts):
-            for (i,option) in enumerate(portfolio.optionset):
-                self.rebalance_position_option(dt,option,portfolio.unit_portfolio[i])
+        elif isinstance(portfolio, Straddle):
+            self.rebalance_position_option(dt, portfolio.option_call, portfolio.unit_call)
+            self.rebalance_position_option(dt, portfolio.option_put, portfolio.unit_put)
+        elif isinstance(portfolio, BackSpread):
+            self.rebalance_position_option(dt, portfolio.option_long, portfolio.unit_long)
+            self.rebalance_position_option(dt, portfolio.option_short, portfolio.unit_short)
+        elif isinstance(portfolio, Calls) or isinstance(portfolio, Puts):
+            for (i, option) in enumerate(portfolio.optionset):
+                self.rebalance_position_option(dt, option, portfolio.unit_portfolio[i])
 
     def rebalance_portfolio(self, dt, portfolio, cd_rebalance_by_price=None):
         if isinstance(portfolio, Collar):
             self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
             self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
-            self.open_long_option(dt, portfolio.buy_put, portfolio.unit_put,cd_rebalance_by_price)
-            self.open_short_option(dt, portfolio.write_call, portfolio.unit_call,cd_rebalance_by_price)
+            self.open_long_option(dt, portfolio.buy_put, portfolio.unit_put, cd_rebalance_by_price)
+            self.open_short_option(dt, portfolio.write_call, portfolio.unit_call, cd_rebalance_by_price)
             portfolio.liquidate_put = None
             portfolio.liquidate_call = None
         elif isinstance(portfolio, Straddle):
             self.close_position_option(dt, portfolio.liquidate_call, cd_close_by_price=cd_rebalance_by_price)
             self.close_position_option(dt, portfolio.liquidate_put, cd_close_by_price=cd_rebalance_by_price)
-            self.open_portfolio(dt,portfolio,cd_open_by_price=cd_rebalance_by_price)
+            self.open_portfolio(dt, portfolio, cd_open_by_price=cd_rebalance_by_price)
             portfolio.liquidate_put = None
             portfolio.liquidate_call = None
 
-    def close_position(self, dt, position,cd_close_by_price=None):
+    def close_position(self, dt, position, cd_close_by_price=None):
         if type(position) == dict:
             self.close_position_index(position)
         else:
-            self.close_position_option(dt, position,cd_close_by_price)
+            self.close_position_option(dt, position, cd_close_by_price)
 
     def close_portfolio(self, dt, portfolio, cd_close_by_price=None):
-        if isinstance(portfolio,Collar):
+        if isinstance(portfolio, Collar):
             self.close_position_option(dt, portfolio.write_call, cd_close_by_price=cd_close_by_price)
             self.close_position_option(dt, portfolio.buy_put, cd_close_by_price=cd_close_by_price)
-            self.close_position_underlying(dt,portfolio.underlying,cd_open_by_price=cd_close_by_price)
+            self.close_position_underlying(dt, portfolio.underlying, cd_open_by_price=cd_close_by_price)
             portfolio.liquidate()
 
     def option_long_index(self, trade_order_dict):
@@ -351,7 +353,7 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         self.trade_order_dict = trade_order_dict
 
-    def open_long_underlying(self,dt, bktinstrument, unit, cd_open_by_price):
+    def open_long_underlying(self, dt, bktinstrument, unit, cd_open_by_price):
         if bktinstrument.trade_flag_open: print('Recheck! underlying position already opened !')
         mkt_price = bktinstrument.mktprice_close()
         id_instrument = bktinstrument.id_instrument()
@@ -379,12 +381,12 @@ class BktAccount(object):
                                     })
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
-    def open_long_option(self, dt, bktoption, unit,cd_open_by_price):  # 多开
+    def open_long_option(self, dt, bktoption, unit, cd_open_by_price):  # 多开
         if bktoption != None:
             bktoption.trade_dt_open = dt
             bktoption.trade_long_short = self.util.long
             id_instrument = bktoption.id_instrument()
-            mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
+            mkt_price = self.get_open_position_price(bktoption, cd_open_by_price)
             multiplier = bktoption.multiplier()
             trade_type = 'open long'
             fee = unit * mkt_price * self.fee * multiplier
@@ -397,7 +399,7 @@ class BktAccount(object):
             bktoption.transaction_fee = fee
             bktoption.trade_flag_open = True
             if bktoption not in self.holdings: self.holdings.append(bktoption)
-            self.cash = self.cash - premium - margin_capital-fee
+            self.cash = self.cash - premium - margin_capital - fee
             self.total_transaction_cost += fee
             self.nbr_trade += 1
             record = pd.DataFrame(data={self.util.id_instrument: [id_instrument],
@@ -412,12 +414,12 @@ class BktAccount(object):
                                         })
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
 
-    def open_short_option(self, dt, bktoption, unit,cd_open_by_price):
+    def open_short_option(self, dt, bktoption, unit, cd_open_by_price):
         if bktoption != None:
             bktoption.trade_dt_open = dt
             bktoption.trade_long_short = self.util.short
             id_instrument = bktoption.id_instrument()
-            mkt_price = self.get_open_position_price(bktoption,cd_open_by_price)
+            mkt_price = self.get_open_position_price(bktoption, cd_open_by_price)
             multiplier = bktoption.multiplier()
             trade_type = 'open short'
             fee = unit * mkt_price * self.fee * multiplier
@@ -429,8 +431,8 @@ class BktAccount(object):
             bktoption.trade_margin_capital = margin_capital
             bktoption.transaction_fee = fee
             bktoption.trade_flag_open = True
-            if bktoption not in self.holdings : self.holdings.append(bktoption)
-            self.cash = self.cash + premium - margin_capital-fee
+            if bktoption not in self.holdings: self.holdings.append(bktoption)
+            self.cash = self.cash + premium - margin_capital - fee
             self.total_margin_capital += margin_capital
             self.total_transaction_cost += fee
             self.nbr_trade += 1
@@ -480,7 +482,7 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         self.trade_order_dict = {}
 
-    def close_position_underlying(self,dt, bktinstrument, cd_open_by_price):
+    def close_position_underlying(self, dt, bktinstrument, cd_open_by_price):
         position = pd.Series()
         mkt_price = bktinstrument.mktprice_close()
         unit = bktinstrument.trade_unit
@@ -512,11 +514,10 @@ class BktAccount(object):
         self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
         bktinstrument.trade_flag_open = False
 
-
-    def close_position_option(self, dt, bktoption,cd_close_by_price):  # 多空平仓
+    def close_position_option(self, dt, bktoption, cd_close_by_price):  # 多空平仓
         if bktoption != None:
             id_instrument = bktoption.id_instrument()
-            mkt_price = self.get_close_position_price(bktoption,cd_close_by_price)
+            mkt_price = self.get_close_position_price(bktoption, cd_close_by_price)
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_capital = bktoption.trade_margin_capital
@@ -618,7 +619,7 @@ class BktAccount(object):
             self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
             self.nbr_trade += 1
 
-    def rebalance_position_option(self, dt, bktoption,unit):
+    def rebalance_position_option(self, dt, bktoption, unit):
         id_instrument = bktoption.id_instrument
         mkt_price = self.get_close_position_price(bktoption)
         holding_unit = bktoption.trade_unit
@@ -628,8 +629,8 @@ class BktAccount(object):
         premium = bktoption.premium
         total_cash_returned = 0.0
         if bktoption.maturitydt == dt:
-            self.close_position_option(dt,bktoption,None)
-            print('close option position on maturity date : ',bktoption.id_instrument)
+            self.close_position_option(dt, bktoption, None)
+            print('close option position on maturity date : ', bktoption.id_instrument)
         else:
             if unit != holding_unit:
                 if unit > holding_unit:  # 加仓
@@ -648,8 +649,8 @@ class BktAccount(object):
                 else:  # 减仓
                     liquidated_unit = holding_unit - unit
                     margin_returned = liquidated_unit * bktoption.trade_margin_capital / bktoption.trade_unit
-                    premium_lqdt_init_v = liquidated_unit * open_price * multiplier # 减仓部分的初始开仓价值
-                    premium_lqdt_mkt_v = liquidated_unit * mkt_price * multiplier # 减仓部分的现值
+                    premium_lqdt_init_v = liquidated_unit * open_price * multiplier  # 减仓部分的初始开仓价值
+                    premium_lqdt_mkt_v = liquidated_unit * mkt_price * multiplier  # 减仓部分的现值
                     fee = premium_lqdt_mkt_v * self.fee  # 卖出liquidated_unit的交易费用
                     d_fee = bktoption.transaction_fee * liquidated_unit / holding_unit  # 持仓总交易费用按比例扣减
                     realized_pnl = long_short * (premium_lqdt_mkt_v - premium_lqdt_init_v) - fee - d_fee
@@ -735,9 +736,9 @@ class BktAccount(object):
             unit = portfolio.underlying.trade_unit
             mkt_price = portfolio.underlying.mktprice_close()
             trade_order_mktv += mkt_price * unit
-            benckmark = mkt_price/portfolio.underlying.trade_open_price
+            benckmark = mkt_price / portfolio.underlying.trade_open_price
 
-        self.trade_order_mktv = trade_order_mktv # Underlying market value
+        self.trade_order_mktv = trade_order_mktv  # Underlying market value
         """ For long positions only, total_asset = cash + mtm_long_positions(i.e., total premiums);
             For short positions only, total_asset = cash + margin_capital + short posiitons pnl(unrealized)"""
         self.total_premiums_long = mtm_long_positions
@@ -747,21 +748,22 @@ class BktAccount(object):
         self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
         self.mtm_short_positions = mtm_short_positions
         self.mtm_long_positions = mtm_long_positions
-        money_utilization = 1- self.cash / self.total_asset
+        money_utilization = 1 - self.cash / self.total_asset
         self.npv = self.total_asset / self.init_fund
         self.port_delta = port_delta
         # self.holdings = holdings
-        account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
-                                     self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
-                                     self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
-                                     self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
-                                     self.util.money_utilization: [money_utilization],self.util.total_asset: [self.total_asset],
-                                     'portfolio delta': [port_delta], self.util.benchmark:[benckmark],'underlying_value':trade_order_mktv
-                                     })
+        account = pd.DataFrame(
+            data={self.util.dt_date: [dt], self.util.npv: [self.npv], self.util.nbr_trade: [self.nbr_trade],
+                  self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
+                  self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
+                  self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
+                  self.util.money_utilization: [money_utilization], self.util.total_asset: [self.total_asset],
+                  'portfolio delta': [port_delta], self.util.benchmark: [benckmark],
+                  'underlying_value': trade_order_mktv
+                  })
         self.df_account = self.df_account.append(account, ignore_index=True)
         self.nbr_trade = 0
         self.realized_pnl = 0
-
 
     def mkm_update(self, dt, trade_order_dict=None):  # 每日更新
         unrealized_pnl = 0.0
@@ -808,7 +810,7 @@ class BktAccount(object):
             mkt_price = trade_order_dict['price']
             trade_order_mktv += mkt_price * unit
 
-        self.trade_order_mktv = trade_order_mktv # Underlying market value
+        self.trade_order_mktv = trade_order_mktv  # Underlying market value
         """ For long positions only, total_asset = cash + mtm_long_positions(i.e., total premiums);
             For short positions only, total_asset = cash + margin_capital + short posiitons pnl(unrealized)"""
         self.total_premiums_long = mtm_long_positions
@@ -818,23 +820,24 @@ class BktAccount(object):
         self.total_asset = self.cash + self.total_margin_capital + mtm_long_positions + mtm_short_positions + trade_order_mktv
         self.mtm_short_positions = mtm_short_positions
         self.mtm_long_positions = mtm_long_positions
-        money_utilization = 1- self.cash / self.total_asset
+        money_utilization = 1 - self.cash / self.total_asset
         self.npv = self.total_asset / self.init_fund
         self.port_delta = port_delta
         self.holdings = holdings
-        account = pd.DataFrame(data={self.util.dt_date: [dt],self.util.npv: [self.npv],self.util.nbr_trade: [self.nbr_trade],
-                                     self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
-                                     self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
-                                     self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
-                                     self.util.money_utilization: [money_utilization],self.util.total_asset: [self.total_asset],
-                                     'portfolio delta': [port_delta]
-                                     })
+        account = pd.DataFrame(
+            data={self.util.dt_date: [dt], self.util.npv: [self.npv], self.util.nbr_trade: [self.nbr_trade],
+                  self.util.margin_capital: [self.total_margin_capital], self.util.realized_pnl: [self.realized_pnl],
+                  self.util.unrealized_pnl: [unrealized_pnl], self.util.mtm_long_positions: [mtm_long_positions],
+                  self.util.mtm_short_positions: [mtm_short_positions], self.util.cash: [self.cash],
+                  self.util.money_utilization: [money_utilization], self.util.total_asset: [self.total_asset],
+                  'portfolio delta': [port_delta]
+                  })
         self.df_account = self.df_account.append(account, ignore_index=True)
 
         self.nbr_trade = 0
         self.realized_pnl = 0
 
-    def calculate_nvp(self, dt, cd_timeperiod = 'amt_morning_avg',trade_order_dict=None):  # 每日更新
+    def calculate_nvp(self, dt, cd_timeperiod='amt_morning_avg', trade_order_dict=None):  # 每日更新
         total_margin_capital = self.total_margin_capital
         cash = self.cash
         unrealized_pnl = 0.0
@@ -846,7 +849,7 @@ class BktAccount(object):
             if bktoption.maturitydt == dt:
                 print('close option position on maturity date : ', bktoption.id_instrument)
                 continue
-            mkt_price = self.get_close_position_price(bktoption,cd_timeperiod)
+            mkt_price = self.get_close_position_price(bktoption, cd_timeperiod)
             unit = bktoption.trade_unit
             long_short = bktoption.trade_long_short
             margin_account = bktoption.trade_margin_capital
@@ -942,7 +945,7 @@ class BktAccount(object):
         volatility_yr = np.std(returns, ddof=0) * np.sqrt(252.0)
         # 夏普比率
         sharpe = (return_yr - 0.024) / volatility_yr
-        return return_yr,volatility_yr,sharpe
+        return return_yr, volatility_yr, sharpe
 
     def hisvol(self, data, n):
         datas = np.log(data)
@@ -950,7 +953,7 @@ class BktAccount(object):
         vol = df.std() * np.sqrt(252)
         return vol
 
-    def plot_npv(self,benchmark = None):
+    def plot_npv(self, benchmark=None):
         f, ax = plt.subplots()
         ax.set_xlabel("日期")
         x = self.df_account[self.util.dt_date].tolist()
@@ -962,7 +965,7 @@ class BktAccount(object):
             ax.plot(x, benchmark, label='benchmark', color=self.pu.colors[1], linestyle=self.pu.lines[1], linewidth=2)
         ax.set_ylabel('Net Value')
         ax.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-                    ncol=3, mode="expand", borderaxespad=0., frameon=False)
+                  ncol=3, mode="expand", borderaxespad=0., frameon=False)
         # f.savefig('../save_figure/npv.png', dpi=300, format='png')
         plt.show()
 

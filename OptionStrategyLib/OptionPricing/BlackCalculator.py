@@ -78,6 +78,10 @@ class BlackCalculator:
             delta = self.discount * temp2
             return delta
 
+    def implied_vol(self):
+
+        return
+
     # 全Delta: dOption/dS = dOption/dS + dOption/dSigma * dSigma/dK
     # 根据SVI模型校准得到的隐含波动率的参数表达式，计算隐含波动率对行权价的一阶倒数（dSigma_dK）
     def delta_total(self, spot, dSigma_dK):
@@ -85,9 +89,9 @@ class BlackCalculator:
         return delta + delta * dSigma_dK
 
 
-class EuropeanOption:
-    def __init__(self, strike, dt_maturity, optionType,dt_issue=None,init_price=None):
-        self.strike = strike
-        self.dt_maturity = dt_maturity
-        self.option_type = optionType
-        self.init_price = init_price
+# class EuropeanOption:
+#     def __init__(self, strike, dt_maturity, optionType,dt_issue=None,init_price=None):
+#         self.strike = strike
+#         self.dt_maturity = dt_maturity
+#         self.option_type = optionType
+#         self.init_price = init_price
