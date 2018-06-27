@@ -81,11 +81,12 @@ def syncetic_payoff(dt_issue, df_daily, vol, N):
 
 
 def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
-    res = []
+    res1 = []
+    res2 = []
     trading_dates = sorted(df_daily[utl.col_date].unique())
     dt_list = df_daily[(df_daily[utl.col_date] >= dt1) & (df_daily[utl.col_date] <= dt2)][utl.col_date].unique()
     for dt in dt_list:
-        print(dt,' - ', datetime.datetime.now())
+        print(dt, ' - ', datetime.datetime.now())
         dt_issue = dt
         idx = trading_dates.index(dt_issue)
         dt_maturity = trading_dates[idx + 20]
@@ -102,13 +103,13 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
             r_pnl = df_res1['pnl replicate'].values[-1]
             o_pnl = df_res1['pnl option'].values[-1]
             o_payoff = df_res1['value option'].values[-1]
-            m = round(m,2)
+            m = round(m, 2)
             res_dic1.update({
-                'pnl replicate ' + str(m): r_pnl,
-                'pnl option ' + str(m): o_pnl,
-                'payoff option ' + str(m): o_payoff,
-                'cost ' + str(m): r_cost,
-                'cd_vol':'histvol'
+                str(m) + ' pnl replicate ': r_pnl,
+                str(m) + ' pnl option ' : o_pnl,
+                str(m) + ' payoff option ' : o_payoff,
+                str(m) + ' cost ' : r_cost,
+                'cd_vol': 'histvol',
             })
 
             df_res2 = replication.replicate_put(df_intraday, df_vix)
@@ -117,18 +118,19 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
             o_pnl2 = df_res2['pnl option'].values[-1]
             o_payoff2 = df_res2['value option'].values[-1]
             res_dic2.update({
-                'pnl replicate ' + str(m): r_pnl2,
-                'pnl option ' + str(m): o_pnl2,
-                'payoff option ' + str(m): o_payoff2,
-                'cost ' + str(m): r_cost2,
+                str(m) + ' pnl replicate ' : r_pnl2,
+                str(m) + ' pnl option ' : o_pnl2,
+                str(m) + ' payoff option ' : o_payoff2,
+                str(m) + ' cost ' : r_cost2,
                 'cd_vol': 'vix'
             })
-        res_dic1.update({'dt_date': dt})
-        res_dic2.update({'dt_date': dt})
-        res.append(res_dic1)
-        res.append(res_dic2)
-    df_res = pd.DataFrame(res)
-    return df_res
+        res_dic1.update({'dt_date': dt,'init spot':spot})
+        res_dic2.update({'dt_date': dt,'init spot':spot})
+        res1.append(res_dic1)
+        res2.append(res_dic2)
+    df_res1 = pd.DataFrame(res1)
+    df_res2 = pd.DataFrame(res2)
+    return df_res1, df_res2
 
 
 def creat_replication_set(spot):
@@ -145,7 +147,8 @@ id_index = 'index_300sh'
 vol = 0.2
 rf = 0.03
 fee = 5.0 / 10000.0
-dt1 = datetime.date(2018, 4, 13)
+dt1 = datetime.date(2018, 1, 8)
+# dt1 = datetime.date(2018, 5, 8)
 dt2 = datetime.date(2018, 5, 13)
 dt_start = dt1 - datetime.timedelta(days=50)
 dt_end = dt2 + datetime.timedelta(days=31)
@@ -171,10 +174,11 @@ df_vix[utl.col_close] = df_vix[utl.col_close] / 100.0
 
 """2、基于沪深300指数历史数据的复制结果"""
 print('start')
-df_idx = analysis_strikes(dt1, dt2, df_index, df_intraday, df_vix)
+df_histvol,df_vix = analysis_strikes(dt1, dt2, df_index, df_intraday, df_vix)
 # df_fut = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix)
 # df_simulate = simulation_analysis(dt1, dt2, df_index, 0.2)
-print(df_idx)
-df_idx.to_excel('../data/res_sh300_index.xlsx')
+
+df_histvol.to_excel('../res_sh300index_histvol.xlsx')
+df_vix.to_excel('../res_sh300index_vix.xlsx')
 
 """"""

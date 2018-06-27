@@ -75,13 +75,10 @@ class Replication():
         res = []
         df_data[self.utl.col_date] = df_data[self.utl.col_datetime].apply(
             lambda x: datetime.date(x.year, x.month, x.day))
-        tmp1 = df_data[df_data[self.utl.col_date]==self.dt_maturity]
-        df_data = df_data[(df_data[self.utl.col_date] > self.dt_issue) & (
-            df_data[self.utl.col_date] <= self.dt_maturity)]  # cut useful data
-        tmp = df_data.iloc[-1]
         dt_date = self.dt_issue  # Use Close price of option issue date to start replication.
         Option = EuropeanOption(self.strike, self.dt_maturity, self.utl.type_put)
-        spot = self.strike
+        # tmp = df_data[df_data[self.utl.col_date] == dt_date][[self.utl.col_datetime, self.utl.col_close]]
+        spot = df_data[df_data[self.utl.col_date] == dt_date][self.utl.col_close].values[-1]
         vol = self.get_vol(dt_date, df_vol)
         black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
         option0 = black.NPV()
@@ -100,10 +97,10 @@ class Replication():
                     'transaction fee': transaction_fee, 'pnl option': 0,
                     'pnl replicate': 0
                     })
-        option_price = 0.0
-        replicate = 0.0
         delta = 0.0  # Unit of underlyings/futures in replicate portfolio
         dt_last = dt_date
+        df_data = df_data[(df_data[self.utl.col_date] > self.dt_issue) & (
+            df_data[self.utl.col_date] <= self.dt_maturity)]  # cut useful data
         dt_times = df_data[self.utl.col_datetime]
 
         # print('-' * 150)
@@ -132,7 +129,7 @@ class Replication():
                 replicate = cash + asset
                 replicate_pnl = delta * spot - replicate - transaction_fee
                 option_pnl = option_price - option0
-                replicate_cost = replicate_pnl - option_pnl
+                replicate_cost = -replicate_pnl + option_pnl
                 margin = abs(delta) * spot * self.margin_rate
                 delta0 = delta
                 res.append({'dt': dt_time, 'spot': spot,
@@ -143,8 +140,6 @@ class Replication():
                             'transaction fee': transaction_fee, 'pnl option': option_pnl,
                             'pnl replicate': replicate_pnl
                             })
-
-                # break
             else:
                 vol = self.get_vol(dt_time.date(), df_vol)
                 black = self.pricing_utl.get_blackcalculator(dt_time.date(), spot, Option, self.rf, vol)
@@ -158,7 +153,7 @@ class Replication():
                 replicate = cash + asset
                 replicate_pnl = delta * spot - replicate - transaction_fee
                 option_pnl = option_price - option0
-                replicate_cost = replicate_pnl - option_pnl
+                replicate_cost = -replicate_pnl + option_pnl
                 margin = abs(delta) * spot * self.margin_rate
                 delta0 = delta
                 res.append({'dt': dt_time, 'spot': spot,
@@ -169,10 +164,9 @@ class Replication():
                             'transaction fee': transaction_fee, 'pnl option': option_pnl,
                             'pnl replicate': replicate_pnl
                             })
-            # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-            #       (dt_time, spot, round(delta, 2), round(cash, 1), round(unit, 2), round(replicate, 0),
-            #        round(option_price, 0), round(transaction_fee, 2)))
-        pct_replication_cost = (option_price - replicate + transaction_fee) / option0
+                # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
+                #       (dt_time, spot, round(delta, 2), round(cash, 1), round(unit, 2), round(replicate, 0),
+                #        round(option_price, 0), round(transaction_fee, 2)))
         # print('-' * 150)
         # print('init option : ', option0)
         # print('init replication : ', replicate0)
@@ -180,13 +174,10 @@ class Replication():
         # print('terminal replicate value : ', replicate)
         # print(self.dt_issue,' replication cost : ', pct_replication_cost * 100, '%')
         # print('-' * 150)
-        payoff_option = option_price
-        payoff_replicate = replicate - transaction_fee
         self.cash = cash
         self.delta = delta
         self.margin = abs(delta * spot) * self.margin_rate
         df_res = pd.DataFrame(res)
-        # return pct_replication_cost, payoff_option, payoff_replicate
         result = df_res.iloc[-1]
 
         return df_res
@@ -231,7 +222,6 @@ class Replication():
         #     print('terminal replicate value : ', replicate_value)
         #     print('replication cost (replicate_value - option_value) : ', replicate_value - option_value)
         #     print('-' * 150)
-
 
 # plot_utl = PlotUtil()
 # utl = BktUtil()
