@@ -78,6 +78,13 @@ class BlackCalculator:
             delta = self.discount * temp2
             return delta
 
+    def Gamma(self):
+        S0 = self.forward*self.discount
+
+
+
+        return
+
     # 全Delta: dOption/dS = dOption/dS + dOption/dSigma * dSigma/dK
     # 根据SVI模型校准得到的隐含波动率的参数表达式，计算隐含波动率对行权价的一阶倒数（dSigma_dK）
     def delta_total(self, spot, dSigma_dK):
