@@ -193,18 +193,18 @@ fee_rate = 5.0 / 10000.0
 
 
 """1/2/3 data"""
-# dt1 = datetime.date(2017, 1, 8)
+dt1 = datetime.date(2017, 1, 8)
 # dt1 = datetime.date(2018, 5, 8)
-# dt2 = datetime.date(2018, 5, 13)
-# dt_start = dt1 - datetime.timedelta(days=50)
-# dt_end = dt2 + datetime.timedelta(days=31)
-# df_vix = get_vix(dt1, dt_end)
-# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
-# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
-# df_index = get_index_mktdata(dt_start, dt_end, id_index)
-# df_future = get_future_mktdata(dt_start, dt_end, name_code)
-# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-# df_vix[utl.col_close] = df_vix[utl.col_close] / 100.0
+dt2 = datetime.date(2018, 5, 13)
+dt_start = dt1 - datetime.timedelta(days=50)
+dt_end = dt2 + datetime.timedelta(days=31)
+df_vix = get_vix(dt1, dt_end)
+df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+df_index = get_index_mktdata(dt_start, dt_end, id_index)
+df_future = get_future_mktdata(dt_start, dt_end, name_code)
+df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+df_vix[utl.col_close] = df_vix[utl.col_close] / 100.0
 
 """1、基于蒙特卡洛模拟的复制结果"""
 # print('start')
@@ -219,52 +219,47 @@ fee_rate = 5.0 / 10000.0
 
 
 """2、基于沪深300指数历史数据的复制结果"""
-# print('2.start')
-# res_histvol, res_vix = analysis_strikes(dt1, dt2, df_index, df_intraday, df_vix)
-# print(res_histvol)
-# print(res_vix)
-# df_histvol.to_excel('../res_sh300index_histvol.xlsx')
-# df_vix.to_excel('../res_sh300index_vix.xlsx')
-
-"""3、基于沪深300期货历史数据的复制结果"""
-# print('3.start')
-# res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix)
-# print(res_histvol)
-# print(res_vix)
-# df_histvol.to_excel('../res_sh300future_histvol.xlsx')
-# df_vix.to_excel('../res_sh300future_vix.xlsx')
-
-""""""
-print('4.start')
-dt_issue = datetime.date(2018, 3, 13)
-dt_start = dt_issue - datetime.timedelta(days=50)
-dt_end = dt_issue + datetime.timedelta(days=40)
-df_vix = get_vix(dt_issue, dt_end)
-df_index = get_index_mktdata(dt_start, dt_end, id_index)
-df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-res_histvol, res_vix = historic_example(dt_issue, df_index, df_intraday, df_vix)
+print('2.start')
+res_histvol, res_vix = analysis_strikes(dt1, dt2, df_index, df_intraday, df_vix)
 print(res_histvol)
 print(res_vix)
-res_histvol = res_histvol[res_histvol['m']==1.0]
-res_histvol['dt_date'] = res_histvol['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
-res_histvol = res_histvol.sort_values(by='dt',ascending=False).\
-    drop_duplicates(subset=['dt_date']).\
-    sort_values(by='dt_date',ascending=True)
-dates = res_histvol['dt_date'].tolist()
-replicate_pnls_hv = res_histvol['pnl replicate'].tolist()
-option_pnls_hv = res_histvol['pnl option'].tolist()
-replicate_pnls_vix = res_vix['pnl replicate'].tolist()
-option_pnls_vix = res_vix['pnl option'].tolist()
-fig, ax = plt.subplots()
-ax.scatter(dates,replicate_pnls_hv,label='replicate pnl hv')
-ax.scatter(dates,option_pnls_hv,label='option pnls hv')
-ax.legend()
-# plot_utl.plot_line_chart(dates,[replicate_pnls_hv,option_pnls_hv],['replicate pnl hv','option pnls hv'])
-# plot_utl.plot_line_chart(dates,[replicate_pnls_vix,option_pnls_vix],['replicate pnl vix','option pnls vix'])
+res_histvol.to_excel('../res_sh300index_histvol.xlsx')
+res_vix.to_excel('../res_sh300index_vix.xlsx')
 
-plt.show()
+"""3、基于沪深300期货历史数据的复制结果"""
+print('3.start')
+res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix)
+print(res_histvol)
+print(res_vix)
+res_histvol.to_excel('../res_sh300future_histvol.xlsx')
+res_vix.to_excel('../res_sh300future_vix.xlsx')
 
+""""""
+# print('4.start')
+# dt_issue = datetime.date(2018, 3, 13)
+# dt_start = dt_issue - datetime.timedelta(days=50)
+# dt_end = dt_issue + datetime.timedelta(days=40)
+# df_vix = get_vix(dt_issue, dt_end)
+# df_index = get_index_mktdata(dt_start, dt_end, id_index)
+# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+# res_histvol, res_vix = historic_example(dt_issue, df_index, df_intraday, df_vix)
+# print(res_histvol)
+# print(res_vix)
+# res_histvol = res_histvol[res_histvol['m']==1.0]
+# res_histvol['dt_date'] = res_histvol['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+# res_histvol = res_histvol.sort_values(by='dt',ascending=False).\
+#     drop_duplicates(subset=['dt_date']).\
+#     sort_values(by='dt_date',ascending=True)
+# dates = res_histvol['dt_date'].tolist()
+# replicate_pnls_hv = res_histvol['pnl replicate'].tolist()
+# option_pnls_hv = res_histvol['pnl option'].tolist()
+# replicate_pnls_vix = res_vix['pnl replicate'].tolist()
+# option_pnls_vix = res_vix['pnl option'].tolist()
+# fig, ax = plt.subplots()
+# ax.scatter(dates,replicate_pnls_hv,label='replicate pnl hv')
+# ax.scatter(dates,option_pnls_hv,label='option pnls hv')
+# ax.legend()
+#
+# plt.show()
 
-
-print()
 
