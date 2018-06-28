@@ -2,7 +2,7 @@ import datetime
 import QuantLib as ql
 import hashlib
 import pandas as pd
-
+from .constant import FrequentType
 
 class BktUtil():
     def __init__(self):
@@ -20,7 +20,7 @@ class BktUtil():
         self.method_2 = 1
         self.cd_frequency_low = ['daily', 'weekly', 'monthly', 'yearly']
         self.cd_frequency_intraday = ['1min', '5min']
-
+        self.frequent_type_low = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]
         """database column names"""
 
         self.col_date = 'dt_date'
