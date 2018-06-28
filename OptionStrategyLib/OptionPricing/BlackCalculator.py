@@ -9,6 +9,8 @@ class BlackCalculator:
         self.stdDev = stdDev
         self.discount = discount
         self.iscall = iscall
+        D1 = None
+        D2 = None
         if stdDev > 0.0:
             if strike == 0.0:
                 n_d1 = 0.0
@@ -42,6 +44,8 @@ class BlackCalculator:
             dAlpha_dD1 = n_d1  ## n( d1)
             beta = 1.0 - cum_d2  ## N(-d2)
             dBeta_dD2 = -n_d2  ## -n( d2)
+        self.D1 = D1
+        self.D2 = D2
         self.alpha = alpha
         self.dAlpha_dD1 = dAlpha_dD1
         self.beta = beta
@@ -51,16 +55,6 @@ class BlackCalculator:
 
     def NPV(self):
         return self.discount * (self.forward * self.alpha + self.x * self.beta)
-
-    def Alpha(self):
-        # Replicate portfolio -- component shares of stock,
-        # N(d1) for call / -N(-d1) for put
-        return self.alpha
-
-    def Beta(self):
-        # Replicate portfolio -- component shares of borrowing/lending,
-        # -N(d2) for call / N(-d2) for put
-        return self.beta
 
     def Cash(self):
         return self.beta * self.strike * self.discount
@@ -78,12 +72,18 @@ class BlackCalculator:
             delta = self.discount * temp2
             return delta
 
-    def Gamma(self):
-        S0 = self.forward*self.discount
-
-
-
-        return
+    def Gamma(self, spot):
+        if spot <= 0.0:
+            return
+        DforwardDs = self.forward / spot
+        temp = self.stdDev * spot
+        DalphaDs = self.dAlpha_dD1 / temp
+        DbetaDs = self.dBeta_dD2 / temp
+        D2alphaDs2 = -DalphaDs / spot * (1 + self.D1 / self.stdDev)
+        D2betaDs2 = -DbetaDs / spot * (1 + self.D2 / self.stdDev)
+        temp2 = D2alphaDs2 * self.forward + 2.0 * DalphaDs * DforwardDs + D2betaDs2 * self.x + 2.0 * DbetaDs * self.dX_dS
+        gamma = self.discount * temp2
+        return gamma
 
     # 全Delta: dOption/dS = dOption/dS + dOption/dSigma * dSigma/dK
     # 根据SVI模型校准得到的隐含波动率的参数表达式，计算隐含波动率对行权价的一阶倒数（dSigma_dK）
@@ -91,9 +91,21 @@ class BlackCalculator:
         delta = self.Delta(spot)
         return delta + delta * dSigma_dK
 
+    # Replicate portfolio -- component shares of stock,
+    # N(d1) for call / -N(-d1) for put
+    def Alpha(self):
+
+        return self.alpha
+
+    # Replicate portfolio -- component shares of borrowing/lending,
+    # -N(d2) for call / N(-d2) for put
+    def Beta(self):
+
+        return self.beta
+
 
 class EuropeanOption:
-    def __init__(self, strike, dt_maturity, optionType,dt_issue=None,init_price=None):
+    def __init__(self, strike, dt_maturity, optionType, dt_issue=None, init_price=None):
         self.strike = strike
         self.dt_maturity = dt_maturity
         self.option_type = optionType

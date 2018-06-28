@@ -235,4 +235,5 @@ def get_vix(start_date, end_date):
     df2 = df2[(df2['dt_date'] > datetime.date(2017, 6, 1)) & (df2['dt_date'] <= end_date)]
     df2['id_instrument'] = 'index_cvix'
     df = pd.concat([df1, df2]).sort_values(by='dt_date').reset_index(drop=True)
+    df['amt_close'] = df['amt_close'] / 100.0
     return df

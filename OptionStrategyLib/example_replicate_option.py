@@ -17,9 +17,10 @@ def get_hist_vol(cd_period, df_data):
     if cd_period == '1M':
         # dt_start = dt_issue - datetime.timedelta(days=50)
         # df = df_data[df_data[utl.col_date] >= dt_start]
-        histvol = calculate_histvol(df_data[utl.col_close], 20)
-        df_data[utl.col_close] = histvol
-        df = df_data[[utl.col_date, utl.col_close]].dropna()
+        df=df_data.copy()
+        histvol = calculate_histvol(df[utl.col_close], 20)
+        df[utl.col_close] = histvol
+        df = df[[utl.col_date, utl.col_close]].dropna()
     else:
         return
     return df
@@ -35,6 +36,7 @@ def simulation_analysis(dt1, dt2, df_daily, vol):
 
 
 def syncetic_payoff(dt_issue, df_daily, vol, N):
+    vol = float(vol)
     trading_dates = sorted(df_daily[utl.col_date].unique())
     idx = trading_dates.index(dt_issue)
     dt_maturity = trading_dates[idx + 20]
@@ -119,14 +121,16 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
             o_payoff = df_res1['value option'].values[-1]
             pct_cost = df_res1['pct cost'].values[-1]
             fee = df_res1['transaction fee'].values[-1]
+            r_error = df_res1['replicate error'].values[-1] # mark to option payoff at maturity
             m = round(m, 2)
             res_dic1.update({
                 str(m) + ' pnl replicate ': r_pnl,
                 str(m) + ' pnl option ': o_pnl,
                 str(m) + ' payoff option ': o_payoff,
                 'cost/spot ' + str(m): r_cost / spot,
+                'replicate error pct ' + str(m): r_error/spot,
                 'cost/init_option ' + str(m): pct_cost,
-                'pct_transaction ' + str(m): fee / r_cost,
+                'pct_transaction ' + str(m): fee / spot,
                 'cd_vol': 'histvol'
             })
 
@@ -137,13 +141,15 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
             o_payoff2 = df_res2['value option'].values[-1]
             pct_cost2 = df_res2['pct cost'].values[-1]
             fee2 = df_res2['transaction fee'].values[-1]
+            r_error2 = df_res2['replicate error'].values[-1] # mark to option payoff at maturity
             res_dic2.update({
                 str(m) + ' pnl replicate ': r_pnl2,
                 str(m) + ' pnl option ': o_pnl2,
                 str(m) + ' payoff option ': o_payoff2,
                 'cost/spot ' + str(m): r_cost2 / spot,
+                'replicate error pct ' + str(m): r_error2/spot,
                 'cost/init_option ' + str(m): pct_cost2,
-                'pct_transaction ' + str(m): fee2 / r_cost2,
+                'pct_transaction ' + str(m): fee2 / spot,
                 'cd_vol': 'vix'
             })
         res_dic1.update({'dt_date': dt, 'init spot': spot})
@@ -172,15 +178,24 @@ def historic_example(dt_issue, df_daily, df_intraday, df_vix):
     dt_maturity = trading_dates[idx + 20]
     strike_dict = creat_replication_set(spot)
     df_vol = get_hist_vol('1M', df_daily)
-    for m in strike_dict.keys():
-        strike = strike_dict[m]
-        replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
-        df_res1 = replication.replicate_put(df_intraday, df_vol)
-        df_res2 = replication.replicate_put(df_intraday, df_vix)
-        df_res1.loc[:, 'm'] = m
-        df_res2.loc[:, 'm'] = m
-        res_histvol = res_histvol.append(df_res1, ignore_index=True)
-        res_vix = res_vix.append(df_res2, ignore_index=True)
+    # for m in strike_dict.keys():
+    #     strike = strike_dict[m]
+    #     replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
+    #     df_res1 = replication.replicate_put(df_intraday, df_vol)
+    #     df_res2 = replication.replicate_put(df_intraday, df_vix)
+    #     df_res1.loc[:, 'm'] = m
+    #     df_res2.loc[:, 'm'] = m
+    #     res_histvol = res_histvol.append(df_res1, ignore_index=True)
+    #     res_vix = res_vix.append(df_res2, ignore_index=True)
+    strike = spot
+    m = 1
+    replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
+    df_res1 = replication.replicate_put(df_intraday, df_vol)
+    df_res2 = replication.replicate_put(df_intraday, df_vix)
+    df_res1.loc[:, 'm'] = m
+    df_res2.loc[:, 'm'] = m
+    res_histvol = res_histvol.append(df_res1, ignore_index=True)
+    res_vix = res_vix.append(df_res2, ignore_index=True)
     return res_histvol, res_vix
 
 
@@ -194,7 +209,9 @@ fee_rate = 5.0 / 10000.0
 
 """1/2/3 data"""
 dt1 = datetime.date(2017, 1, 8)
+# dt1 = datetime.date(2017, 3, 7)
 # dt1 = datetime.date(2018, 5, 8)
+# dt2 = datetime.date(2017, 2, 10)
 dt2 = datetime.date(2018, 5, 13)
 dt_start = dt1 - datetime.timedelta(days=50)
 dt_end = dt2 + datetime.timedelta(days=31)
@@ -204,7 +221,6 @@ df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
 df_index = get_index_mktdata(dt_start, dt_end, id_index)
 df_future = get_future_mktdata(dt_start, dt_end, name_code)
 df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-df_vix[utl.col_close] = df_vix[utl.col_close] / 100.0
 
 """1、基于蒙特卡洛模拟的复制结果"""
 # print('start')
@@ -240,9 +256,12 @@ res_vix.to_excel('../res_sh300future_vix.xlsx')
 # dt_start = dt_issue - datetime.timedelta(days=50)
 # dt_end = dt_issue + datetime.timedelta(days=40)
 # df_vix = get_vix(dt_issue, dt_end)
-# df_index = get_index_mktdata(dt_start, dt_end, id_index)
-# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-# res_histvol, res_vix = historic_example(dt_issue, df_index, df_intraday, df_vix)
+#
+# # df_index = get_index_mktdata(dt_start, dt_end, id_index)
+# # df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+# res_histvol, res_vix = historic_example(dt_issue, df_cf, df_cf_minute, df_vix)
 # print(res_histvol)
 # print(res_vix)
 # res_histvol = res_histvol[res_histvol['m']==1.0]
@@ -250,6 +269,7 @@ res_vix.to_excel('../res_sh300future_vix.xlsx')
 # res_histvol = res_histvol.sort_values(by='dt',ascending=False).\
 #     drop_duplicates(subset=['dt_date']).\
 #     sort_values(by='dt_date',ascending=True)
+# res_histvol.to_excel('../res_historic_example_histvol.xlsx')
 # dates = res_histvol['dt_date'].tolist()
 # replicate_pnls_hv = res_histvol['pnl replicate'].tolist()
 # option_pnls_hv = res_histvol['pnl option'].tolist()
