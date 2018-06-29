@@ -32,18 +32,18 @@ class PricingUtil(object):
     def get_maturity_metrics(self, dt_date, spot, option):
         strike = option.strike
         if option.option_type == BktUtil().type_put:
-            if strike > spot:
+            if strike > spot: # ITM
                 delta = -1.0
-            elif strike < spot:
-                delta = 1.0
+            elif strike < spot: # OTM
+                delta = 0.0
             else:
                 delta = 0.5
             option_price = max(strike - spot, 0)
         else:
-            if strike < spot:
-                delta = -1.0
-            elif strike > spot:
+            if strike < spot: # ITM
                 delta = 1.0
+            elif strike > spot: # OTM
+                delta = 0.0
             else:
                 delta = 0.5
             option_price = max(spot - strike, 0)

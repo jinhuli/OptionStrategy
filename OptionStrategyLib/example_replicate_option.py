@@ -94,7 +94,7 @@ def syncetic_payoff(dt_issue, df_daily, vol, N):
 #     return df_res
 
 
-def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
+def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix, df_underlying):
     res1 = []
     res2 = []
     trading_dates = sorted(df_daily[utl.col_date].unique())
@@ -105,7 +105,9 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
         dt_issue = dt
         idx = trading_dates.index(dt_issue)
         dt_maturity = trading_dates[idx + 20]
-        spot = df_daily[df_daily[utl.col_date] == dt][utl.col_close].values[0]
+        # spot = df_daily[df_daily[utl.col_date] == dt][utl.col_close].values[0]
+        # if df_underlying == None : df_underlying = df_daily
+        spot = df_underlying[df_underlying[utl.col_date] == dt][utl.col_close].values[0]
         strike_dict = creat_replication_set(spot)
         res_dic1 = {}
         res_dic2 = {}
@@ -134,34 +136,34 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix):
                 'cd_vol': 'histvol'
             })
 
-            df_res2 = replication.replicate_put(df_intraday, df_vix)
-            r_cost2 = df_res2['replication cost'].values[-1]
-            r_pnl2 = df_res2['pnl replicate'].values[-1]
-            o_pnl2 = df_res2['pnl option'].values[-1]
-            o_payoff2 = df_res2['value option'].values[-1]
-            pct_cost2 = df_res2['pct cost'].values[-1]
-            fee2 = df_res2['transaction fee'].values[-1]
-            r_error2 = df_res2['replicate error'].values[-1]  # mark to option payoff at maturity
-            res_dic2.update({
-                str(m) + ' pnl replicate ': r_pnl2,
-                str(m) + ' pnl option ': o_pnl2,
-                str(m) + ' payoff option ': o_payoff2,
-                'cost/spot ' + str(m): r_cost2 / spot,
-                'replicate error pct ' + str(m): r_error2 / spot,
-                'cost/init_option ' + str(m): pct_cost2,
-                'pct_transaction ' + str(m): fee2 / spot,
-                'cd_vol': 'vix'
-            })
+            # df_res2 = replication.replicate_put(df_intraday, df_vix)
+            # r_cost2 = df_res2['replication cost'].values[-1]
+            # r_pnl2 = df_res2['pnl replicate'].values[-1]
+            # o_pnl2 = df_res2['pnl option'].values[-1]
+            # o_payoff2 = df_res2['value option'].values[-1]
+            # pct_cost2 = df_res2['pct cost'].values[-1]
+            # fee2 = df_res2['transaction fee'].values[-1]
+            # r_error2 = df_res2['replicate error'].values[-1]  # mark to option payoff at maturity
+            # res_dic2.update({
+            #     str(m) + ' pnl replicate ': r_pnl2,
+            #     str(m) + ' pnl option ': o_pnl2,
+            #     str(m) + ' payoff option ': o_payoff2,
+            #     'cost/spot ' + str(m): r_cost2 / spot,
+            #     'replicate error pct ' + str(m): r_error2 / spot,
+            #     'cost/init_option ' + str(m): pct_cost2,
+            #     'pct_transaction ' + str(m): fee2 / spot,
+            #     'cd_vol': 'vix'
+            # })
         res_dic1.update({'dt_date': dt, 'init spot': spot})
-        res_dic2.update({'dt_date': dt, 'init spot': spot})
+        # res_dic2.update({'dt_date': dt, 'init spot': spot})
         res1.append(res_dic1)
-        res2.append(res_dic2)
+        # res2.append(res_dic2)
     df_res1 = pd.DataFrame(res1)
     df_res2 = pd.DataFrame(res2)
     return df_res1, df_res2
 
 
-def analysis_strikes_with_delta_bounds(dt1, dt2, df_daily, df_intraday, df_vix):
+def analysis_strikes_with_delta_bounds(dt1, dt2, df_daily, df_intraday, df_vix, df_underlying):
     res1 = []
     res2 = []
     trading_dates = sorted(df_daily[utl.col_date].unique())
@@ -172,7 +174,8 @@ def analysis_strikes_with_delta_bounds(dt1, dt2, df_daily, df_intraday, df_vix):
         dt_issue = dt
         idx = trading_dates.index(dt_issue)
         dt_maturity = trading_dates[idx + 20]
-        spot = df_daily[df_daily[utl.col_date] == dt][utl.col_close].values[0]
+        # spot = df_daily[df_daily[utl.col_date] == dt][utl.col_close].values[0]
+        spot = df_underlying[df_underlying[utl.col_date] == dt][utl.col_close].values[0]
         strike_dict = creat_replication_set(spot)
         res_dic1 = {}
         res_dic2 = {}
@@ -200,68 +203,82 @@ def analysis_strikes_with_delta_bounds(dt1, dt2, df_daily, df_intraday, df_vix):
                 'cd_vol': 'histvol'
             })
 
-            df_res2 = replication.replicate_delta_bounds(df_intraday, df_vix)
-            r_cost2 = df_res2['replication cost'].values[-1]
-            r_pnl2 = df_res2['pnl replicate'].values[-1]
-            o_pnl2 = df_res2['pnl option'].values[-1]
-            o_payoff2 = df_res2['value option'].values[-1]
-            pct_cost2 = df_res2['pct cost'].values[-1]
-            fee2 = df_res2['transaction fee'].values[-1]
-            r_error2 = df_res2['replicate error'].values[-1]  # mark to option payoff at maturity
-            res_dic2.update({
-                str(m) + ' pnl replicate ': r_pnl2,
-                str(m) + ' pnl option ': o_pnl2,
-                str(m) + ' payoff option ': o_payoff2,
-                'cost/spot ' + str(m): r_cost2 / spot,
-                'replicate error pct ' + str(m): r_error2 / spot,
-                'cost/init_option ' + str(m): pct_cost2,
-                'pct_transaction ' + str(m): fee2 / spot,
-                'cd_vol': 'vix'
-            })
+            # df_res2 = replication.replicate_delta_bounds(df_intraday, df_vix)
+            # r_cost2 = df_res2['replication cost'].values[-1]
+            # r_pnl2 = df_res2['pnl replicate'].values[-1]
+            # o_pnl2 = df_res2['pnl option'].values[-1]
+            # o_payoff2 = df_res2['value option'].values[-1]
+            # pct_cost2 = df_res2['pct cost'].values[-1]
+            # fee2 = df_res2['transaction fee'].values[-1]
+            # r_error2 = df_res2['replicate error'].values[-1]  # mark to option payoff at maturity
+            # res_dic2.update({
+            #     str(m) + ' pnl replicate ': r_pnl2,
+            #     str(m) + ' pnl option ': o_pnl2,
+            #     str(m) + ' payoff option ': o_payoff2,
+            #     'cost/spot ' + str(m): r_cost2 / spot,
+            #     'replicate error pct ' + str(m): r_error2 / spot,
+            #     'cost/init_option ' + str(m): pct_cost2,
+            #     'pct_transaction ' + str(m): fee2 / spot,
+            #     'cd_vol': 'vix'
+            # })
         res_dic1.update({'dt_date': dt, 'init spot': spot})
-        res_dic2.update({'dt_date': dt, 'init spot': spot})
+        # res_dic2.update({'dt_date': dt, 'init spot': spot})
         res1.append(res_dic1)
-        res2.append(res_dic2)
+        # res2.append(res_dic2)
     df_res1 = pd.DataFrame(res1)
     df_res2 = pd.DataFrame(res2)
     return df_res1, df_res2
 
 
 def creat_replication_set(spot):
-    k = spot
-    strike_dict = {}
-    for i in np.arange(0.9, 1.15, 0.05):
-        strike_dict.update({i: k * i})
+    # k = spot
+    # strike_dict = {0.9: 0.9 * spot,
+    #                0.95: 0.95 * spot,
+    #                1.0: 1.0 * spot,
+    #                1.05: 1.05 * spot,
+    #                1.1: 1.1 * spot,
+    #                }
+    strike_dict = {
+                   0.98: 0.98 * spot,
+                   1.0: 1.0 * spot,
+                   1.02: 1.02 * spot,
+                   }
+    # for i in np.arange(0.9, 1.15, 0.05):
+    #     strike_dict.update({i: k * i})
     return strike_dict
 
 
-def historic_example(dt_issue, df_daily, df_intraday, df_vix):
+def historic_example(dt_issue, df_inderlying, df_cf, df_cf_minute, df_vix):
     res_histvol = pd.DataFrame()
     res_vix = pd.DataFrame()
-    trading_dates = sorted(df_daily[utl.col_date].unique())
-    spot = df_daily[df_daily[utl.col_date] == dt_issue][utl.col_close].values[0]
+    trading_dates = sorted(df_cf[utl.col_date].unique())
+    fut = df_cf[df_cf[utl.col_date] == dt_issue][utl.col_close].values[0]
+    spot = df_inderlying[df_inderlying[utl.col_date] == dt_issue][utl.col_close].values[0]
     idx = trading_dates.index(dt_issue)
-    dt_maturity = trading_dates[idx + 20]
-    strike_dict = creat_replication_set(spot)
-    df_vol = get_hist_vol('1M', df_daily)
-    # for m in strike_dict.keys():
-    #     strike = strike_dict[m]
-    #     replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
-    #     df_res1 = replication.replicate_put(df_intraday, df_vol)
-    #     df_res2 = replication.replicate_put(df_intraday, df_vix)
-    #     df_res1.loc[:, 'm'] = m
-    #     df_res2.loc[:, 'm'] = m
-    #     res_histvol = res_histvol.append(df_res1, ignore_index=True)
-    #     res_vix = res_vix.append(df_res2, ignore_index=True)
-    strike = spot
-    m = 1
-    replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
-    df_res1 = replication.replicate_put(df_intraday, df_vol)
-    df_res2 = replication.replicate_put(df_intraday, df_vix)
-    df_res1.loc[:, 'm'] = m
-    df_res2.loc[:, 'm'] = m
-    res_histvol = res_histvol.append(df_res1, ignore_index=True)
-    res_vix = res_vix.append(df_res2, ignore_index=True)
+    # dt_maturity = trading_dates[idx + 20]
+    dt_maturity = trading_dates[idx + 60]
+    strike_dict = creat_replication_set(fut)
+    df_vol = get_hist_vol('1M', df_cf)
+    for m in strike_dict.keys():
+        strike = strike_dict[m]
+        replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
+        df_res1 = replication.replicate_put(df_cf_minute, df_vol)
+        df_res2 = replication.replicate_put(df_cf_minute, df_vix)
+        df_res1.loc[:, 'm'] = m
+        df_res2.loc[:, 'm'] = m
+        df_res1.loc[:, 'init underlying'] = spot
+        df_res2.loc[:, 'init underlying'] = spot
+        res_histvol = res_histvol.append(df_res1, ignore_index=True)
+        res_vix = res_vix.append(df_res2, ignore_index=True)
+    # strike = spot
+    # m = 1
+    # replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee_rate)
+    # df_res1 = replication.replicate_put(df_intraday, df_vol)
+    # df_res2 = replication.replicate_put(df_intraday, df_vix)
+    # df_res1.loc[:, 'm'] = m
+    # df_res2.loc[:, 'm'] = m
+    # res_histvol = res_histvol.append(df_res1, ignore_index=True)
+    # res_vix = res_vix.append(df_res2, ignore_index=True)
     return res_histvol, res_vix
 
 
@@ -273,20 +290,25 @@ rf = 0.03
 fee_rate = 5.0 / 10000.0
 
 """1/2/3 data"""
-dt1 = datetime.date(2017, 1, 8)
-# dt1 = datetime.date(2017, 3, 7)
-# dt1 = datetime.date(2018, 5, 8)
-dt2 = datetime.date(2017, 2, 10)
+# dt1 = datetime.date(2018, 1, 8)
+# # dt1 = datetime.date(2017, 3, 7)
+# # dt1 = datetime.date(2018, 5, 8)
+# # dt2 = datetime.date(2017, 2, 10)
 # dt2 = datetime.date(2018, 5, 13)
-dt_start = dt1 - datetime.timedelta(days=50)
-dt_end = dt2 + datetime.timedelta(days=31)
-df_vix = get_vix(dt1, dt_end)
-df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
-df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
-df_index = get_index_mktdata(dt_start, dt_end, id_index)
-df_future = get_future_mktdata(dt_start, dt_end, name_code)
-df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-
+# dt_start = dt1 - datetime.timedelta(days=50)
+# dt_end = dt2 + datetime.timedelta(days=31)
+# df_vix = get_vix(dt1, dt_end)
+# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+# df_index = get_index_mktdata(dt_start, dt_end, id_index)
+# df_future = get_future_mktdata(dt_start, dt_end, name_code)
+# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+#
+# cf_vol = get_hist_vol('1M', df_cf)
+# index_vol = get_hist_vol('1M', df_index)
+# cf_vol.to_excel('../cf_vol.xlsx')
+# index_vol.to_excel('../index_vol.xlsx')
+# print()
 """1、基于蒙特卡洛模拟的复制结果"""
 # print('start')
 # df = syncetic_payoff(dt1, df_index, 0.2, 100)
@@ -309,49 +331,64 @@ df_intraday = get_index_intraday(dt_start, dt_end, id_index)
 
 """3、基于沪深300期货历史数据的复制结果"""
 # print('3.start')
-# res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix)
+# res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix, df_index)
 # print(res_histvol)
 # print(res_vix)
 # res_histvol.to_excel('../res_sh300future_histvol.xlsx')
 # res_vix.to_excel('../res_sh300future_vix.xlsx')
 
 """4、举例"""
-# print('4.start')
-# dt_issue = datetime.date(2018, 3, 13)
-# dt_start = dt_issue - datetime.timedelta(days=50)
-# dt_end = dt_issue + datetime.timedelta(days=40)
-# df_vix = get_vix(dt_issue, dt_end)
-#
-# # df_index = get_index_mktdata(dt_start, dt_end, id_index)
-# # df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
-# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
-# res_histvol, res_vix = historic_example(dt_issue, df_cf, df_cf_minute, df_vix)
-# print(res_histvol)
-# print(res_vix)
-# res_histvol = res_histvol[res_histvol['m']==1.0]
-# res_histvol['dt_date'] = res_histvol['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
-# res_histvol = res_histvol.sort_values(by='dt',ascending=False).\
-#     drop_duplicates(subset=['dt_date']).\
-#     sort_values(by='dt_date',ascending=True)
-# res_histvol.to_excel('../res_historic_example_histvol.xlsx')
-# dates = res_histvol['dt_date'].tolist()
-# replicate_pnls_hv = res_histvol['pnl replicate'].tolist()
-# option_pnls_hv = res_histvol['pnl option'].tolist()
-# replicate_pnls_vix = res_vix['pnl replicate'].tolist()
-# option_pnls_vix = res_vix['pnl option'].tolist()
-# fig, ax = plt.subplots()
-# ax.scatter(dates,replicate_pnls_hv,label='replicate pnl hv')
-# ax.scatter(dates,option_pnls_hv,label='option pnls hv')
-# ax.legend()
-#
-# plt.show()
+print('4.start')
+# dt_issue = datetime.date(2018, 1, 2)
+dt_issue = datetime.date(2018, 3, 13)
+dt_start = dt_issue - datetime.timedelta(days=50)
+dt_end = dt_issue + datetime.timedelta(days=100)
+df_vix = get_vix(dt_issue, dt_end)
 
-
-"""2、基于沪深300指数历史数据的复制结果"""
-print('2.start')
-res_histvol, res_vix = analysis_strikes_with_delta_bounds(dt1, dt2, df_index, df_intraday, df_vix)
+df_index = get_index_mktdata(dt_start, dt_end, id_index)
+# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+res_histvol, res_vix = historic_example(dt_issue, df_index, df_cf, df_cf_minute, df_vix)
 print(res_histvol)
 print(res_vix)
-res_histvol.to_excel('../res_sh300index_histvol_with_delta_bounds.xlsx')
-res_vix.to_excel('../res_sh300index_vix_with_delta_bounds.xlsx')
+res_histvol1 = res_histvol[res_histvol['m'] == 1.0]
+res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
+    drop_duplicates(subset=['dt_date']). \
+    sort_values(by='dt_date', ascending=True)
+res_histvol1.to_excel('../res_historic_example_histvol_m100.xlsx')
+
+res_histvol1 = res_histvol[res_histvol['m'] == 0.98]
+res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
+    drop_duplicates(subset=['dt_date']). \
+    sort_values(by='dt_date', ascending=True)
+res_histvol1.to_excel('../res_historic_example_histvol_m98.xlsx')
+
+res_histvol1 = res_histvol[res_histvol['m'] == 1.02]
+res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
+    drop_duplicates(subset=['dt_date']). \
+    sort_values(by='dt_date', ascending=True)
+res_histvol1.to_excel('../res_historic_example_histvol_m102.xlsx')
+#
+# # dates = res_histvol['dt_date'].tolist()
+# # replicate_pnls_hv = res_histvol['pnl replicate'].tolist()
+# # option_pnls_hv = res_histvol['pnl option'].tolist()
+# # replicate_pnls_vix = res_vix['pnl replicate'].tolist()
+# # option_pnls_vix = res_vix['pnl option'].tolist()
+# # fig, ax = plt.subplots()
+# # ax.scatter(dates, replicate_pnls_hv, label='replicate pnl hv')
+# # ax.scatter(dates, option_pnls_hv, label='option pnls hv')
+# # ax.legend()
+# #
+# # plt.show()
+
+"""5、With Delta Bounds"""
+# print('5.start')
+# res_histvol, res_vix = analysis_strikes_with_delta_bounds(dt1, dt2, df_cf, df_cf_minute, df_vix, df_index)
+# print(res_histvol)
+# print(res_vix)
+# res_histvol.to_excel('../res_sh300future_histvol_with_delta_bounds.xlsx')
+# res_vix.to_excel('../res_sh300future_vix_with_delta_bounds.xlsx')
