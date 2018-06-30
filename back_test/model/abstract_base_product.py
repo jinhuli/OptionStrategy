@@ -12,12 +12,18 @@ class AbstractBaseProduct(ABC):
     """
 
     def __init__(self) -> None:
-        super.__init__()
+        super().__init__()
+
+    """
+    pre_process: pre process data to filter out invalid data or doing other required preprocess job.
+    """
+    @abstractmethod
+    def pre_process(self) -> None:
+        pass
 
     """
     next: move forward to next tick of data
     """
-
     @abstractmethod
     def next(self) -> None:
         pass
