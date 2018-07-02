@@ -19,6 +19,10 @@ class BaseProduct(AbstractBaseProduct):
         self.df_daily_data: DataFrame = df_daily_data
         # TODO maybe use enum is better
         self.nbr_index: int = df_data.shape[0]
+        self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
+        self._name_code: str = self._id_instrument.split('_')[0]
+        self._code_instrument: str = self.df_data.loc[0][Util.CODE_INSTRUMENT]
+        self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.current_state: Series = None
@@ -26,31 +30,17 @@ class BaseProduct(AbstractBaseProduct):
         self.rf = rf
         # TODO why this property?
         # self.dt_list = sorted(self.df_metrics[self.util.col_date].unique())
-        self.eval_date: datetime.date = None
         self.pre_process()
         self.next()
 
     def pre_process(self) -> None:
         # TODO: move to a file as static method
         # filter function to filter out ivalid data from dataframe
-        def filter_invalid_data(x):
-            cur_date = x[Util.DT_DATE]
-            if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-                    x[
-                        Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                               00):
-                return True
-            if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-                    x[
-                        Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                               00):
-                return True
-            return False
 
         if self.frequency not in Util.LOW_FREQUENT:
             # overwrite date col based on data in datetime col.
             self.df_data[Util.DT_DATE] = self.df_data[Util.DT_DATETIME].apply(lambda x: x.date())
-            mask = self.df_data.apply(filter_invalid_data, axis=1)
+            mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
             # TODO: preprocess df_daily
         self.generate_required_columns_if_missing()
@@ -87,18 +77,18 @@ class BaseProduct(AbstractBaseProduct):
                 self.df_data[column] = None
 
     def __repr__(self) -> str:
-        return 'BaseProduct(id_instrument: {0},eval_date: {1},current_index: {2},frequency: {3})' \
-            .format(self.id_instrument(), self.eval_date, self.current_index, self.frequency)
+        return 'BaseProduct(id_instrument: {0},eval_date: {1},frequency: {2})' \
+            .format(self.id_instrument(), self.eval_date, self.frequency)
 
     """
     getters
     """
 
     def name_code(self) -> str:
-        return self.id_instrument().split('_')[0]
+        return self._name_code
 
     def id_instrument(self) -> str:
-        return self.current_state[Util.ID_INSTRUMENT]
+        return self._id_instrument
 
     def code_instrument(self) -> str:
         return self.current_state[Util.CODE_INSTRUMENT]

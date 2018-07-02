@@ -12,7 +12,8 @@ class BaseOption(BaseProduct):
     """ Contain metrics and trading position info as attributes """
 
     def __init__(self, df_data: DataFrame, df_daily_data: DataFrame = None,
-                 frequency: FrequentType = FrequentType.DAILY, flag_calculate_iv: bool = False,
+                 frequency: FrequentType = FrequentType.DAILY, init_date: datetime.date = None,
+                 flag_calculate_iv: bool = False,
                  rf: float = 0.03, pricing_type=PricingType.OptionPlainEuropean,
                  engine_type=EngineType.AnalyticEuropeanEngine):
         self.flag_calculate_iv = flag_calculate_iv
@@ -35,12 +36,11 @@ class BaseOption(BaseProduct):
         columns = self.df_data.columns
         for column in required_column_list:
             if not columns.contains(column):
-                print("{} missing column {}", self.__repr__(), column)
                 self.df_data[column] = None
 
     def __repr__(self) -> str:
-        return 'BaseOption(id_instrument: {0},eval_date: {1},current_index: {2},frequency: {3})' \
-            .format(self.id_instrument(), self.eval_date, self.current_index, self.frequency)
+        return 'BaseOption(id_instrument: {0},eval_date: {1},frequency: {2})' \
+            .format(self.id_instrument(), self.eval_date, self.frequency)
 
     """ getters """
 
@@ -210,7 +210,7 @@ class BaseOption(BaseProduct):
             option_carry = None
         return option_carry
 
-    def get_init_margin(self):
+    def get_init_margin(self) -> float:
         # if self.trade_long_short == self.util.long: return 0.0
         # 认购期权义务仓开仓保证金＝[合约前结算价+Max（12%×合约标的前收盘价-认购期权虚值，
         #                           7%×合约标的前收盘价)]×合约单位
@@ -219,12 +219,12 @@ class BaseOption(BaseProduct):
         amt_last_settle = self.mktprice_last_settlement()
         amt_underlying_last_close = self.underlying_last_close()
         if self.option_type() == Util.TYPE_CALL:
-            otm = max(0, self.strike() - self.underlying_close())
+            otm = max(0.0, self.strike() - self.underlying_close())
             tmp = amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
                                         0.07 * amt_underlying_last_close)
             init_margin = tmp * self.multiplier()
         else:
-            otm = max(0, self.underlying_close() - self.strike())
+            otm = max(0.0, self.underlying_close() - self.strike())
             tmp = min(amt_last_settle + max(0.12 * amt_underlying_last_close - otm, 0.07 * self.strike()),
                       self.strike())
             init_margin = tmp * self.multiplier()
@@ -240,11 +240,11 @@ class BaseOption(BaseProduct):
         # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
         #                               行权价格]×合约单位
         amt_settle = self.mktprice_settlement()
-        if amt_settle == None or amt_settle == np.nan:
+        if amt_settle is None or amt_settle == np.nan:
             amt_settle = self.mktprice_close()
         amt_underlying_close = self.underlying_close()
         if self.option_type() == self.util.type_call:
-            otm = max(0, self.strike() - amt_underlying_close)
+            otm = max(0.0, self.strike() - amt_underlying_close)
             maintain_margin = (amt_settle + max(0.12 * amt_underlying_close - otm,
                                                 0.07 * amt_underlying_close)) * self.multiplier()
 

@@ -15,8 +15,8 @@ class BaseInstrument(BaseProduct):
         super().__init__(df_data, df_daily_data, rf, frequency)
 
     def __repr__(self) -> str:
-        return 'BaseInstrument(id_instrument: {0},eval_date: {1},current_index: {2},frequency: {3})' \
-            .format(self.id_instrument(), self.eval_date, self.current_index, self.frequency)
+        return 'BaseInstrument(id_instrument: {0},eval_date: {1},frequency: {2})' \
+            .format(self.id_instrument(), self.eval_date, self.frequency)
 
     def get_init_margin(self):
         return
