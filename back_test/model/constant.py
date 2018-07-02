@@ -50,7 +50,7 @@ class Util:
     AMT_AFTERNOON_CLOSE_15MIN = 'amt_afternoon_close_15min'
     AMT_MORNING_AVG = 'amt_morning_avg'
     AMT_AFTERNOON_AVG = 'amt_afternoon_avg'
-    AMT_AFTERNOON_AVG = 'amt_daily_avg'
+    AMT_DAILY_AVG = 'amt_daily_avg'
     PCT_IMPLIED_VOL = 'pct_implied_vol'
     AMT_DELTA = 'amt_delta'
     AMT_THETA = 'amt_theta'
@@ -65,7 +65,11 @@ class Util:
     TYPE_CALL = 'call'
     TYPE_PUT = 'put'
     NAN_VALUE = -999.0
+    LONG = 1
+    SHORT = -1
     LOW_FREQUENT = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]
+    INSTRUMENT_COLUMN_LIST = []
     OPTION_COLUMN_LIST = [NAME_CONTRACT_MONTH, AMT_STRIKE, AMT_ADJ_STRIKE, AMT_APPLICABLE_STRIKE,
-                          CD_OPTION_TYPE, DT_MATURITY, AMT_OPTION_PRICE, AMT_ADJ_OPTION_PRICE, ID_UNDERLYING,
-                          AMT_UNDERLYING_CLOSE, AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER]
+                          DT_MATURITY, CD_OPTION_TYPE, AMT_OPTION_PRICE, AMT_ADJ_OPTION_PRICE, ID_UNDERLYING,
+                          AMT_UNDERLYING_CLOSE, AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER,
+                          AMT_LAST_SETTLEMENT, AMT_SETTLEMENT]
