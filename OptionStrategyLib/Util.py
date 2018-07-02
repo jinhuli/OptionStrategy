@@ -24,7 +24,9 @@ class PricingUtil(object):
     def get_blackcalculator(self, dt_date, spot, option, rf, vol):
         stdDev = self.get_blackcalculator_std(dt_date, option.dt_maturity, vol)
         discount = self.get_discount(dt_date, option.dt_maturity, rf)
-        black = BlackCalculator(option.strike, spot, stdDev, discount, False)
+        if option.option_type == BktUtil().type_call: iscall = True
+        else: iscall = False
+        black = BlackCalculator(option.strike, spot, stdDev, discount, iscall)
         # alpha is component shares of stock, N(d1) for call / -N(-d1) for put
         # beta id component shares of borrowing/lending -N(d2) for call / N(-d2) for put
         return black

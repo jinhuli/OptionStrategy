@@ -9,6 +9,7 @@ class BlackCalculator:
         self.stdDev = stdDev
         self.discount = discount
         self.iscall = iscall
+        self.spot = spot
         D1 = None
         D2 = None
         if stdDev > 0.0:
@@ -41,7 +42,7 @@ class BlackCalculator:
             dBeta_dD2 = -n_d2  ## -n(d2)
         else:
             alpha = -1.0 + cum_d1  ## -N(-d1)
-            dAlpha_dD1 = n_d1  ## n( d1)
+            dAlpha_dD1 = n_d1  ## n(d1)
             beta = 1.0 - cum_d2  ## N(-d2)
             dBeta_dD2 = -n_d2  ## -n( d2)
         self.D1 = D1
@@ -59,7 +60,8 @@ class BlackCalculator:
     def Cash(self):
         return self.beta * self.strike * self.discount
 
-    def Delta(self, spot):
+    def Delta(self):
+        spot = self.spot
         if spot <= 0.0:
             return
         else:
@@ -72,7 +74,8 @@ class BlackCalculator:
             delta = self.discount * temp2
             return delta
 
-    def Gamma(self, spot):
+    def Gamma(self):
+        spot = self.spot
         if spot <= 0.0:
             return
         DforwardDs = self.forward / spot
@@ -81,14 +84,15 @@ class BlackCalculator:
         DbetaDs = self.dBeta_dD2 / temp
         D2alphaDs2 = -DalphaDs / spot * (1 + self.D1 / self.stdDev)
         D2betaDs2 = -DbetaDs / spot * (1 + self.D2 / self.stdDev)
-        temp2 = D2alphaDs2 * self.forward + 2.0 * DalphaDs * DforwardDs + D2betaDs2 * self.x + 2.0 * DbetaDs * self.dX_dS
+        temp2 = D2alphaDs2 * self.forward + 2.0 * DalphaDs * DforwardDs + D2betaDs2 * self.x \
+                + 2.0 * DbetaDs * self.dX_dS
         gamma = self.discount * temp2
         return gamma
 
     # 全Delta: dOption/dS = dOption/dS + dOption/dSigma * dSigma/dK
     # 根据SVI模型校准得到的隐含波动率的参数表达式，计算隐含波动率对行权价的一阶倒数（dSigma_dK）
-    def delta_total(self, spot, dSigma_dK):
-        delta = self.Delta(spot)
+    def delta_total(self, dSigma_dK):
+        delta = self.Delta()
         return delta + delta * dSigma_dK
 
     # Replicate portfolio -- component shares of stock,

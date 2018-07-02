@@ -105,8 +105,6 @@ def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix, df_underlying):
         dt_issue = dt
         idx = trading_dates.index(dt_issue)
         dt_maturity = trading_dates[idx + 20]
-        # spot = df_daily[df_daily[utl.col_date] == dt][utl.col_close].values[0]
-        # if df_underlying == None : df_underlying = df_daily
         spot = df_underlying[df_underlying[utl.col_date] == dt][utl.col_close].values[0]
         strike_dict = creat_replication_set(spot)
         res_dic1 = {}
@@ -281,6 +279,13 @@ def historic_example(dt_issue, df_inderlying, df_cf, df_cf_minute, df_vix):
     # res_vix = res_vix.append(df_res2, ignore_index=True)
     return res_histvol, res_vix
 
+def replicate_with_timing():
+
+
+
+
+
+    return
 
 plot_utl = PlotUtil()
 name_code = 'IF'
@@ -290,25 +295,25 @@ rf = 0.03
 fee_rate = 5.0 / 10000.0
 
 """1/2/3 data"""
-# dt1 = datetime.date(2018, 1, 8)
-# # dt1 = datetime.date(2017, 3, 7)
-# # dt1 = datetime.date(2018, 5, 8)
-# # dt2 = datetime.date(2017, 2, 10)
-# dt2 = datetime.date(2018, 5, 13)
-# dt_start = dt1 - datetime.timedelta(days=50)
-# dt_end = dt2 + datetime.timedelta(days=31)
-# df_vix = get_vix(dt1, dt_end)
-# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
-# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
-# df_index = get_index_mktdata(dt_start, dt_end, id_index)
-# df_future = get_future_mktdata(dt_start, dt_end, name_code)
-# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-#
-# cf_vol = get_hist_vol('1M', df_cf)
-# index_vol = get_hist_vol('1M', df_index)
+dt1 = datetime.date(2018, 1, 8)
+# dt1 = datetime.date(2017, 3, 7)
+# dt1 = datetime.date(2018, 5, 8)
+# dt2 = datetime.date(2017, 2, 10)
+dt2 = datetime.date(2018, 5, 13)
+dt_start = dt1 - datetime.timedelta(days=50)
+dt_end = dt2 + datetime.timedelta(days=31)
+df_vix = get_vix(dt1, dt_end)
+df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+df_index = get_index_mktdata(dt_start, dt_end, id_index)
+df_future = get_future_mktdata(dt_start, dt_end, name_code)
+df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+cf_vol = get_hist_vol('1M', df_cf)
+index_vol = get_hist_vol('1M', df_index)
 # cf_vol.to_excel('../cf_vol.xlsx')
 # index_vol.to_excel('../index_vol.xlsx')
 # print()
+
 """1、基于蒙特卡洛模拟的复制结果"""
 # print('start')
 # df = syncetic_payoff(dt1, df_index, 0.2, 100)
@@ -320,7 +325,6 @@ fee_rate = 5.0 / 10000.0
 # plot_utl.plot_line_chart(stocks, [replicates, options,option_payoff], ['replicate pnl', 'option pnl','option payoff'])
 # plt.show()
 
-
 """2、基于沪深300指数历史数据的复制结果"""
 # print('2.start')
 # res_histvol, res_vix = analysis_strikes(dt1, dt2, df_index, df_intraday, df_vix)
@@ -330,48 +334,48 @@ fee_rate = 5.0 / 10000.0
 # res_vix.to_excel('../res_sh300index_vix.xlsx')
 
 """3、基于沪深300期货历史数据的复制结果"""
-# print('3.start')
-# res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix, df_index)
-# print(res_histvol)
-# print(res_vix)
-# res_histvol.to_excel('../res_sh300future_histvol.xlsx')
-# res_vix.to_excel('../res_sh300future_vix.xlsx')
-
-"""4、举例"""
-print('4.start')
-# dt_issue = datetime.date(2018, 1, 2)
-dt_issue = datetime.date(2018, 3, 13)
-dt_start = dt_issue - datetime.timedelta(days=50)
-dt_end = dt_issue + datetime.timedelta(days=100)
-df_vix = get_vix(dt_issue, dt_end)
-
-df_index = get_index_mktdata(dt_start, dt_end, id_index)
-# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
-df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
-res_histvol, res_vix = historic_example(dt_issue, df_index, df_cf, df_cf_minute, df_vix)
+print('3.start')
+res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix, df_index)
 print(res_histvol)
 print(res_vix)
-res_histvol1 = res_histvol[res_histvol['m'] == 1.0]
-res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
-res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
-    drop_duplicates(subset=['dt_date']). \
-    sort_values(by='dt_date', ascending=True)
-res_histvol1.to_excel('../res_historic_example_histvol_m100.xlsx')
+res_histvol.to_excel('../res_sh300future_histvol.xlsx')
+res_vix.to_excel('../res_sh300future_vix.xlsx')
 
-res_histvol1 = res_histvol[res_histvol['m'] == 0.98]
-res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
-res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
-    drop_duplicates(subset=['dt_date']). \
-    sort_values(by='dt_date', ascending=True)
-res_histvol1.to_excel('../res_historic_example_histvol_m98.xlsx')
-
-res_histvol1 = res_histvol[res_histvol['m'] == 1.02]
-res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
-res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
-    drop_duplicates(subset=['dt_date']). \
-    sort_values(by='dt_date', ascending=True)
-res_histvol1.to_excel('../res_historic_example_histvol_m102.xlsx')
+"""4、举例"""
+# print('4.start')
+# # dt_issue = datetime.date(2018, 1, 2)
+# dt_issue = datetime.date(2018, 3, 13)
+# dt_start = dt_issue - datetime.timedelta(days=50)
+# dt_end = dt_issue + datetime.timedelta(days=100)
+# df_vix = get_vix(dt_issue, dt_end)
+#
+# df_index = get_index_mktdata(dt_start, dt_end, id_index)
+# # df_intraday = get_index_intraday(dt_start, dt_end, id_index)
+# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+# res_histvol, res_vix = historic_example(dt_issue, df_index, df_cf, df_cf_minute, df_vix)
+# print(res_histvol)
+# print(res_vix)
+# res_histvol1 = res_histvol[res_histvol['m'] == 1.0]
+# res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+# res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
+#     drop_duplicates(subset=['dt_date']). \
+#     sort_values(by='dt_date', ascending=True)
+# res_histvol1.to_excel('../res_historic_example_histvol_m100.xlsx')
+#
+# res_histvol1 = res_histvol[res_histvol['m'] == 0.98]
+# res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+# res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
+#     drop_duplicates(subset=['dt_date']). \
+#     sort_values(by='dt_date', ascending=True)
+# res_histvol1.to_excel('../res_historic_example_histvol_m98.xlsx')
+#
+# res_histvol1 = res_histvol[res_histvol['m'] == 1.02]
+# res_histvol1.loc[:,'dt_date'] = res_histvol1['dt'].apply(lambda x: datetime.date(x.year, x.month, x.day))
+# res_histvol1 = res_histvol1.sort_values(by='dt', ascending=False). \
+#     drop_duplicates(subset=['dt_date']). \
+#     sort_values(by='dt_date', ascending=True)
+# res_histvol1.to_excel('../res_historic_example_histvol_m102.xlsx')
 #
 # # dates = res_histvol['dt_date'].tolist()
 # # replicate_pnls_hv = res_histvol['pnl replicate'].tolist()
