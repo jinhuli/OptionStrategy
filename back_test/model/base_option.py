@@ -1,66 +1,34 @@
 from OptionStrategyLib.OptionPricing.Options import EuropeanOption
 from OptionStrategyLib.Util import PricingUtil
 import datetime
-from pandas import DataFrame, Series
+from pandas import DataFrame
 import numpy as np
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType
-from back_test.model.abstract_base_product import AbstractBaseProduct
+from back_test.model.base_product import BaseProduct
+from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 
 
-class BaseOption(AbstractBaseProduct):
+class BaseOption(BaseProduct):
     """ Contain metrics and trading position info as attributes """
 
-    def __init__(self, df_data: DataFrame, flag_calculate_iv: bool = False, rf: float = 0.03,
-                 frequency: FrequentType = FrequentType.DAILY, pricing_type=PricingType.OptionPlainEuropean,
+    def __init__(self, df_data: DataFrame, df_daily_data: DataFrame = None,
+                 frequency: FrequentType = FrequentType.DAILY, flag_calculate_iv: bool = False,
+                 rf: float = 0.03, pricing_type=PricingType.OptionPlainEuropean,
                  engine_type=EngineType.AnalyticEuropeanEngine):
-        super().__init__()
-        self.frequency: FrequentType = frequency
-        self.df_data: DataFrame = df_data
-        # TODO maybe use enum is better
-        self.nbr_index: int = df_data.shape[0]
-        self.current_index: int = -1
-        self.current_state: Series = None
-        # TODO why this property?
-        # self.dt_list = sorted(self.df_metrics[self.util.col_date].unique())
-        self.eval_date: datetime.date = None
-        self.black_calculater = None
-        self.rf = rf
         self.flag_calculate_iv = flag_calculate_iv
         self.pricing_type = pricing_type
         self.engine_type = engine_type
+        self.black_calculater: BlackCalculator = None
         self.implied_vol = None
-        self.evaluation = None
-        self.pre_process()
-        self.update_current_state()
+        super().__init__(df_data, df_daily_data, rf, frequency)
 
-    def next(self):
-        self.implied_vol = None
-        self.update_current_state()
+    def next(self) -> None:
         self._destroy_black_calculater()
-        # self.update_pricing_metrics()
-
-    def pre_process(self) -> None:
-        # filter function to filter out ivalid data from dataframe
-        def filter_invalid_data(x):
-            cur_date = x[Util.DT_DATE]
-            if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-                    x[
-                        Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                               00):
-                return True
-            if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-                    x[
-                        Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                               00):
-                return True
-            return False
-
-        if self.frequency not in Util.LOW_FREQUENT:
-            # overwrite date col based on data in datetime col.
-            self.df_data[Util.DT_DATE] = self.df_data[Util.DT_DATETIME].apply(lambda x: x.date())
-            mask = self.df_data.apply(filter_invalid_data, axis=1)
-            self.df_data = self.df_data[mask].reset_index(drop=True)
-        self.generate_required_columns_if_missing()
+        super().next()
+        # self.implied_vol = None
+        # self.update_current_state()
+        # self.update_current_daily_state()
+        # self._destroy_black_calculater()
 
     def generate_required_columns_if_missing(self) -> None:
         required_column_list = Util.OPTION_COLUMN_LIST
@@ -70,82 +38,31 @@ class BaseOption(AbstractBaseProduct):
                 print("{} missing column {}", self.__repr__(), column)
                 self.df_data[column] = None
 
-    def update_current_state(self) -> None:
-        self.current_index += 1
-        self.current_state = self.df_data.loc[self.current_index]
-        self.eval_date = self.current_state[Util.DT_DATE]
-
-    def get_current_state(self) -> Series:
-        return self.current_state
-
     def __repr__(self) -> str:
         return 'BaseOption(id_instrument: {0},eval_date: {1},current_index: {2},frequency: {3})' \
             .format(self.id_instrument(), self.eval_date, self.current_index, self.frequency)
 
-    """
-    getters
-    """
-    def name_code(self):
-        return self.id_instrument().split('_')[0]
+    """ getters """
 
-    def id_instrument(self):
-        return self.current_state[Util.ID_INSTRUMENT]
-
-    def code_instrument(self):
-        return self.current_state[Util.CODE_INSTRUMENT]
-
-    def mktprice_close(self):
-        ret = self.current_state[Util.AMT_CLOSE]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def mktprice_open(self):
-        ret = self.current_state[Util.AMT_OPEN]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def mktprice_settlement(self):
-        ret = self.current_state[Util.AMT_SETTLEMENT]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def mktprice_morning_open_15min(self):
-        ret = self.current_state[Util.AMT_MORNING_OPEN_15MIN]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def mktprice_morning_close_15min(self):
-        ret = self.current_state[Util.AMT_MORNING_CLOSE_15MIN]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def mktprice_afternoon_open_15min(self):
-        ret = self.current_state[Util.AMT_AFTERNOON_OPEN_15MIN]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def mktprice_afternoon_close_15min(self):
-        ret = self.current_state[Util.AMT_AFTERNOON_CLOSE_15MIN]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
-        return ret
-
-    def contract_month(self):
+    def contract_month(self) -> str:
         return self.current_state[Util.NAME_CONTRACT_MONTH]
 
-    def strike(self):
+    def option_type(self) -> str:
+        return self.current_daily_state[Util.CD_OPTION_TYPE]
+
+    def id_underlying(self) -> str:
+        return self.current_state[Util.ID_UNDERLYING]
+
+    def maturitydt(self) -> datetime.date:
+        return self.current_state[Util.DT_MATURITY]
+
+    def strike(self) -> float:
         return self.current_state[Util.AMT_STRIKE]
 
-    def adj_strike(self):
+    def adj_strike(self) -> float:
         return self.current_state[Util.AMT_ADJ_STRIKE]
 
-    def applicable_strike(self):
+    def applicable_strike(self) -> float:
         """ 应对分红调整，为metrics计算实际使用的行权价 """
         if self.current_state[Util.AMT_APPLICABLE_STRIKE] is None:
             print('use origin strike')
@@ -153,37 +70,26 @@ class BaseOption(AbstractBaseProduct):
         else:
             return self.current_state[Util.AMT_APPLICABLE_STRIKE]
 
-    def maturitydt(self):
-        return self.current_state[Util.DT_MATURITY]
-
-    def option_type(self):
-        return self.current_daily_state[Util.CD_OPTION_TYPE]
-
-    def name_code(self):
-        return self.id_instrument().split("_")[0]
-
-    def option_price(self):
+    def option_price(self) -> float:
         """ 如果close price为空，使用settlement price作为option price """
         return self.current_state[Util.AMT_OPTION_PRICE]
 
-    def adj_option_price(self):
+    def adj_option_price(self) -> float:
         ret = self.current_state[Util.AMT_ADJ_OPTION_PRICE]
         if ret is None or ret < 0 or np.isnan(ret):
             return None
         else:
             return ret
 
-    def id_underlying(self):
-        return self.current_state[Util.ID_UNDERLYING]
-
-    def underlying_close(self):
+    def underlying_close(self) -> float:
         ret = self.current_state[Util.AMT_UNDERLYING_CLOSE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return None
         return ret
 
-    def underlying_last_close(self):
-        """ last bar/state, not necessarily daily"""
+    """ last bar/state, not necessarily daily"""
+
+    def underlying_last_close(self) -> float:
         if self.current_index > 0:
             ret = self.df_data.loc[self.current_index - 1][Util.AMT_UNDERLYING_CLOSE]
         else:
@@ -205,33 +111,12 @@ class BaseOption(AbstractBaseProduct):
     def multiplier(self):
         return self.current_state[Util.NBR_MULTIPLIER]
 
-    """ last settlement, daily"""
+    """
+    black calculator related calculations.
+    """
 
-    def mktprice_last_settlement(self):
-        ret = self.current_state[Util.AMT_LAST_SETTLEMENT]
-        if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
-            if self.current_index == 0:
-                return None
-            # TODO: add support for high frequency data later.
-            if self.frequency not in Util.LOW_FREQUENT:
-                return None
-            return self.df_data.loc[self.current_index - 1][Util.AMT_SETTLEMENT]
-        # tmp = pd.DataFrame(self.current_daily_state)
-        # if self.util.col_last_settlement in self.current_daily_state.index.values:
-        #     amt = self.current_daily_state.loc[self.util.col_last_settlement]
-        # if amt == None or amt == np.nan:
-        #     try:
-        #         idx_date = self.dt_list.index(self.eval_date)
-        #         if idx_date == 0:
-        #             return
-        #         dt_last = self.dt_list[self.dt_list.index(self.eval_date) - 1]
-        #         df_last_state = self.df_daily_metrics.loc[dt_last]
-        #         amt = df_last_state[self.util.col_settlement]
-        #     except Exception as e:
-        #         print(e)
-        return ret
-
-    def _get_black_calculater(self, spot=None):
+    # TODO might write this in another class
+    def _get_black_calculater(self, spot: float = None) -> BlackCalculator:
         if self.black_calculater is not None:
             return self.black_calculater
         if spot is None:
@@ -245,35 +130,15 @@ class BaseOption(AbstractBaseProduct):
         self.black_calculater = pricing_util.get_blackcalculator(self.eval_date, spot, option, self.rf, 0.0)
         return self.black_calculater
 
-    def _destroy_black_calculater(self):
+    def _destroy_black_calculater(self) -> None:
+        self.implied_vol = None
         self.black_calculater = None
 
-    """
-    black calculator related calculations.
-    """
-
-    # TODO: investigate logic here
-    def update_implied_vol(self, spot=None, option_price=None):
-        if spot is None:
-            spot = self.underlying_close()
-        # TODO: use option_price in future.
-        if option_price is None:
-            option_price = self.option_price()
-        try:
-            if self.flag_calculate_iv:
-                if self.name_code() == '50etf':
-                    strike = self.applicable_strike()
-                else:
-                    strike = self.strike()
-                pricing_util = PricingUtil()
-                option = EuropeanOption(strike, self.maturitydt(), self.util.type_put)
-                black = pricing_util.get_blackcalculator(self.eval_date, spot, option, self.rf, 0.0)
-                implied_vol = black.implied_vol()
-            else:
-                implied_vol = self.implied_vol_given() / 100.0
-        except Exception as e:
-            print(e)
-            implied_vol = None
+    def update_implied_vol(self, spot: float = None, option_price: float = None) -> None:
+        if self.flag_calculate_iv:
+            implied_vol = self._get_black_calculater(spot).implied_vol(option_price)
+        else:
+            implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol
 
     def get_implied_vol(self):
