@@ -16,7 +16,7 @@ from Utilities.calculate import calculate_histvol
 
 class Replication():
     def __init__(self, strike, dt_issue, dt_maturity, vol=0.2, rf=0.03,
-                 multiplier=1, fee=5.0 / 10000.0, margin_rate=0.15, slippage=0.8):
+                 multiplier=1, fee=2 / 10000.0, margin_rate=0.15, slippage=0.6):
         self.utl = BktUtil()
         self.pricing_utl = PricingUtil()
         self.strike = strike

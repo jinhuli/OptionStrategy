@@ -315,15 +315,15 @@ index_vol = get_hist_vol('1M', df_index)
 # print()
 
 """1、基于蒙特卡洛模拟的复制结果"""
-# print('start')
-# df = syncetic_payoff(dt1, df_index, 0.2, 100)
-# stocks = df['stocks']
-# replicates = df['replicating pnl']
-# options = df['option pnl']
-# option_payoff = df['option payoff']
-# print(df)
-# plot_utl.plot_line_chart(stocks, [replicates, options,option_payoff], ['replicate pnl', 'option pnl','option payoff'])
-# plt.show()
+print('start')
+df = syncetic_payoff(dt1, df_index, 0.2, 100)
+stocks = df['stocks']
+replicates = df['replicating pnl']
+options = df['option pnl']
+option_payoff = df['option payoff']
+print(df)
+plot_utl.plot_line_chart(stocks, [replicates, options,option_payoff], ['replicate pnl', 'option pnl','option payoff'])
+plt.show()
 
 """2、基于沪深300指数历史数据的复制结果"""
 # print('2.start')
@@ -334,12 +334,12 @@ index_vol = get_hist_vol('1M', df_index)
 # res_vix.to_excel('../res_sh300index_vix.xlsx')
 
 """3、基于沪深300期货历史数据的复制结果"""
-print('3.start')
-res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix, df_index)
-print(res_histvol)
-print(res_vix)
-res_histvol.to_excel('../res_sh300future_histvol.xlsx')
-res_vix.to_excel('../res_sh300future_vix.xlsx')
+# print('3.start')
+# res_histvol, res_vix = analysis_strikes(dt1, dt2, df_cf, df_cf_minute, df_vix, df_index)
+# print(res_histvol)
+# print(res_vix)
+# res_histvol.to_excel('../res_sh300future_histvol.xlsx')
+# res_vix.to_excel('../res_sh300future_vix.xlsx')
 
 """4、举例"""
 # print('4.start')
