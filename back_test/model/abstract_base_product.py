@@ -15,6 +15,13 @@ class AbstractBaseProduct(ABC):
         super().__init__()
 
     """
+    init: initialize product after object is constructed.
+    """
+    @abstractmethod
+    def init(self) -> None:
+        pass
+
+    """
     pre_process: pre process data to filter out invalid data or doing other required preprocess job.
     """
     @abstractmethod

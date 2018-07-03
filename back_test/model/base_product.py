@@ -28,8 +28,10 @@ class BaseProduct(AbstractBaseProduct):
         self.current_state: Series = None
         self.current_daily_state: Series = None
         self.rf = rf
-        # TODO why this property?
-        # self.dt_list = sorted(self.df_metrics[self.util.col_date].unique())
+        # self.pre_process()
+        # self.next()
+
+    def init(self) -> None:
         self.pre_process()
         self.next()
 
