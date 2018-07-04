@@ -37,6 +37,22 @@ def get_hist_vol(cd_period, df_data):
         return
     return df
 
+def fun_pct_vix(df, c):
+    if df['vix'] >= 0.2 and df['histvol'] <= 0.5:
+        vol = max(df['histvol'],df['vix'])
+    elif df['histvol'] >= 0.5:
+        vol = min(df['histvol'],df['vix'])
+    else:
+        vol = df['histvol']
+    return vol
+
+def histvol_ivix_signal(df_histvol,df_vix):
+    df_histvol = df_histvol.rename(columns={utl.col_close:'histvol'})
+    df_vix = df_vix.rename(columns={utl.col_close:'vix'})
+    df_vol = df_histvol.merge(df_vix,on=[utl.col_date],how='inner')
+    # df_vol['pct_vix'] = df_vol['vix'].pct_change()
+    df_vol['vol'] = df_vol.apply(fun_pct_vix)
+    return
 
 def simulation_analysis(dt1, dt2, df_daily, vol):
     dt_list = sorted(df_daily[(df_daily[utl.col_date] >= dt1) & (df_daily[utl.col_date] <= dt2)][utl.col_date].unique())
@@ -82,28 +98,6 @@ def syncetic_payoff(dt_issue, df_daily, vol, N):
     df['option pnl'] = options
     df['option payoff'] = options2
     return df
-
-
-# def analysis_margin(dt1, dt2, df_daily, df_intraday, df_vix):
-#     res = []
-#     dt_list = df_daily[(df_daily[utl.col_date] >= dt1) & (df_daily[utl.col_date] <= dt2)][utl.col_date].unique()
-#     for dt in dt_list:
-#         dt_issue = dt
-#         dt_maturity = dt + datetime.timedelta(days=30)
-#         spot = df_daily[df_daily[utl.col_date] == dt][utl.col_close].values[0]
-#         strike = spot
-#         replication = Replication(strike, dt_issue, dt_maturity, rf=rf, fee=fee)
-#         df_vol = replication.calculate_hist_vol('1M', df_daily)
-#         res_histvol, x, xx = replication.replicate_put(df_intraday, df_vol)
-#         res_vix, y, yy = replication.replicate_put(df_intraday, df_vix)
-#         res.append({'dt_date': dt, 'cd_vol': 'hist vol',
-#                     'replicate cost': res_histvol, 'cash':replication.cash,
-#                     'delta':replication.delta, 'margin':replication.margin})
-#         res.append({'dt_date': dt, 'cd_vol': 'vix',
-#                     'replicate cost': res_vix, 'cash':replication.cash,
-#                     'delta':replication.delta, 'margin':replication.margin})
-#     df_res = pd.DataFrame(res)
-#     return df_res
 
 
 def analysis_strikes(dt1, dt2, df_daily, df_intraday, df_vix, df_underlying, cd_vol='1M'):
@@ -583,51 +577,50 @@ dt2 = datetime.date(2018, 6, 30)
 
 
 """1/2/3 data"""
-dt_start = dt1 - datetime.timedelta(days=50)
-dt_end = dt2 + datetime.timedelta(days=31)
-df_vix = get_vix(dt1, dt_end)
-df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
-df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
-df_index = get_index_mktdata(dt_start, dt_end, id_index)
-df_intraday = get_index_intraday(dt_start, dt_end, id_index)
-
-# df_future = get_future_mktdata(dt_start, dt_end, name_code)
-# cf_vol = get_hist_vol('2W', df_cf)
-# index_vol = get_hist_vol('2W', df_index)
-# cf_vol.to_excel('../cf_vol.xlsx')
-# index_vol.to_excel('../index_vol.xlsx')
-df_vix.to_excel('../data/replicate/df_vix.xlsx')
-df_cf.to_excel('../data/replicate/df_cf.xlsx')
-df_cf_minute.to_excel('../data/replicate/df_cf_minute.xlsx')
-df_index.to_excel('../data/replicate/df_index.xlsx')
-# df_future.to_excel('../data/replicate/df_future.xlsx')
-df_intraday.to_excel('../data/replicate/df_intraday.xlsx')
-
-
-# # """ local data : dt1 = datetime.date(2017, 1, 1)
-# #                  dt2 = datetime.date(2018, 5, 13) """
-# # dt1 = datetime.date(2017, 4, 5)
-# # dt2 = datetime.date(2018, 5, 13)
-# df_vix = pd.ExcelFile('../data/replicate/df_vix.xlsx').parse("Sheet1")
-# df_cf = pd.ExcelFile('../data/replicate/df_cf.xlsx').parse("Sheet1")
-# df_cf_minute = pd.ExcelFile('../data/replicate/df_cf_minute.xlsx').parse("Sheet1")
-# df_index = pd.ExcelFile('../data/replicate/df_index.xlsx').parse("Sheet1")
-# df_intraday = pd.ExcelFile('../data/replicate/df_intraday.xlsx').parse("Sheet1")
-# df_vix.loc[:, 'dt_date'] = df_vix['dt_date'].apply(lambda x: x.date())
-# df_cf.loc[:, 'dt_date'] = df_cf['dt_date'].apply(lambda x: x.date())
-# df_index.loc[:, 'dt_date'] = df_index['dt_date'].apply(lambda x: x.date())
-
+# dt_start = dt1 - datetime.timedelta(days=50)
+# dt_end = dt2 + datetime.timedelta(days=31)
+# df_vix = get_vix(dt1, dt_end)
+# df_cf = get_dzqh_cf_daily(dt_start, dt_end, name_code.lower())
+# df_cf_minute = get_dzqh_cf_minute(dt_start, dt_end, name_code.lower())
+# df_index = get_index_mktdata(dt_start, dt_end, id_index)
+# df_intraday = get_index_intraday(dt_start, dt_end, id_index)
 #
-# """ 数据预处理 """
+# # df_future = get_future_mktdata(dt_start, dt_end, name_code)
+# # cf_vol = get_hist_vol('2W', df_cf)
+# # index_vol = get_hist_vol('2W', df_index)
+# # cf_vol.to_excel('../cf_vol.xlsx')
+# # index_vol.to_excel('../index_vol.xlsx')
+# df_vix.to_excel('../data/replicate/df_vix.xlsx')
+# df_cf.to_excel('../data/replicate/df_cf.xlsx')
+# df_cf_minute.to_excel('../data/replicate/df_cf_minute.xlsx')
+# df_index.to_excel('../data/replicate/df_index.xlsx')
+# # df_future.to_excel('../data/replicate/df_future.xlsx')
+# df_intraday.to_excel('../data/replicate/df_intraday.xlsx')
 
+
+""" local data  """
+df_vix = pd.ExcelFile('../data/replicate/df_vix.xlsx').parse("Sheet1")
+df_cf = pd.ExcelFile('../data/replicate/df_cf.xlsx').parse("Sheet1")
+df_cf_minute = pd.ExcelFile('../data/replicate/df_cf_minute.xlsx').parse("Sheet1")
+df_index = pd.ExcelFile('../data/replicate/df_index.xlsx').parse("Sheet1")
+df_intraday = pd.ExcelFile('../data/replicate/df_intraday.xlsx').parse("Sheet1")
+df_vix.loc[:, 'dt_date'] = df_vix['dt_date'].apply(lambda x: x.date())
+df_cf.loc[:, 'dt_date'] = df_cf['dt_date'].apply(lambda x: x.date())
+df_index.loc[:, 'dt_date'] = df_index['dt_date'].apply(lambda x: x.date())
 df_cf_minute.loc[:, 'dt_date'] = df_cf_minute['dt_datetime'].apply(lambda x: x.date())
 df_intraday.loc[:, 'dt_date'] = df_intraday['dt_datetime'].apply(lambda x: x.date())
 
-df_cf = df_cf[df_cf[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
-df_cf_minute = df_cf_minute[df_cf_minute[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
-df_index = df_index[df_index[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
-df_intraday = df_intraday[df_intraday[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
-
+""" 数据预处理 """
+#
+# df_cf = df_cf[df_cf[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
+# df_cf_minute = df_cf_minute[df_cf_minute[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
+# df_index = df_index[df_index[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
+# df_intraday = df_intraday[df_intraday[utl.col_date] != datetime.date(2017,4,4)].reset_index(drop=True)
+# df_vix.to_excel('../data/replicate/df_vix.xlsx')
+# df_cf.to_excel('../data/replicate/df_cf.xlsx')
+# df_cf_minute.to_excel('../data/replicate/df_cf_minute.xlsx')
+# df_index.to_excel('../data/replicate/df_index.xlsx')
+# df_intraday.to_excel('../data/replicate/df_intraday.xlsx')
 
 """1、基于蒙特卡洛模拟的复制结果"""
 # print('start')
@@ -726,18 +719,22 @@ df_intraday = df_intraday[df_intraday[utl.col_date] != datetime.date(2017,4,4)].
 # res_vix.to_excel('../res_sh300future_vix_with_delta_bounds.xlsx')
 
 """ 6、Continuously hedging """
-cd_vol = '1M'
-res = hedging_constant_ttm(dt1, dt2, df_cf, df_cf_minute, df_index, pct_strike=1.0, cd_vol=cd_vol)
-res.to_excel('../res.xlsx')
-analysis = Analysis.get_netvalue_analysis(res['npv'])
-analysis2 = Analysis.get_netvalue_analysis(res['benchmark'])
-print('-'*100)
-print('analysis hedged')
-print('-'*100)
-print(analysis)
-print('-'*100)
-print('analysis unhedged')
-print('-'*100)
-print(analysis2)
-plot_utl.plot_line_chart(res['dt_date'].tolist(),[res['npv'].tolist(),res['benchmark'].tolist()],['portfolio','sh300'])
-plt.show()
+# cd_vol = '1M'
+# res = hedging_constant_ttm(dt1, dt2, df_cf, df_cf_minute, df_index, pct_strike=1.05, cd_vol=cd_vol)
+# res.to_excel('../res.xlsx')
+# analysis = Analysis.get_netvalue_analysis(res['npv'])
+# analysis2 = Analysis.get_netvalue_analysis(res['benchmark'])
+# print('-'*100)
+# print('analysis hedged')
+# print('-'*100)
+# print(analysis)
+# print('-'*100)
+# print('analysis unhedged')
+# print('-'*100)
+# print(analysis2)
+# plot_utl.plot_line_chart(res['dt_date'].tolist(),[res['npv'].tolist(),res['benchmark'].tolist()],['portfolio','sh300'])
+# plt.show()
+
+""" Active vol signaled by vix change """
+df_histvol = get_hist_vol('1M',df_cf)
+histvol_ivix_signal(df_histvol,df_vix)
