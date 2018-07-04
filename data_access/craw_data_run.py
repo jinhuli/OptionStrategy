@@ -6,11 +6,11 @@ from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
-from Utilities import admin_util as admin
+from Utilities import admin_write_util as admin
 
 w.start()
 
-date = datetime.date(2018, 6, 21)
+date = datetime.date(2017, 4, 4)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 

@@ -6,11 +6,11 @@
 '''
 几种价格“趋势线”的方法
 '''
-import talib
+# import talib
 import pandas as pd
 import numpy as np
 
-from pykalman import KalmanFilter
+# from pykalman import KalmanFilter
 
 # =============================================================================
 # 1. 局域线性核回归
@@ -84,30 +84,30 @@ def MA(ts, d):
 # =============================================================================
 # 3. 卡尔曼滤波
 # =============================================================================
-def KALMAN(ts, d):
-    '''卡尔曼滤波'''
-    sigma = (2/(d+1))**2
-    kf = KalmanFilter(transition_covariance=sigma,
-                      transition_matrices=[1],
-                      observation_covariance=1,
-                      observation_matrices=[1],
-                      initial_state_covariance=1,
-                      initial_state_mean=0)
-    tmp = kf.filter(ts.values)[0]
-    tmp = pd.Series(tmp[:, 0], index=ts.index)
-    tmp[:2*d] = np.nan
-    return tmp
+# def KALMAN(ts, d):
+#     '''卡尔曼滤波'''
+#     sigma = (2/(d+1))**2
+#     kf = KalmanFilter(transition_covariance=sigma,
+#                       transition_matrices=[1],
+#                       observation_covariance=1,
+#                       observation_matrices=[1],
+#                       initial_state_covariance=1,
+#                       initial_state_mean=0)
+#     tmp = kf.filter(ts.values)[0]
+#     tmp = pd.Series(tmp[:, 0], index=ts.index)
+#     tmp[:2*d] = np.nan
+#     return tmp
 
 # =============================================================================
 # 4. MACD
 # =============================================================================
-def MACD(ts, d):
-    '''MACD, 计算dif所用的快慢均线参数固定为12日、26日，d为计算dea时的均线参数'''
-    dif, dea, macd = talib.MACD(ts.values, fastperiod=12, slowperiod=26, signalperiod=d)
-    dif = pd.Series(dif, index=ts.index)
-    dea = pd.Series(dea, index=ts.index)
-    macd = pd.Series(macd, index=ts.index)
-    return dif, dea, macd
+# def MACD(ts, d):
+#     '''MACD, 计算dif所用的快慢均线参数固定为12日、26日，d为计算dea时的均线参数'''
+#     dif, dea, macd = talib.MACD(ts.values, fastperiod=12, slowperiod=26, signalperiod=d)
+#     dif = pd.Series(dif, index=ts.index)
+#     dea = pd.Series(dea, index=ts.index)
+#     macd = pd.Series(macd, index=ts.index)
+#     return dif, dea, macd
 
 # =============================================================================
 # 5. 奇异谱分析Singular Spectrum Analysis
@@ -174,8 +174,18 @@ def LFT(ts, d):
 # =============================================================================
 # 8. 停损指标SAR: Stop And Reverse
 # =============================================================================
-def SAR(high, low):
-    '''停损指标'''
-    sar = talib.SAR(high.values, low.values, acceleration=0.02, maximum=0.2)
-    sar = pd.Series(sar, index=high.index)
-    return sar
+# def SAR(high, low):
+#     '''停损指标'''
+#     sar = talib.SAR(high.values, low.values, acceleration=0.02, maximum=0.2)
+#     sar = pd.Series(sar, index=high.index)
+#     return sar
+
+
+df_cf = pd.ExcelFile('../data/replicate/df_cf.xlsx').parse("Sheet1")
+df_cf.loc[:,'dt_date'] = df_cf['dt_date'].apply(lambda x:x.date())
+# df_cf_minute = pd.ExcelFile('../data/replicate/df_cf_minute.xlsx').parse("Sheet1")
+# df_cf_minute.loc[:,'dt_date'] = df_cf_minute['dt_datetime'].apply(lambda x:x.date())
+df_cf = df_cf.set_index('dt_date')
+res = LLKSR(df_cf['amt_close'],20)
+df_cf['LLKSR'] = res
+print(res)

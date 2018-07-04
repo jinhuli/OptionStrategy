@@ -10,7 +10,7 @@ from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
-from Utilities import admin_util as admin
+from Utilities import admin_write_util as admin
 
 w.start()
 
@@ -20,35 +20,35 @@ futures_mktdata_daily = admin.table_futures_mktdata()
 futures_institution_positions = admin.table_futures_institution_positions()
 
 conn_intraday = admin.conn_intraday()
-equity_index_intraday = admin.table_equity_index_mktdata_intraday()
+equity_index_intraday = admin.table_index_mktdata_intraday()
 option_mktdata_intraday = admin.table_option_mktdata_intraday()
 index_daily = admin.table_indexes_mktdata()
 
 dc = DataCollection()
 #####################################################################################
-beg_date = datetime.date(2004, 1, 1)
-end_date = datetime.date(2004, 12, 31)
+beg_date = datetime.date(2002, 1, 1)
+end_date = datetime.date(2002, 12, 31)
 
 
-windcode = "510050.SH"
-id_instrument = 'index_50etf'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-50etf -- inserted into data base succefully')
-except Exception as e:
-    print(e)
-
-
-windcode = "000016.SH"
-id_instrument = 'index_50sh'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-50sh -- inserted into data base succefully')
-except Exception as e:
-    print(e)
+# windcode = "510050.SH"
+# id_instrument = 'index_50etf'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-50etf -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
+#
+#
+# windcode = "000016.SH"
+# id_instrument = 'index_50sh'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+#
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-50sh -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
 
 
 windcode = "000300.SH"
@@ -61,16 +61,16 @@ try:
 except Exception as e:
     print(e)
 
-
-windcode = "000905.SH"
-id_instrument = 'index_500sh'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-500sh -- inserted into data base succefully')
-except Exception as e:
-    print(e)
+#
+# windcode = "000905.SH"
+# id_instrument = 'index_500sh'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+#
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-500sh -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
 
 
 

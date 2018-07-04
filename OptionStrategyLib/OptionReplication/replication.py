@@ -181,7 +181,6 @@ class Replication():
                 dt_last = date
             gamma = black.Gamma()
             H = self.whalley_wilmott(dt_time.date(), Option, gamma, vol, spot, rho=1)
-            # TODO
             if abs(delta - delta0) >= H:
                 d_asset = (delta - delta0) * spot
                 transaction_fee += abs(delta - delta0) * (spot * self.fee + self.slippage)
@@ -210,6 +209,9 @@ class Replication():
         df_res = pd.DataFrame(res)
         result = df_res.iloc[-1]
         return df_res
+
+
+    # def hedge_constant_ttm(self):
 
     """ Delta Bounds"""
 
