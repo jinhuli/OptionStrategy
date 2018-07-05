@@ -5,7 +5,7 @@ import numpy as np
 import datetime
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
-
+import pandas as pd
 utl = BktUtil()
 pricing_utl = PricingUtil()
 strike = 3000
@@ -37,7 +37,10 @@ plot_utl = PlotUtil()
 plot_utl.plot_line_chart(spotlist, [deltalist_2,deltalist_1], ['Delta (rf=0.03)','Delta (rf=0.1)'])
 # plot_utl.plot_line_chart(spotlist, [gammalist2,gammalist1], ['Gamma(T=1M)','Gamma(T=3M)'])
 plt.show()
-
+df = pd.DataFrame()
+df['spot'] = spotlist
+df['delta'] = deltalist_1
+df.to_excel('../delta.xlsx')
 # for spot in spotlist:
 #     black1 = pricing_utl.get_blackcalculator(dt_date, spot, Option, rf, vol)
 #     delta1 = black1.Delta()

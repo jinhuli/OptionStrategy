@@ -47,6 +47,7 @@ class Replication():
         dt_date = self.dt_issue  # Use Close price of option issue date to start replication.
         Option = EuropeanOption(self.strike, self.dt_maturity, self.utl.type_put)
         spot = df_data[df_data[self.utl.col_date] == dt_date][self.utl.col_close].values[-1]
+        # spot = self.strike
         vol = self.get_vol(dt_date, df_vol)
         black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
         option0 = black.NPV()
