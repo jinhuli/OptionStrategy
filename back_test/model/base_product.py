@@ -21,8 +21,8 @@ class BaseProduct(AbstractBaseProduct):
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
         self._name_code: str = self._id_instrument.split('_')[0]
-        self._code_instrument: str = self.df_data.loc[0][Util.CODE_INSTRUMENT]
-        self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
+        # self._code_instrument: str = self.df_data.loc[0][Util.CODE_INSTRUMENT]
+        # self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.current_state: Series = None
@@ -38,11 +38,16 @@ class BaseProduct(AbstractBaseProduct):
         # filter function to filter out ivalid data from dataframe
 
         if self.frequency not in Util.LOW_FREQUENT:
+            # High Frequency Data:
             # overwrite date col based on data in datetime col.
             self.df_data[Util.DT_DATE] = self.df_data[Util.DT_DATETIME].apply(lambda x: x.date())
+            self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
             # TODO: preprocess df_daily
+        else:
+            self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
+
         self.generate_required_columns_if_missing()
 
     def next(self) -> None:
@@ -54,6 +59,7 @@ class BaseProduct(AbstractBaseProduct):
         self.current_state = self.df_data.loc[self.current_index]
         self.eval_date = self.current_state[Util.DT_DATE]
 
+    # TODO: Is daily state necessary in high freq data?
     def update_current_daily_state(self) -> None:
         if self.df_daily_data is None:
             return
@@ -72,7 +78,8 @@ class BaseProduct(AbstractBaseProduct):
         required_column_list = Util.PRODUCT_COLUMN_LIST
         columns = self.df_data.columns
         for column in required_column_list:
-            if not columns.contains(column):
+            if column not in columns:
+            # if not columns.contains(column):
                 print("{} missing column {}", self.__repr__(), column)
                 self.df_data[column] = None
 

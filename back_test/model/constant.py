@@ -81,17 +81,17 @@ class Util:
                           AMT_SETTLEMENT]
 
 
-@staticmethod
-def filter_invalid_data(x) -> bool:
-    cur_date = x[Util.DT_DATE]
-    if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-            x[
-                Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                       00):
-        return True
-    if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-            x[
-                Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                       00):
-        return True
-    return False
+    @staticmethod
+    def filter_invalid_data(x) -> bool:
+        cur_date = x[Util.DT_DATE]
+        if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
+                x[
+                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
+                                                           00):
+            return True
+        if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
+                x[
+                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
+                                                           00):
+            return True
+        return False

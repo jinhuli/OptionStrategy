@@ -12,5 +12,6 @@ end_date = datetime.date(2017, 11, 1)
 
 df_index_metrics = get_index_intraday(start_date, end_date, 'index_50etf')
 
-a = BaseInstrument(df_index_metrics, 'index_50etf', FrequentType.MINUTE)
+a = BaseInstrument(df_index_metrics, frequency=FrequentType.MINUTE)
+a.next()
 print(a)
