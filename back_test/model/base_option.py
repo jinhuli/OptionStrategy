@@ -126,8 +126,12 @@ class BaseOption(BaseProduct):
         else:
             strike = self.strike()
         pricing_util = PricingUtil()
-        option = EuropeanOption(strike, self.maturitydt(), Util.TYPE_PUT)
-        self.black_calculater = pricing_util.get_blackcalculator(self.eval_date, spot, option, self.rf, 0.0)
+        option = EuropeanOption(strike, self.maturitydt(), self.option_type())
+        if self.option_type() == Util.TYPE_PUT:
+            iscall = False
+        else:
+            iscall = True
+        self.black_calculater = BlackCalculator(self.eval_date, spot, option, self.rf, 0.0, iscall)
         return self.black_calculater
 
     def _destroy_black_calculater(self) -> None:
