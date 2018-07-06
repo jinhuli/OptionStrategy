@@ -15,6 +15,14 @@ class AbstractBaseProductSet(ABC):
         super().__init__()
 
     """
+    init: initialize product set after object is constructed.
+    """
+    @abstractmethod
+    def init(self) -> None:
+        pass
+
+
+    """
     pre_process: pre process data to populate option set
     """
     @abstractmethod

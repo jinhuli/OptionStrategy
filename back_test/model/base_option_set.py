@@ -33,21 +33,26 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.size: int = 0
         self.eval_date: datetime.date = None
         self.current_date_index = -1
-        self.activate_options: queue.Queue = queue.Queue()
-        self.pre_process()
-        self.next()
+        self.activate_options: queue.Queue = queue.Queue(maxsize=1000)
+        # self.pre_process()
+        # self.next()
         # if self.option_code == 'sr': self.flag_calculate_iv = False
         # self.bktoptionset = set()
         # self.eligible_maturities = []
         # self.index = 0
         # self.start()
 
-    def pre_process(self):
+    def init(self) -> None:
+        self.pre_process()
+        self.next()
+
+    def pre_process(self) -> None:
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         for key in groups.groups.keys():
             df_option = groups.get_group(key).reset_index(drop=True)
             option = BaseOption(df_option, None, self.frequency, self.flag_calculate_iv,
                                 self.rf, self.pricing_type, self.engine_type)
+            option.init()
             option_list = self.option_dict.get(option.eval_date, [])
             self.option_dict.update({option.eval_date: option_list})
             option_list.append(option)
@@ -56,10 +61,15 @@ class BaseOptionSet(AbstractBaseProductSet):
     def next(self) -> None:
         self.current_date_index += 1
         self.eval_date = self.dt_list[self.current_date_index]
-        # add new options to activate queue
-        for option in self.option_dict.get(self.eval_date):
+        size = self.activate_options.qsize()
+        for i in range(size):
+            option = self.activate_options.get()
+            option.next()
             self.activate_options.put(option)
-        return
+        # add new options to activate queue
+        for option in self.option_dict.get(self.eval_date, []):
+            self.activate_options.put(option)
+        return None
 
     def __repr__(self) -> str:
         return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \

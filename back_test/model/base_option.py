@@ -12,9 +12,9 @@ class BaseOption(BaseProduct):
     """ Contain metrics and trading position info as attributes """
 
     def __init__(self, df_data: DataFrame, df_daily_data: DataFrame = None,
-                 frequency: FrequentType = FrequentType.DAILY, init_date: datetime.date = None,
-                 flag_calculate_iv: bool = False,
-                 rf: float = 0.03, pricing_type=PricingType.OptionPlainEuropean,
+                 frequency: FrequentType = FrequentType.DAILY,
+                 flag_calculate_iv: bool = False, rf: float = 0.03,
+                 pricing_type=PricingType.OptionPlainEuropean,
                  engine_type=EngineType.AnalyticEuropeanEngine):
         self.flag_calculate_iv = flag_calculate_iv
         self.pricing_type = pricing_type
