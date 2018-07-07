@@ -4,7 +4,7 @@ from collections import deque
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
-    MoneynessMethod
+    MoneynessMethod, OptionFilter
 from typing import Dict, List, Deque
 
 
@@ -18,7 +18,7 @@ class BaseOptionSet(AbstractBaseProductSet):
     """
 
     def __init__(self, df_data: pd.DataFrame, frequency: FrequentType = FrequentType.DAILY,
-                 flag_calculate_iv: bool = True, min_ttm: int = 2, pricing_type=PricingType.OptionPlainEuropean,
+                 flag_calculate_iv: bool = True, pricing_type=PricingType.OptionPlainEuropean,
                  engine_type=EngineType.AnalyticEuropeanEngine, rf: float = 0.03):
         self.df_data: pd.DataFrame = df_data
         self.frequency: FrequentType = frequency
@@ -26,7 +26,6 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.engine_type: EngineType.AnalyticEuropeanEngine = engine_type
         self.flag_calculate_iv: bool = flag_calculate_iv
         self.option_dict: Dict[datetime.date, List(BaseOption)] = {}
-        self.min_ttm: float = min_ttm
         self.rf: float = rf
         self.dt_list: List[datetime.date] = sorted(self.df_data[Util.DT_DATE].unique())
         self.nbr_index = len(self.dt_list)
@@ -34,15 +33,15 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.eval_date: datetime.date = None
         self.current_date_index = -1
         self.eligible_options: Deque(BaseOption) = deque()
-        self.eligible_option_dict: Dict[datetime.date, List(BaseOption)] = {}
-        self.eligible_maturities: List(datetime.date) = None
-        # self.activate_options: queue.Queue = queue.Queue(maxsize=2000)
+        # self.eligible_option_dict: Dict[datetime.date, List(BaseOption)] = {}
+        # self.eligible_maturities: List(datetime.date) = None
 
     def init(self) -> None:
         self.pre_process()
         self.next()
 
     def pre_process(self) -> None:
+        self.df_data[Util.AMT_NEAREST_STRIKE] = self.df_data.apply(OptionFilter.nearest_strike_level, axis=1)
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         for key in groups.groups.keys():
             df_option = groups.get_group(key).reset_index(drop=True)
@@ -68,12 +67,11 @@ class BaseOptionSet(AbstractBaseProductSet):
         for i in range(size):
             option = self.eligible_options.popleft()
             option.next()
-            if option.is_valid_option(self.min_ttm):
+            if option.is_valid_option():
                 self.add_option(option)
         for option in self.option_dict.get(self.eval_date, []):
-            if option.is_valid_option(self.min_ttm):
+            if option.is_valid_option():
                 self.add_option(option)
-        self.eligible_maturities = sorted(self.eligible_option_dict.keys())
         print("iter {0}, option_set length:{1}".format(self.eval_date, len(self.eligible_options)))
         return None
 
@@ -85,11 +83,6 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     def add_option(self, option: BaseOption) -> None:
         self.eligible_options.append(option)
-        l = self.eligible_option_dict.get(option.maturitydt())
-        if l is None:
-            l = []
-            self.eligible_option_dict.update({option.maturitydt(): []})
-        l.append(option)
 
     def has_next(self) -> bool:
         return self.current_date_index < self.nbr_index - 1

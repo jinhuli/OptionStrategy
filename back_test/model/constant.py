@@ -92,6 +92,13 @@ class OptionFilter:
             option_price = None
         return option_price
 
+    @staticmethod
+    def nearest_strike_level(s: pd.Series) -> float:
+        strike = s[Util.AMT_STRIKE]
+        if strike <= 3:
+            return round(strike/0.05)*0.05
+        else:
+            return round(strike/0.1)*0.1
 
 class Util:
     """database column names"""
@@ -127,6 +134,7 @@ class Util:
     AMT_MORNING_AVG = 'amt_morning_avg'
     AMT_AFTERNOON_AVG = 'amt_afternoon_avg'
     AMT_DAILY_AVG = 'amt_daily_avg'
+    AMT_NEAREST_STRIKE = 'amt_nearest_strike'
     PCT_IMPLIED_VOL = 'pct_implied_vol'
     AMT_DELTA = 'amt_delta'
     AMT_THETA = 'amt_theta'

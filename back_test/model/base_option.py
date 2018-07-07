@@ -282,15 +282,11 @@ class BaseOption(BaseProduct):
 
     """
     For future based option, we only consider contract in month 1,5,9
-    For all options, we might consider ttm of maturaty date.
     """
 
-    def is_valid_option(self, min_ttm: int = None) -> bool:
+    def is_valid_option(self) -> bool:
         if self.name_code() in Util.FUTURE_BASED_OPTION_NAME_CODE:
             return int(self.id_underlying()[-2, :]) in Util.FUTURE_BASED_OPTION_MAIN_CONTRACT
-        if min_ttm is not None:
-            ttm = (self.maturitydt() - self.eval_date).days
-            return ttm >= min_ttm
         return True
 
     """
