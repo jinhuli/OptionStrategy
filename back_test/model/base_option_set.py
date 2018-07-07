@@ -1,5 +1,3 @@
-from back_test.BktOption import BktOption
-from back_test.OptionPortfolio import *
 from pandas import DataFrame
 import datetime
 import queue
@@ -33,7 +31,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.size: int = 0
         self.eval_date: datetime.date = None
         self.current_date_index = -1
-        self.activate_options: queue.Queue = queue.Queue(maxsize=1000)
+        self.activate_options: queue.Queue = queue.Queue(maxsize=2000)
         # self.pre_process()
         # self.next()
         # if self.option_code == 'sr': self.flag_calculate_iv = False
@@ -53,6 +51,9 @@ class BaseOptionSet(AbstractBaseProductSet):
             option = BaseOption(df_option, None, self.frequency, self.flag_calculate_iv,
                                 self.rf, self.pricing_type, self.engine_type)
             option.init()
+            option.validate_data()
+            option.update_multiplier_adjustment()
+            option.update_applicable_strikes()
             option_list = self.option_dict.get(option.eval_date, [])
             self.option_dict.update({option.eval_date: option_list})
             option_list.append(option)
@@ -65,10 +66,12 @@ class BaseOptionSet(AbstractBaseProductSet):
         for i in range(size):
             option = self.activate_options.get()
             option.next()
-            self.activate_options.put(option)
+            if option.is_valid_option(self.min_ttm):
+                self.activate_options.put(option)
         # add new options to activate queue
         for option in self.option_dict.get(self.eval_date, []):
-            self.activate_options.put(option)
+            if option.is_valid_option(self.min_ttm):
+                self.activate_options.put(option)
         return None
 
     def __repr__(self) -> str:

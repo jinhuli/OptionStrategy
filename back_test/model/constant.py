@@ -1,4 +1,5 @@
 from enum import Enum
+from pandas import Series
 import datetime
 
 
@@ -16,6 +17,65 @@ class PricingType(Enum):
 
 class EngineType(Enum):
     AnalyticEuropeanEngine = 1
+
+
+class ETF:
+    DIVIDEND_DATES = {
+        datetime.date(2016, 11, 29): [
+            '1612', '1701', '1703', '1706'
+        ],
+        datetime.date(2017, 11, 28): [
+            '1712', '1801', '1803', '1806'
+        ]
+
+    }
+
+    @staticmethod
+    def fun_applicable_strikes(df: Series) -> float:
+        eval_date = df[Util.DT_DATE]
+        contract_month = df[Util.NAME_CONTRACT_MONTH]
+        dividend_dates = ETF.DIVIDEND_DATES
+        dates = sorted(dividend_dates.keys(), reverse=False)
+        if eval_date < dates[0]:
+            return df[Util.AMT_ADJ_STRIKE]  # 分红除息日前反算调整前的行权价
+        elif eval_date < dates[1]:
+            if contract_month in dividend_dates[dates[1]]:
+                return df[Util.AMT_ADJ_STRIKE]  # 分红除息日前反算调整前的行权价
+            else:
+                return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
+        else:
+            return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
+
+    @staticmethod
+    def fun_applicable_multiplier(df: Series) -> float:
+        eval_date = df[Util.DT_DATE]
+        contract_month = df[Util.NAME_CONTRACT_MONTH]
+        dividend_dates = ETF.DIVIDEND_DATES
+        dates = sorted(dividend_dates.keys(), reverse=False)
+        if eval_date < dates[0]:
+            return 10000  # 分红除息日前
+        elif eval_date < dates[1]:
+            if contract_month in dividend_dates[dates[1]]:
+                return 10000  # 分红除息日前
+            else:
+                return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+        else:
+            return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+
+
+class OptionFilter:
+
+    @staticmethod
+    def fun_option_price(df: Series) -> float:
+        if df[Util.AMT_CLOSE] != Util.NAN_VALUE:
+            option_price = df[Util.AMT_CLOSE]
+        elif df[Util.AMT_SETTLEMENT] != Util.NAN_VALUE:
+            option_price = df[Util.NAN_VALUE]
+        else:
+            print('amt_close and amt_settlement are null!')
+            print(df)
+            option_price = None
+        return option_price
 
 
 class Util:
@@ -79,10 +139,11 @@ class Util:
                           CD_OPTION_TYPE, AMT_OPTION_PRICE, AMT_ADJ_OPTION_PRICE, ID_UNDERLYING, AMT_UNDERLYING_CLOSE,
                           AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER, AMT_LAST_SETTLEMENT,
                           AMT_SETTLEMENT]
-
+    FUTURE_BASED_OPTION_NAME_CODE = ['sr', 'm']
+    FUTURE_BASED_OPTION_MAIN_CONTRACT = [1, 5, 9]
 
     @staticmethod
-    def filter_invalid_data(x) -> bool:
+    def filter_invalid_data(x: Series) -> bool:
         cur_date = x[Util.DT_DATE]
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
                 x[

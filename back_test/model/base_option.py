@@ -3,7 +3,7 @@ from OptionStrategyLib.Util import PricingUtil
 import datetime
 from pandas import DataFrame
 import numpy as np
-from back_test.model.constant import FrequentType, Util, PricingType, EngineType
+from back_test.model.constant import FrequentType, Util, PricingType, EngineType, ETF, OptionFilter
 from back_test.model.base_product import BaseProduct
 from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 
@@ -279,3 +279,43 @@ class BaseOption(BaseProduct):
         # except:
         #     p = None
         # return p
+
+    """
+    For future based option, we only consider contract in month 1,5,9
+    For all options, we might consider ttm of maturaty date.
+    """
+
+    def is_valid_option(self, min_ttm: int = None) -> bool:
+        if self.name_code() in Util.FUTURE_BASED_OPTION_NAME_CODE:
+            return int(self.id_underlying()[-2, :]) in Util.FUTURE_BASED_OPTION_MAIN_CONTRACT
+        if min_ttm is not None:
+            ttm = (self.maturitydt() - self.eval_date).days
+            return ttm >= min_ttm
+        return True
+
+    """
+    update multiplier adjustment.
+    """
+
+    # TODO: ask kitten for detail
+    def update_multiplier_adjustment(self):
+        if self.name_code() == '50etf':
+            self.df_data[Util.AMT_ADJ_STRIKE] = \
+                round(self.df_data[Util.AMT_STRIKE] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
+            self.df_data[Util.AMT_ADJ_OPTION_PRICE] = \
+                round(self.df_data[Util.AMT_SETTLEMENT] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
+        else:
+            self.df_data[Util.AMT_ADJ_STRIKE] = self.df_data[Util.AMT_STRIKE]
+            self.df_data[Util.AMT_ADJ_OPTION_PRICE] = self.df_data[Util.AMT_SETTLEMENT]
+
+    # TODO: ask kitten for reason of doing nothing for non-50etf
+    def update_applicable_strikes(self):
+        if self.name_code() == '50etf':
+            self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(ETF.fun_applicable_strikes, axis=1)
+            self.df_data[Util.AMT_APPLICABLE_MULTIPLIER] = self.df_data.apply(ETF.fun_applicable_multiplier, axis=1)
+    """
+    currently only validate option price
+    """
+    # TODO: ask kitten if we  need add more
+    def validate_data(self):
+        self.df_data[Util.AMT_OPTION_PRICE] = self.df_data.apply(OptionFilter.fun_option_price, axis=1)
