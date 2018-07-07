@@ -1,6 +1,4 @@
-import datetime
-import numpy as np
-from pandas import DataFrame, Series
+import pandas as pd
 from back_test.model.constant import FrequentType, Util
 from back_test.model.base_product import BaseProduct
 
@@ -10,7 +8,7 @@ class BaseInstrument(BaseProduct):
     BaseInstrument: base class for financial product like instrument.
     """
 
-    def __init__(self, df_data: DataFrame, df_daily_data: DataFrame = None,
+    def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
                  rf: float = 0.03, frequency: FrequentType = FrequentType.DAILY):
         super().__init__(df_data, df_daily_data, rf, frequency)
 

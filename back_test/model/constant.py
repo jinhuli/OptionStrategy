@@ -1,5 +1,5 @@
 from enum import Enum
-from pandas import Series
+import pandas as pd
 import datetime
 
 
@@ -19,6 +19,21 @@ class EngineType(Enum):
     AnalyticEuropeanEngine = 1
 
 
+class LongShort(Enum):
+    LONG = 1
+    SHORT = -1
+
+
+class MoneynessMethod(Enum):
+    METHOD1 = 0
+    METHOD2 = 1
+
+
+class UnderlyingPriceType(Enum):
+    CLOSE = 1
+    OPEN = 2
+
+
 class ETF:
     DIVIDEND_DATES = {
         datetime.date(2016, 11, 29): [
@@ -31,7 +46,7 @@ class ETF:
     }
 
     @staticmethod
-    def fun_applicable_strikes(df: Series) -> float:
+    def fun_applicable_strikes(df: pd.Series) -> float:
         eval_date = df[Util.DT_DATE]
         contract_month = df[Util.NAME_CONTRACT_MONTH]
         dividend_dates = ETF.DIVIDEND_DATES
@@ -47,7 +62,7 @@ class ETF:
             return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
 
     @staticmethod
-    def fun_applicable_multiplier(df: Series) -> float:
+    def fun_applicable_multiplier(df: pd.Series) -> float:
         eval_date = df[Util.DT_DATE]
         contract_month = df[Util.NAME_CONTRACT_MONTH]
         dividend_dates = ETF.DIVIDEND_DATES
@@ -66,7 +81,7 @@ class ETF:
 class OptionFilter:
 
     @staticmethod
-    def fun_option_price(df: Series) -> float:
+    def fun_option_price(df: pd.Series) -> float:
         if df[Util.AMT_CLOSE] != Util.NAN_VALUE:
             option_price = df[Util.AMT_CLOSE]
         elif df[Util.AMT_SETTLEMENT] != Util.NAN_VALUE:
@@ -142,8 +157,19 @@ class Util:
     FUTURE_BASED_OPTION_NAME_CODE = ['sr', 'm']
     FUTURE_BASED_OPTION_MAIN_CONTRACT = [1, 5, 9]
 
+    # Trade
+    UUID = 'uuid'
+    DT_TRADE = 'dt_trade'
+    TRADING_TYPE = 'trading_type'
+    TRADING_PRICE = 'trade_price'
+    TRADING_COST = 'trading_cost'
+    UNIT = 'unit'
+    PREMIIUM_PAID = 'premium paid'
+    CASH = 'cash'
+    MARGIN_CAPITAL = 'margin capital'
+
     @staticmethod
-    def filter_invalid_data(x: Series) -> bool:
+    def filter_invalid_data(x: pd.Series) -> bool:
         cur_date = x[Util.DT_DATE]
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
                 x[

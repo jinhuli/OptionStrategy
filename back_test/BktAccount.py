@@ -118,7 +118,7 @@ class BktAccount(object):
             if fund == None:
                 fund = plong * option_long.multiplier() * option_port.unit_long + \
                        option_short.trade_margin_capital - pshort * option_short.multiplier() * \
-                                                           option_port.unit_short
+                       option_port.unit_short
                 fund0 = plong * option_long.multiplier() * option_port.invest_ratio_long + \
                         (option_short.get_maintain_margin() - pshort * option_short.multiplier()) * \
                         option_port.invest_ratio_short
@@ -206,14 +206,14 @@ class BktAccount(object):
                 else:
                     fund_call = liquidite_call.trade_margin_capital \
                                 - self.get_open_position_price(liquidite_call, cd_open_by_price) \
-                                  * liquidite_call.multiplier() * option_port.unit_call
+                                * liquidite_call.multiplier() * option_port.unit_call
                 if liquidite_put.trade_long_short == self.util.long:
                     fund_put = self.get_open_position_price(liquidite_put, cd_open_by_price) \
                                * option_put.multiplier() * option_port.unit_put
                 else:
                     fund_put = liquidite_put.trade_margin_capital \
                                - self.get_open_position_price(liquidite_put, cd_open_by_price) \
-                                 * liquidite_put.multiplier() * option_port.unit_put
+                               * liquidite_put.multiplier() * option_port.unit_put
                 fund = fund_call + fund_put
             option_port.rebalancing(delta_exposure)
 
@@ -230,6 +230,18 @@ class BktAccount(object):
             option_port.unit_portfolio = unit_straddle
             option_port.unit_call = unit_straddle * option_port.invest_ratio_call
             option_port.unit_put = unit_straddle * option_port.invest_ratio_put
+        elif isinstance(option_port, Calls):
+            long_short = option_port.long_short
+            unit_port_price = 0.0
+            if fund == None:
+                fund = 0.0
+                for call in option_port.optionset:
+                    price_call = self.get_open_position_price(call, cd_open_by_price)
+                    if long_short == self.util.long: fund += price_call * option_port.unit_portfolio
+            for call in option_port.optionset:
+                price_call = self.get_open_position_price(call, cd_open_by_price)
+                if long_short == self.util.long: unit_port_price += price_call*call.multiplier()
+            option_port.unit_portfolio = [fund / unit_port_price]*len(option_port.optionset)
 
     " Given INVESTMENT UNITs of total portfolio, do component rebalancing" \
     " CHANGE portfolio components. "
@@ -325,6 +337,10 @@ class BktAccount(object):
             self.close_position_option(dt, portfolio.buy_put, cd_close_by_price=cd_close_by_price)
             self.close_position_underlying(dt, portfolio.underlying, cd_open_by_price=cd_close_by_price)
             portfolio.liquidate()
+        elif isinstance(portfolio, Calls):
+            for option in portfolio.optionset:
+                self.close_position_option(dt,option,cd_close_by_price=cd_close_by_price)
+            portfolio.optionset = []
 
     def option_long_index(self, trade_order_dict):
         mkt_price = trade_order_dict['price']
@@ -461,7 +477,7 @@ class BktAccount(object):
         trade_type = 'close'
         fee = mkt_price * unit * self.fee
         realized_pnl = long_short * (
-            unit * (mkt_price - open_price)) - open_transaction_fee - fee
+                unit * (mkt_price - open_price)) - open_transaction_fee - fee
         self.trade_order_dict['close_transaction_fee'] = fee
         position[self.util.close_price] = mkt_price
         position[self.util.open_price] = open_price
@@ -494,7 +510,7 @@ class BktAccount(object):
         trade_type = 'close'
         fee = mkt_price * unit * self.fee
         realized_pnl = long_short * (
-            unit * (mkt_price - open_price)) - open_transaction_fee - fee
+                unit * (mkt_price - open_price)) - open_transaction_fee - fee
         position[self.util.close_price] = mkt_price
         position[self.util.open_price] = open_price
         position[self.util.realized_pnl] = realized_pnl
@@ -533,7 +549,7 @@ class BktAccount(object):
                 trade_type = 'close short'
             fee = unit * mkt_price * self.fee * multiplier
             realized_pnl = long_short * (
-                unit * mkt_price * multiplier - premium_open) - bktoption.transaction_fee - fee
+                    unit * mkt_price * multiplier - premium_open) - bktoption.transaction_fee - fee
             premium_to_cash = long_short * premium
 
             self.cash = self.cash + margin_capital + premium_to_cash
@@ -715,10 +731,10 @@ class BktAccount(object):
             unrealized_pnl += long_short * (mkt_price - bktoption.trade_open_price) * unit * multiplier
             if long_short == self.util.long:
                 mtm_long_positions += mkt_price * unit * multiplier
-                port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+                # port_delta += unit * multiplier * bktoption.get_delta() / self.contract_multiplier
             else:
                 mtm_short_positions -= mkt_price * unit * multiplier
-                port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
+                # port_delta -= unit * multiplier * bktoption.get_delta() / self.contract_multiplier
             self.cash -= margin_call
             self.total_margin_capital += margin_call
             bktoption.trade_margin_capital += margin_call

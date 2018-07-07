@@ -1,7 +1,7 @@
 from OptionStrategyLib.OptionPricing.Options import EuropeanOption
 from OptionStrategyLib.Util import PricingUtil
 import datetime
-from pandas import DataFrame
+import pandas as pd
 import numpy as np
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, ETF, OptionFilter
 from back_test.model.base_product import BaseProduct
@@ -11,7 +11,7 @@ from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 class BaseOption(BaseProduct):
     """ Contain metrics and trading position info as attributes """
 
-    def __init__(self, df_data: DataFrame, df_daily_data: DataFrame = None,
+    def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
                  frequency: FrequentType = FrequentType.DAILY,
                  flag_calculate_iv: bool = False, rf: float = 0.03,
                  pricing_type=PricingType.OptionPlainEuropean,
