@@ -46,6 +46,8 @@ class BaseProduct(AbstractBaseProduct):
         self.generate_required_columns_if_missing()
 
     def next(self) -> None:
+        if not self.has_next():
+            return None
         self.update_current_state()
         self.update_current_daily_state()
 

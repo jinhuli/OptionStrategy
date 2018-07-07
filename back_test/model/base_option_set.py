@@ -61,18 +61,21 @@ class BaseOptionSet(AbstractBaseProductSet):
     def next(self) -> None:
         self.current_date_index += 1
         self.eval_date = self.dt_list[self.current_date_index]
-        self.eligible_option_dict.clear()
+        start = datetime.datetime.now()
         # Update existing deque
         size = len(self.eligible_options)
         for i in range(size):
             option = self.eligible_options.popleft()
+            if not option.has_next():
+                continue
             option.next()
             if option.is_valid_option():
                 self.add_option(option)
         for option in self.option_dict.get(self.eval_date, []):
             if option.is_valid_option():
                 self.add_option(option)
-        print("iter {0}, option_set length:{1}".format(self.eval_date, len(self.eligible_options)))
+        end = datetime.datetime.now()
+        print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options), (end-start).total_seconds()))
         return None
 
     """

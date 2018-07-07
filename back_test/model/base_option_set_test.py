@@ -10,5 +10,4 @@ bkt_optionset = BaseOptionSet(df_option_metrics)
 bkt_optionset.init()
 while bkt_optionset.has_next():
     bkt_optionset.next()
-    print(bkt_optionset.eligible_maturities)
 print(bkt_optionset)
