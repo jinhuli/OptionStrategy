@@ -59,6 +59,9 @@ class BaseOption(BaseProduct):
     def strike(self) -> float:
         return self.current_state[Util.AMT_STRIKE]
 
+    def nearest_strike(self) -> float:
+        return self.current_state[Util.AMT_NEAREST_STRIKE]
+
     def adj_strike(self) -> float:
         return self.current_state[Util.AMT_ADJ_STRIKE]
 

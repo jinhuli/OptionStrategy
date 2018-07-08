@@ -136,11 +136,36 @@ class BaseOptionSet(AbstractBaseProductSet):
         else:
             res = self.update_options_by_moneyness_2(cd_underlying_price)
         return res
-
+    """
+    mdt_option_dict:
+    {
+        '2017-05-17':{
+            "0": [option1,option2],
+            "-1": [option1,option2],
+        }
+    }
+    """
+    def get_maturities_option_dict(self) -> Dict[datetime.date,Dict]:
+        ret = {}
+        for option in self.eligible_options:
+            print(option.nearest_strike())
+            d = ret.get(option.maturitydt())
+            if d is None:
+                d = {}
+                ret.update({option.maturitydt():d})
+            l = d.get(option.nearest_strike())
+            if l is None:
+                l = []
+                d.update({option.nearest_strike():l})
+            l.append(option)
+        return ret
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
         * ATM defined as FIRST OTM  """
 
     def update_options_by_moneyness_1(self, cd_underlying_price):
+        mdt_option_dict = self.get_maturities_option_dict()
+        for mdt in mdt_option_dict.keys():
+            option_by_mdt = mdt_option_dict.get(mdt)
         df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
         options_by_moneyness = {}
         for mdt in self.eligible_maturities:

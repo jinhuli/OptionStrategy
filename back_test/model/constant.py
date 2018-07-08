@@ -96,9 +96,9 @@ class OptionFilter:
     def nearest_strike_level(s: pd.Series) -> float:
         strike = s[Util.AMT_STRIKE]
         if strike <= 3:
-            return round(strike/0.05)*0.05
+            return round(round(strike/0.05)*0.05,2)
         else:
-            return round(strike/0.1)*0.1
+            return round(round(strike/0.1)*0.1,2)
 
 class Util:
     """database column names"""
