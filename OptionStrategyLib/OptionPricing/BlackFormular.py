@@ -59,6 +59,38 @@ class BlackFormulaImpliedStdDevApproximation(object):
         return self.stddev / math.sqrt(PricingUtil.get_ttm(self.dt_eval, self.dt_maturity))
 
 
+"""   Black 1976 implied standard deviation, 
+i.e. volatility*sqrt(timeToMaturity) """
+
+
+class BlackFormulaImpliedStdDev(object):
+
+    def __init__(self,
+                 dt_eval: datetime.date,
+                 dt_maturity: datetime.date,
+                 strike: float,
+                 type: OptionType,
+                 spot: float,
+                 black_price: float,
+                 guess: float,
+                 accuracy: float,
+                 rf: float = 0.03,
+                 displacement: float = 0.0):
+        discount = PricingUtil.get_discount(dt_eval, dt_maturity, rf)
+        self.dt_eval = dt_eval
+        self.dt_maturity = dt_maturity
+        self.option_type = type
+        self.strike = strike + displacement
+        self.forward = spot / discount + displacement
+        self.discount = discount
+        self.spot = spot
+        self.black_price = black_price
+        self.guess = guess
+        self.accuracy = accuracy
+        self.displacement = displacement
+
+        # TODO: SOLVE
+
 # dt_eval = datetime.date(2018, 7, 6)
 # dt_maturity = datetime.date(2018, 7, 25)
 # strike = 2.45
