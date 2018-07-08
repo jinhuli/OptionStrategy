@@ -56,7 +56,7 @@ class BlackFormulaImpliedStdDevApproximation(object):
         self.stddev = stddev
 
     def ImpliedVol(self):
-        return self.stddev / math.sqrt(PricingUtil.get_ttm(dt_eval, dt_maturity))
+        return self.stddev / math.sqrt(PricingUtil.get_ttm(self.dt_eval, self.dt_maturity))
 
 
 # dt_eval = datetime.date(2018, 7, 6)

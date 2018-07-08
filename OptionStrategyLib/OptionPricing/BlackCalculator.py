@@ -94,22 +94,22 @@ class BlackCalculator(object):
             return
         elif self.dt_eval == self.dt_maturity:
             if self.iscall:
-                if strike < spot:
+                if self.strike < self.spot:
                     delta = 1.0
-                elif strike > spot:
+                elif self.strike > self.spot:
                     delta = 0.0
                 else:
                     delta = 0.5
             else:
-                if strike > spot:
+                if self.strike > self.spot:
                     delta = -1.0
-                elif strike < spot:
+                elif self.strike < self.spot:
                     delta = 0.0
                 else:
                     delta = -0.5
         else:
-            DforwardDs = self.forward / spot
-            temp = self.stdDev * spot
+            DforwardDs = self.forward / self.spot
+            temp = self.stdDev * self.spot
             DalphaDs = self.dAlpha_dD1 / temp
             DbetaDs = self.dBeta_dD2 / temp
             temp2 = DalphaDs * self.forward + self.alpha * DforwardDs + DbetaDs * self.x \
