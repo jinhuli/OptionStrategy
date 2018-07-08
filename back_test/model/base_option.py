@@ -48,7 +48,7 @@ class BaseOption(BaseProduct):
         return self.current_state[Util.NAME_CONTRACT_MONTH]
 
     def option_type(self) -> str:
-        return self.current_daily_state[Util.CD_OPTION_TYPE]
+        return self.current_state[Util.CD_OPTION_TYPE]
 
     def id_underlying(self) -> str:
         return self.current_state[Util.ID_UNDERLYING]

@@ -5,7 +5,7 @@ from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
     MoneynessMethod, OptionFilter
-from typing import Dict, List, Deque
+from typing import Dict, List, Deque, Tuple
 
 
 class BaseOptionSet(AbstractBaseProductSet):
@@ -75,7 +75,8 @@ class BaseOptionSet(AbstractBaseProductSet):
             if option.is_valid_option():
                 self.add_option(option)
         end = datetime.datetime.now()
-        print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options), (end-start).total_seconds()))
+        print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
+                                                                     (end - start).total_seconds()))
         return None
 
     """
@@ -131,38 +132,55 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     def update_options_by_moneyness(self, cd_underlying_price: UnderlyingPriceType = UnderlyingPriceType.CLOSE,
                                     cd_moneyness_method: MoneynessMethod = None):
-        if cd_moneyness_method == None or cd_moneyness_method == MoneynessMethod.METHOD1:
+        if cd_moneyness_method is None or cd_moneyness_method == MoneynessMethod.METHOD1:
             res = self.update_options_by_moneyness_1(cd_underlying_price)
         else:
             res = self.update_options_by_moneyness_2(cd_underlying_price)
         return res
+
     """
-    mdt_option_dict:
+    call_mdt_option_dict:
     {
         '2017-05-17':{
-            "0": [option1,option2],
-            "-1": [option1,option2],
-        }
+            "2.8": [option1,option2],
+            "2.85": [option1,option2],
+        },
+        '2017-06-17':{
+            "2.8": [option1,option2],
+            "2.85": [option1,option2],
+        },
     }
     """
-    def get_maturities_option_dict(self) -> Dict[datetime.date,Dict]:
-        ret = {}
+
+    def get_maturities_option_dict(self) -> \
+            Tuple[Dict[datetime.date, Dict], Dict[datetime.date, Dict]]:
+        call_ret = {}
+        put_ret = {}
         for option in self.eligible_options:
-            print(option.nearest_strike())
+            if option.option_type() == Util.TYPE_CALL:
+                ret = call_ret
+            else:
+                ret = put_ret
             d = ret.get(option.maturitydt())
             if d is None:
                 d = {}
-                ret.update({option.maturitydt():d})
+                ret.update({option.maturitydt(): d})
             l = d.get(option.nearest_strike())
             if l is None:
                 l = []
-                d.update({option.nearest_strike():l})
-            l.append(option)
-        return ret
+                d.update({option.nearest_strike(): l})
+            l.append(option.get_current_state())
+        return call_ret, put_ret
+
+    # TODO: change type to enum in future
+    def get_options_by_moneyness_from_neares_value(self, spot: float, moneyness_rank: int, type: str) -> BaseOption:
+        c, p = self.get_maturities_option_dict()
+
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
         * ATM defined as FIRST OTM  """
 
     def update_options_by_moneyness_1(self, cd_underlying_price):
+        c, p = self.get_maturities_option_dict()
         mdt_option_dict = self.get_maturities_option_dict()
         for mdt in mdt_option_dict.keys():
             option_by_mdt = mdt_option_dict.get(mdt)
@@ -254,6 +272,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
             options_by_moneyness.update({mdt: res_callput})
         return options_by_moneyness
+
     #     def start(self):
     #         self.dt_list = sorted(self.df_data[self.util.col_date].unique())
     #         self.start_date = self.dt_list[0]  # 0

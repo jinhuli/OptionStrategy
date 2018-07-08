@@ -1,5 +1,6 @@
 from enum import Enum
 import pandas as pd
+from typing import List
 import datetime
 
 
@@ -36,6 +37,34 @@ class UnderlyingPriceType(Enum):
 class OptionType(Enum):
     CALL = 1
     PUT = -1
+
+class OptionUtil:
+    MONEYNESS_POINT = 3.0
+
+    @staticmethod
+    def get_strike_by_monenyes_rank(spot: float, moneyness_rank: int, strikes: List[float], option_type: int) -> float:
+        d = {}
+        for strike in strikes:
+            if strike <= OptionUtil.MONEYNESS_POINT:
+                if spot <= OptionUtil.MONEYNESS_POINT:
+                    # strike = 2.9, spot=2.8, moneyness = (2.9-2.8)/0.05
+                    rank = int(-1 * option_type * round((strike - spot) / 0.05))
+                else:
+                    # strike = 2.9, spot = 3.1, moneyness = (2.9 - 3.0)/0.05 + (3.0 - 3.1)/0.1
+                    rank = int(-1 * option_type * round((strike - OptionUtil.MONEYNESS_POINT) / 0.05
+                                                        + (OptionUtil.MONEYNESS_POINT - spot) / 0.1))
+            else:
+                if spot <= OptionUtil.MONEYNESS_POINT:
+                    # strike = 3.1, spot = 2.9, moneyness = (3.1-3.0)/0.1+(3.0-2.9)/0.05
+                    rank = int(-1 * option_type * round((strike - OptionUtil.MONEYNESS_POINT) / 0.1
+                                                        + (OptionUtil.MONEYNESS_POINT - spot) / 0.05))
+                else:
+                    # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+                    rank = int(-1 * option_type * round((strike - spot) / 0.1))
+            d.update({rank: strike})
+        print(d)
+        return d.get(moneyness_rank, None)
+
 
 class ETF:
     DIVIDEND_DATES = {
@@ -99,9 +128,10 @@ class OptionFilter:
     def nearest_strike_level(s: pd.Series) -> float:
         strike = s[Util.AMT_STRIKE]
         if strike <= 3:
-            return round(round(strike/0.05)*0.05,2)
+            return round(round(strike / 0.05) * 0.05, 2)
         else:
-            return round(round(strike/0.1)*0.1,2)
+            return round(round(strike / 0.1) * 0.1, 2)
+
 
 class Util:
     """database column names"""
