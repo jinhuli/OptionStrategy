@@ -1,38 +1,42 @@
 import math
-import datetime
 from scipy.stats import norm
 from OptionStrategyLib.Util import PricingUtil
-from OptionStrategyLib.OptionPricing.Options import EuropeanOption
-from back_test.model.constant import Util
+from back_test.model.constant import *
+
+""" European Option Pricing and Metrics """
 
 
 class BlackCalculator(object):
-    """ European Option Pricing and Metrics """
 
-    def __init__(self, dt_date: datetime.date, spot: float, Option: EuropeanOption,
-                 rf: float = 0.03, vol: float = 0.0):
-        self.vol = vol
-        self.rf = rf
-        self.Option = Option
-        self.run(dt_date, spot)
-
-    def run(self, dt_date, spot):
-        stdDev = PricingUtil.get_std(dt_date, self.Option.dt_maturity, self.vol)
-        discount = PricingUtil.get_discount(dt_date, self.Option.dt_maturity, self.rf)
-        self.strike = self.Option.strike
+    def __init__(self,
+                 dt_eval: datetime.date,
+                 dt_maturity: datetime.date,
+                 strike: float,
+                 type: OptionType,
+                 spot: float,
+                 vol: float,
+                 rf: float = 0.03):
+        if type == OptionType.CALL:
+            self.iscall = True
+        else:
+            self.iscall = False
+        stdDev = PricingUtil.get_std(dt_eval, dt_maturity, vol)
+        discount = PricingUtil.get_discount(dt_eval, dt_maturity, rf)
+        self.dt_eval = dt_eval
+        self.dt_maturity = dt_maturity
+        self.strike = strike
         self.forward = spot / discount
         self.stdDev = stdDev
         self.discount = discount
-        if self.Option.option_type == Util.TYPE_PUT:
-            self.iscall = False
-        else:
-            self.iscall = True
+        self.spot = spot
         if stdDev > 0.0:
             if self.strike == 0.0:
                 n_d1 = 0.0
                 n_d2 = 0.0
                 cum_d1 = 1.0
                 cum_d2 = 1.0
+                D1 = None
+                D2 = None
             else:
                 D1 = math.log(self.forward / self.strike, math.e) / stdDev + 0.5 * stdDev
                 D2 = D1 - stdDev
@@ -40,6 +44,8 @@ class BlackCalculator(object):
                 cum_d2 = norm.cdf(D2)
                 n_d1 = norm.pdf(D1)
                 n_d2 = norm.pdf(D2)
+            self.D1 = D1
+            self.D2 = D2
         else:
             if self.forward > self.strike:
                 cum_d1 = 1.0
@@ -83,9 +89,24 @@ class BlackCalculator(object):
     def Cash(self):
         return self.beta * self.strike * self.discount
 
-    def Delta(self, spot):
-        if spot <= 0.0:
+    def Delta(self):
+        if self.spot <= 0.0:
             return
+        elif self.dt_eval == self.dt_maturity:
+            if self.iscall:
+                if strike < spot:
+                    delta = 1.0
+                elif strike > spot:
+                    delta = 0.0
+                else:
+                    delta = 0.5
+            else:
+                if strike > spot:
+                    delta = -1.0
+                elif strike < spot:
+                    delta = 0.0
+                else:
+                    delta = -0.5
         else:
             DforwardDs = self.forward / spot
             temp = self.stdDev * spot
@@ -94,17 +115,37 @@ class BlackCalculator(object):
             temp2 = DalphaDs * self.forward + self.alpha * DforwardDs + DbetaDs * self.x \
                     + self.beta * self.dX_dS
             delta = self.discount * temp2
-            return delta
+        return delta
 
-    def implied_vol(self):
-
-        return
+    def Gamma(self):
+        spot = self.spot
+        if spot <= 0.0:
+            return
+        if self.dt_eval == self.dt_maturity:
+            return 0.0
+        DforwardDs = self.forward / spot
+        temp = self.stdDev * spot
+        DalphaDs = self.dAlpha_dD1 / temp
+        DbetaDs = self.dBeta_dD2 / temp
+        D2alphaDs2 = -DalphaDs / spot * (1 + self.D1 / self.stdDev)
+        D2betaDs2 = -DbetaDs / spot * (1 + self.D2 / self.stdDev)
+        temp2 = D2alphaDs2 * self.forward + 2.0 * DalphaDs * DforwardDs + D2betaDs2 * self.x \
+                + 2.0 * DbetaDs * self.dX_dS
+        gamma = self.discount * temp2
+        return gamma
 
     # 全Delta: dOption/dS = dOption/dS + dOption/dSigma * dSigma/dK
     # 根据SVI模型校准得到的隐含波动率的参数表达式，计算隐含波动率对行权价的一阶倒数（dSigma_dK）
-    def delta_total(self, spot, dSigma_dK):
-        delta = self.Delta(spot)
-        return delta + delta * dSigma_dK
+    # def delta_total(self, dSigma_dK):
+    #     delta = self.Delta()
+    #     return delta + delta * dSigma_dK
 
-option = EuropeanOption(3000.0,datetime.date(2018,3,1),'put')
-black = BlackCalculator(datetime.date(2018,1,1),3000.0,option)
+
+# dt_eval = datetime.date(2018, 1, 1)
+# dt_maturity = datetime.date(2018, 1, 1)
+# strike = 3050
+# spot = 3000
+# vol = 0.2
+# type = OptionType.PUT
+# black = BlackCalculator(dt_eval, dt_maturity, strike, type, spot, vol)
+# print(black.Gamma())

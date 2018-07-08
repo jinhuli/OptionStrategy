@@ -33,6 +33,9 @@ class UnderlyingPriceType(Enum):
     CLOSE = 1
     OPEN = 2
 
+class OptionType(Enum):
+    CALL = 1
+    PUT = -1
 
 class ETF:
     DIVIDEND_DATES = {
