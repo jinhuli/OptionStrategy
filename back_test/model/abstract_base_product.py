@@ -36,6 +36,13 @@ class AbstractBaseProduct(ABC):
         pass
 
     """
+    has_next: return whether has next iter
+    """
+    @abstractmethod
+    def has_next(self) -> bool:
+        pass
+
+    """
     update_current_state: update df_metrics with current_index.
     """
 

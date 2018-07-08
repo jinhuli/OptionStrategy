@@ -1,6 +1,6 @@
 import datetime
 import numpy as np
-from pandas import DataFrame, Series
+import pandas as pd
 from back_test.model.abstract_base_product import AbstractBaseProduct
 from back_test.model.constant import FrequentType, Util
 
@@ -10,35 +10,28 @@ class BaseProduct(AbstractBaseProduct):
     BaseProduct: base class for financial product.
     """
 
-    def __init__(self, df_data: DataFrame, df_daily_data: DataFrame = None,
+    def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
                  rf: float = 0.03, frequency: FrequentType = FrequentType.DAILY):
         super().__init__()
         self.frequency: FrequentType = frequency
-        self.df_data: DataFrame = df_data
+        self.df_data: pd.DataFrame = df_data
         # Used in high frequency data
-        self.df_daily_data: DataFrame = df_daily_data
-        # TODO maybe use enum is better
+        self.df_daily_data: pd.DataFrame = df_daily_data
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
         self._name_code: str = self._id_instrument.split('_')[0]
-        # self._code_instrument: str = self.df_data.loc[0][Util.CODE_INSTRUMENT]
-        # self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
         self.current_index: int = -1
         self.current_daily_index: int = -1
-        self.current_state: Series = None
-        self.current_daily_state: Series = None
+        self.eval_date: datetime.date = None
+        self.current_state: pd.Series = None
+        self.current_daily_state: pd.Series = None
         self.rf = rf
-        # self.pre_process()
-        # self.next()
 
     def init(self) -> None:
         self.pre_process()
         self.next()
 
     def pre_process(self) -> None:
-        # TODO: move to a file as static method
-        # filter function to filter out ivalid data from dataframe
-
         if self.frequency not in Util.LOW_FREQUENT:
             # High Frequency Data:
             # overwrite date col based on data in datetime col.
@@ -53,8 +46,13 @@ class BaseProduct(AbstractBaseProduct):
         self.generate_required_columns_if_missing()
 
     def next(self) -> None:
+        if not self.has_next():
+            return None
         self.update_current_state()
         self.update_current_daily_state()
+
+    def has_next(self) -> bool:
+        return self.current_index < self.nbr_index - 1
 
     def update_current_state(self) -> None:
         self.current_index += 1
@@ -70,10 +68,10 @@ class BaseProduct(AbstractBaseProduct):
         self.current_daily_index += 1
         self.current_daily_state = self.df_daily_data.loc[self.current_daily_index]
 
-    def get_current_state(self) -> Series:
+    def get_current_state(self) -> pd.Series:
         return self.current_state
 
-    def get_current_dayli_state(self) -> Series:
+    def get_current_dayli_state(self) -> pd.Series:
         return self.current_daily_state
 
     def generate_required_columns_if_missing(self) -> None:
@@ -81,7 +79,7 @@ class BaseProduct(AbstractBaseProduct):
         columns = self.df_data.columns
         for column in required_column_list:
             if column not in columns:
-            # if not columns.contains(column):
+                # if not columns.contains(column):
                 print("{} missing column {}", self.__repr__(), column)
                 self.df_data[column] = None
 

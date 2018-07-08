@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from pandas import Series
 
 """
     AbstractBaseProductSet: an abstract class of base product set.
@@ -34,4 +33,11 @@ class AbstractBaseProductSet(ABC):
     """
     @abstractmethod
     def next(self) -> None:
+        pass
+
+    """
+    has_next: return whether has next iter
+    """
+    @abstractmethod
+    def has_next(self) -> bool:
         pass
