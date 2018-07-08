@@ -4,7 +4,7 @@ from collections import deque
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
-    MoneynessMethod, OptionFilter
+    MoneynessMethod, OptionFilter, OptionType, OptionUtil
 from typing import Dict, List, Deque, Tuple
 
 
@@ -153,7 +153,8 @@ class BaseOptionSet(AbstractBaseProductSet):
     """
 
     def get_maturities_option_dict(self) -> \
-            Tuple[Dict[datetime.date, Dict], Dict[datetime.date, Dict]]:
+            Tuple[
+                Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
         call_ret = {}
         put_ret = {}
         for option in self.eligible_options:
@@ -169,12 +170,27 @@ class BaseOptionSet(AbstractBaseProductSet):
             if l is None:
                 l = []
                 d.update({option.nearest_strike(): l})
-            l.append(option.get_current_state())
+            l.append(option)
         return call_ret, put_ret
 
     # TODO: change type to enum in future
-    def get_options_by_moneyness_from_neares_value(self, spot: float, moneyness_rank: int, type: str) -> BaseOption:
+    def get_mdt_options_dict_by_moneyness_from_neares_value(
+            self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
         c, p = self.get_maturities_option_dict()
+        d = {}
+        if option_type == OptionType.CALL:
+            for mdt in c.keys():
+                mdt_options_dict = c.get(mdt)
+                idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                            mdt_options_dict.keys(), option_type)
+                d.update({mdt: mdt_options_dict.get(idx)})
+        else:
+            for mdt in p.keys():
+                mdt_options_dict = p.get(mdt)
+                idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                            mdt_options_dict.keys(), option_type)
+                d.update({mdt: mdt_options_dict.get(idx)})
+        return d
 
     """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
         * ATM defined as FIRST OTM  """

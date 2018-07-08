@@ -1,5 +1,6 @@
 from enum import Enum
 import pandas as pd
+import numpy as np
 from typing import List
 import datetime
 
@@ -34,36 +35,73 @@ class UnderlyingPriceType(Enum):
     CLOSE = 1
     OPEN = 2
 
+
 class OptionType(Enum):
     CALL = 1
     PUT = -1
+
 
 class OptionUtil:
     MONEYNESS_POINT = 3.0
 
     @staticmethod
-    def get_strike_by_monenyes_rank(spot: float, moneyness_rank: int, strikes: List[float], option_type: int) -> float:
+    def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        d = OptionUtil.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
+        return d.get(moneyness_rank, None)
+
+    @staticmethod
+    def get_strike_monenyes_rank_dict_nearest_strike(spot: float, strikes: List[float],
+                                                     option_type: OptionType) -> float:
         d = {}
         for strike in strikes:
             if strike <= OptionUtil.MONEYNESS_POINT:
                 if spot <= OptionUtil.MONEYNESS_POINT:
-                    # strike = 2.9, spot=2.8, moneyness = (2.9-2.8)/0.05
-                    rank = int(-1 * option_type * round((strike - spot) / 0.05))
+                    # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+                    rank = int(option_type.value * round((spot - strike) / 0.05))
                 else:
-                    # strike = 2.9, spot = 3.1, moneyness = (2.9 - 3.0)/0.05 + (3.0 - 3.1)/0.1
-                    rank = int(-1 * option_type * round((strike - OptionUtil.MONEYNESS_POINT) / 0.05
-                                                        + (OptionUtil.MONEYNESS_POINT - spot) / 0.1))
+                    # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+                    rank = int(option_type.value * round((OptionUtil.MONEYNESS_POINT - strike) / 0.05
+                                                         + (spot - OptionUtil.MONEYNESS_POINT) / 0.1))
             else:
                 if spot <= OptionUtil.MONEYNESS_POINT:
-                    # strike = 3.1, spot = 2.9, moneyness = (3.1-3.0)/0.1+(3.0-2.9)/0.05
-                    rank = int(-1 * option_type * round((strike - OptionUtil.MONEYNESS_POINT) / 0.1
-                                                        + (OptionUtil.MONEYNESS_POINT - spot) / 0.05))
+                    # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+                    rank = int(option_type.value * round((OptionUtil.MONEYNESS_POINT - strike) / 0.1
+                                                         + (spot - OptionUtil.MONEYNESS_POINT) / 0.05))
                 else:
                     # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
-                    rank = int(-1 * option_type * round((strike - spot) / 0.1))
+                    rank = int(option_type.value * round((spot - strike) / 0.1))
             d.update({rank: strike})
-        print(d)
+        return d
+
+    @staticmethod
+    def get_strike_by_monenyes_rank_otm_strike(spot: float, moneyness_rank: int, strikes: List[float],
+                                               option_type: OptionType) -> float:
+        d = OptionUtil.get_strike_monenyes_rank_dict_otm_strike(spot, strikes, option_type)
         return d.get(moneyness_rank, None)
+
+    @staticmethod
+    def get_strike_monenyes_rank_dict_otm_strike(spot: float, strikes: List[float], option_type: OptionType) -> float:
+        d = {}
+        for strike in strikes:
+            if strike <= OptionUtil.MONEYNESS_POINT:
+                if spot <= OptionUtil.MONEYNESS_POINT:
+                    # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+                    rank = int(np.floor(option_type.value * (spot - strike) / 0.05) + 1)
+                else:
+                    # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+                    rank = int(np.floor(option_type.value * ((OptionUtil.MONEYNESS_POINT - strike) / 0.05
+                                                             + (spot - OptionUtil.MONEYNESS_POINT) / 0.1)) + 1)
+            else:
+                if spot <= OptionUtil.MONEYNESS_POINT:
+                    # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+                    rank = int(np.floor(option_type.value * ((OptionUtil.MONEYNESS_POINT - strike) / 0.1
+                                                             + (spot - OptionUtil.MONEYNESS_POINT) / 0.05)) + 1)
+                else:
+                    # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+                    rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
+            d.update({rank: strike})
+        return d
 
 
 class ETF:
