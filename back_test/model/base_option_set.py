@@ -5,7 +5,7 @@ from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
     MoneynessMethod, OptionFilter, OptionType, OptionUtil
-from typing import Dict, List, Deque, Tuple
+from typing import Dict, List, Tuple
 
 
 class BaseOptionSet(AbstractBaseProductSet):
@@ -32,7 +32,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.size: int = 0
         self.eval_date: datetime.date = None
         self.current_date_index = -1
-        self.eligible_options: Deque(BaseOption) = deque()
+        self.eligible_options = deque()
         # self.eligible_option_dict: Dict[datetime.date, List(BaseOption)] = {}
         # self.eligible_maturities: List(datetime.date) = None
 
@@ -95,48 +95,31 @@ class BaseOptionSet(AbstractBaseProductSet):
         return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \
             .format(self.eval_date, self.size)
 
-    def get_call(self, moneyness_rank: int, mdt: datetime.date, cd_long_short: LongShort,
-                 cd_underlying_price=UnderlyingPriceType, cd_moneyness_method: MoneynessMethod = None):
-        # moneyness_rank：
-        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
-        # -1：虚值level1：平值行权价往虚值方向移一档
-        # 1: 实值level1： 平值新全价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price, cd_moneyness_method)
-        res_dict = options_by_moneyness[mdt][self.util.type_call]
-        if res_dict == {}:
-            print('bkt_option_set--get_call failed,option dict is empty!')
-            return pd.DataFrame()
-        if moneyness_rank not in res_dict.keys():
-            print('bkt_option_set--get_call failed,given moneyness rank not exit!')
-            return pd.DataFrame()
-        option_call = res_dict[moneyness_rank]
-        portfolio = Calls(self.eval_date, [option_call], cd_long_short)
-        return portfolio
+    def get_current_state(self) -> pd.DataFrame:
+        df_current_state = self.df_data[self.df_data[Util.DT_DATE]==self.eval_date].reset_index(drop=True)
+        return df_current_state
+
+    # TODO: Class Optionset contains class underlying.
+    def _underlying_price(self, cd_underlying_price='open'):
+        if cd_underlying_price == 'close':
+            spot = self.eligible_options[0].underlying_close()  # Use underlying OPEN close as spot
+        else:
+            spot = self.eligible_options[0].underlying_open_price()  # Use underlying OPEN close as spot
+        return spot
 
     def get_put(self, moneyness_rank: int, mdt: datetime.date, cd_long_short, cd_underlying_price='open'):
-        # moneyness_rank：
-        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
-        # -1：虚值level1：平值行权价往虚值方向移一档
-        # 1: 实值level1： 平值新全价往实值方向移一档
-        options_by_moneyness = self.update_options_by_moneyness(cd_underlying_price)
-        res_dict = options_by_moneyness[mdt][self.util.type_put]
-        if res_dict == {}:
-            print('bkt_option_set--get put failed,option dict is empty!')
-            return pd.DataFrame()
-        if moneyness_rank not in res_dict.keys():
-            print('bkt_option_set--get put failed,given moneyness rank not exit!')
-            return pd.DataFrame()
-        option_put = res_dict[moneyness_rank]
-        portfolio = Puts(self.eval_date, [option_put], cd_long_short)
-        return portfolio
 
-    def update_options_by_moneyness(self, cd_underlying_price: UnderlyingPriceType = UnderlyingPriceType.CLOSE,
-                                    cd_moneyness_method: MoneynessMethod = None):
-        if cd_moneyness_method is None or cd_moneyness_method == MoneynessMethod.METHOD1:
-            res = self.update_options_by_moneyness_1(cd_underlying_price)
-        else:
-            res = self.update_options_by_moneyness_2(cd_underlying_price)
-        return res
+        spot = self._underlying_price(cd_underlying_price)
+        options = self.get_options_list_by_moneyness_mthd1(spot, moneyness_rank, mdt, Util.TYPE_PUT)
+        return options
+
+    def get_maturities_list(self) -> List[datetime.date]:
+        list_maturities = []
+        for option in self.eligible_options:
+            maturitydt = option.maturitydt()
+            if maturitydt not in list_maturities: list_maturities.append(maturitydt)
+        list_maturities = sorted(list_maturities)
+        return list_maturities
 
     """
     call_mdt_option_dict:
@@ -152,6 +135,7 @@ class BaseOptionSet(AbstractBaseProductSet):
     }
     """
 
+    # TODO: 对于高频数据，是否先查看当天已经更新过？
     def get_maturities_option_dict(self) -> \
             Tuple[
                 Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
@@ -174,120 +158,190 @@ class BaseOptionSet(AbstractBaseProductSet):
         return call_ret, put_ret
 
     # TODO: change type to enum in future
-    def get_mdt_options_dict_by_moneyness_from_neares_value(
+    """ Mthd1: Determine atm option as the nearest strike from spot. 
+        Get option maturity dictionary from all maturities by given moneyness rank. """
+
+    def get_options_mdt_dict_by_moneyness_mthd1(
             self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
-        c, p = self.get_maturities_option_dict()
-        d = {}
+        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        res_mdt_dict = {}
         if option_type == OptionType.CALL:
-            for mdt in c.keys():
-                mdt_options_dict = c.get(mdt)
+            for mdt in mdt_calls.keys():
+                mdt_options_dict = mdt_calls.get(mdt)
                 idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
-                                                                            mdt_options_dict.keys(), option_type)
-                d.update({mdt: mdt_options_dict.get(idx)})
+                                                                            list(mdt_options_dict.keys()), option_type)
+                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         else:
-            for mdt in p.keys():
-                mdt_options_dict = p.get(mdt)
+            for mdt in mdt_puts.keys():
+                mdt_options_dict = mdt_puts.get(mdt)
                 idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
-                                                                            mdt_options_dict.keys(), option_type)
-                d.update({mdt: mdt_options_dict.get(idx)})
-        return d
+                                                                            list(mdt_options_dict.keys()), option_type)
+                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        return res_mdt_dict
 
-    """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
-        * ATM defined as FIRST OTM  """
+    """ Mthd1: Determine atm option as the nearest strike from spot. 
+        Get options by given moneyness rank and maturity date. """
 
-    def update_options_by_moneyness_1(self, cd_underlying_price):
-        c, p = self.get_maturities_option_dict()
-        mdt_option_dict = self.get_maturities_option_dict()
-        for mdt in mdt_option_dict.keys():
-            option_by_mdt = mdt_option_dict.get(mdt)
-        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
-        options_by_moneyness = {}
-        for mdt in self.eligible_maturities:
-            df_call = self.util.get_df_call_by_mdt(df, mdt)
-            df_put = self.util.get_df_put_by_mdt(df, mdt)
-            optionset_call = df_call[self.util.bktoption]
-            optionset_put = df_put[self.util.bktoption]
-            dict_call = {}
-            dict_put = {}
-            res_call = {}
-            res_put = {}
-            atm_call = 1000
-            atm_put = -1000
-            if cd_underlying_price == 'close':
-                spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
-            else:
-                spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
-            m_call = []
-            m_put = []
-            for option in optionset_call:
-                k = option.strike()  # TODO: why not adj_strike?
-                m = round(k - spot, 6)
-                if m >= 0:
-                    atm_call = min(atm_call, m)
-                dict_call.update({m: option})
-                m_call.append(m)
-            for option in optionset_put:
-                k = option.strike()
-                m = round(k - spot, 6)
-                if m <= 0:
-                    atm_put = max(atm_put, m)
-                dict_put.update({m: option})
-                m_put.append(m)
-            keys_call = sorted(dict_call)
-            keys_put = sorted(dict_put)
-            if atm_call == 1000: atm_call = max(m_call)
-            if atm_put == -1000: atm_put = min(m_put)
-            idx_call = keys_call.index(atm_call)
-            for (i, key) in enumerate(keys_call):
-                res_call.update({idx_call - i: dict_call[key]})
-            idx_put = keys_put.index(atm_put)
-            for (i, key) in enumerate(keys_put):
-                res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
-            res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
-            options_by_moneyness.update({mdt: res_callput})
-        return options_by_moneyness
+    def get_options_list_by_moneyness_mthd1(
+            self, spot: float, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
+            -> List[BaseOption]:
+        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        if option_type == OptionType.CALL:
+            mdt_options_dict = mdt_calls.get(maturity)
+            idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), option_type)
+            res_list = mdt_options_dict.get(idx)
+        else:
+            mdt_options_dict = mdt_puts.get(maturity)
+            idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), option_type)
+            res_list = mdt_options_dict.get(idx)
+        return res_list
 
-    """ Input optionset with the same maturity,get dictionary order by moneynesses as keys 
-        * ATM defined as THAT WITH STRIKE CLOSEST WITH UNDERLYING PRICE """
+    """ Mthd2: Determine atm option as the nearest OTM strike from spot. 
+        Get option maturity dictionary from all maturities by given moneyness rank. 
+        # moneyness_rank：
+        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
+        # -1：虚值level1：平值行权价往虚值方向移一档
+        # 1: 实值level1： 平值新全价往实值方向移一档 """
 
-    def update_options_by_moneyness_2(self, cd_underlying_price):
-        df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
-        options_by_moneyness = {}
-        for mdt in self.eligible_maturities:
-            df_call = self.util.get_df_call_by_mdt(df, mdt)
-            df_put = self.util.get_df_put_by_mdt(df, mdt)
-            optionset_call = df_call[self.util.bktoption]
-            optionset_put = df_put[self.util.bktoption]
-            dict_call = {}
-            dict_put = {}
-            res_call = {}
-            res_put = {}
-            if cd_underlying_price == 'close':
-                spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
-            else:
-                spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
-            dict_m = {}
-            for option in optionset_call:
-                k = option.strike()
-                m = round(k - spot, 6)
-                dict_call.update({m: option})
-                dict_m.update({abs(m): m})
-            for option in optionset_put:
-                k = option.strike()
-                m = round(k - spot, 6)
-                dict_put.update({m: option})
-            atm = dict_m[min(dict_m.keys())]
-            keys_call = sorted(dict_call)
-            keys_put = sorted(dict_put)
-            idx_call = keys_call.index(atm)
-            for (i, key) in enumerate(keys_call):
-                res_call.update({idx_call - i: dict_call[key]})
-            idx_put = keys_put.index(atm)
-            for (i, key) in enumerate(keys_put):
-                res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
-            res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
-            options_by_moneyness.update({mdt: res_callput})
-        return options_by_moneyness
+    def get_options_mdt_dict_by_moneyness_mthd2(
+            self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
+        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        res_mdt_dict = {}
+        if option_type == OptionType.CALL:
+            for mdt in mdt_calls.keys():
+                mdt_options_dict = mdt_calls.get(mdt)
+                idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                            list(mdt_options_dict.keys()), option_type)
+                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        else:
+            for mdt in mdt_puts.keys():
+                mdt_options_dict = mdt_puts.get(mdt)
+                idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                            list(mdt_options_dict.keys()), option_type)
+                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        return res_mdt_dict
+
+    """ Mthd2: Determine atm option as the nearest OTM strike from spot. 
+        Get options by given moneyness rank and maturity date. 
+        # moneyness_rank：
+        # 0：平值: call strike=大于spot值的最小行权价; put strike=小于spot值的最大行权价
+        # -1：虚值level1：平值行权价往虚值方向移一档
+        # 1: 实值level1： 平值新全价往实值方向移一档 """
+
+    def get_options_list_by_moneyness_mthd2(
+            self, spot: float, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
+            -> List[BaseOption]:
+        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        if option_type == OptionType.CALL:
+            mdt_options_dict = mdt_calls.get(maturity)
+            idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), option_type)
+            res_list = mdt_options_dict.get(idx)
+        else:
+            mdt_options_dict = mdt_puts.get(maturity)
+            idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), option_type)
+            res_list = mdt_options_dict.get(idx)
+        return res_list
+
+    # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
+    #     * ATM defined as FIRST OTM  """
+    #
+    # def update_options_by_moneyness_1(self, cd_underlying_price):
+    #     c, p = self.get_maturities_option_dict()
+    #     mdt_option_dict = self.get_maturities_option_dict()
+    #     for mdt in mdt_option_dict.keys():
+    #         option_by_mdt = mdt_option_dict.get(mdt)
+    #     df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+    #     options_by_moneyness = {}
+    #     for mdt in self.eligible_maturities:
+    #         df_call = self.util.get_df_call_by_mdt(df, mdt)
+    #         df_put = self.util.get_df_put_by_mdt(df, mdt)
+    #         optionset_call = df_call[self.util.bktoption]
+    #         optionset_put = df_put[self.util.bktoption]
+    #         dict_call = {}
+    #         dict_put = {}
+    #         res_call = {}
+    #         res_put = {}
+    #         atm_call = 1000
+    #         atm_put = -1000
+    #         if cd_underlying_price == 'close':
+    #             spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
+    #         else:
+    #             spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
+    #         m_call = []
+    #         m_put = []
+    #         for option in optionset_call:
+    #             k = option.strike()  # TODO: why not adj_strike?
+    #             m = round(k - spot, 6)
+    #             if m >= 0:
+    #                 atm_call = min(atm_call, m)
+    #             dict_call.update({m: option})
+    #             m_call.append(m)
+    #         for option in optionset_put:
+    #             k = option.strike()
+    #             m = round(k - spot, 6)
+    #             if m <= 0:
+    #                 atm_put = max(atm_put, m)
+    #             dict_put.update({m: option})
+    #             m_put.append(m)
+    #         keys_call = sorted(dict_call)
+    #         keys_put = sorted(dict_put)
+    #         if atm_call == 1000: atm_call = max(m_call)
+    #         if atm_put == -1000: atm_put = min(m_put)
+    #         idx_call = keys_call.index(atm_call)
+    #         for (i, key) in enumerate(keys_call):
+    #             res_call.update({idx_call - i: dict_call[key]})
+    #         idx_put = keys_put.index(atm_put)
+    #         for (i, key) in enumerate(keys_put):
+    #             res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
+    #         res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
+    #         options_by_moneyness.update({mdt: res_callput})
+    #     return options_by_moneyness
+    #
+    # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
+    #     * ATM defined as THAT WITH STRIKE CLOSEST WITH UNDERLYING PRICE """
+    #
+    # def update_options_by_moneyness_2(self, cd_underlying_price):
+    #     df = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+    #     options_by_moneyness = {}
+    #     for mdt in self.eligible_maturities:
+    #         df_call = self.util.get_df_call_by_mdt(df, mdt)
+    #         df_put = self.util.get_df_put_by_mdt(df, mdt)
+    #         optionset_call = df_call[self.util.bktoption]
+    #         optionset_put = df_put[self.util.bktoption]
+    #         dict_call = {}
+    #         dict_put = {}
+    #         res_call = {}
+    #         res_put = {}
+    #         if cd_underlying_price == 'close':
+    #             spot = optionset_call[0].underlying_close()  # Use underlying OPEN close as spot
+    #         else:
+    #             spot = optionset_call[0].underlying_open_price()  # Use underlying OPEN close as spot
+    #         dict_m = {}
+    #         for option in optionset_call:
+    #             k = option.strike()
+    #             m = round(k - spot, 6)
+    #             dict_call.update({m: option})
+    #             dict_m.update({abs(m): m})
+    #         for option in optionset_put:
+    #             k = option.strike()
+    #             m = round(k - spot, 6)
+    #             dict_put.update({m: option})
+    #         atm = dict_m[min(dict_m.keys())]
+    #         keys_call = sorted(dict_call)
+    #         keys_put = sorted(dict_put)
+    #         idx_call = keys_call.index(atm)
+    #         for (i, key) in enumerate(keys_call):
+    #             res_call.update({idx_call - i: dict_call[key]})
+    #         idx_put = keys_put.index(atm)
+    #         for (i, key) in enumerate(keys_put):
+    #             res_put.update({i - idx_put: dict_put[key]})  # moneyness : option
+    #         res_callput = {self.util.type_call: res_call, self.util.type_put: res_put}
+    #         options_by_moneyness.update({mdt: res_callput})
+    #     return options_by_moneyness
 
     #     def start(self):
     #         self.dt_list = sorted(self.df_data[self.util.col_date].unique())

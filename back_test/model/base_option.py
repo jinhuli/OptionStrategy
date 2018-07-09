@@ -35,7 +35,7 @@ class BaseOption(BaseProduct):
         required_column_list = Util.OPTION_COLUMN_LIST
         columns = self.df_data.columns
         for column in required_column_list:
-            if not columns.contains(column):
+            if column not in columns:
                 self.df_data[column] = None
 
     def __repr__(self) -> str:

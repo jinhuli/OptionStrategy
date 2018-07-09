@@ -52,7 +52,7 @@ class OptionUtil:
 
     @staticmethod
     def get_strike_monenyes_rank_dict_nearest_strike(spot: float, strikes: List[float],
-                                                     option_type: OptionType) -> float:
+                                                     option_type: OptionType) -> dict:
         d = {}
         for strike in strikes:
             if strike <= OptionUtil.MONEYNESS_POINT:
@@ -81,7 +81,7 @@ class OptionUtil:
         return d.get(moneyness_rank, None)
 
     @staticmethod
-    def get_strike_monenyes_rank_dict_otm_strike(spot: float, strikes: List[float], option_type: OptionType) -> float:
+    def get_strike_monenyes_rank_dict_otm_strike(spot: float, strikes: List[float], option_type: OptionType) -> dict:
         d = {}
         for strike in strikes:
             if strike <= OptionUtil.MONEYNESS_POINT:
