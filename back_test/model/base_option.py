@@ -1,11 +1,11 @@
-from OptionStrategyLib.OptionPricing.Options import EuropeanOption
-from OptionStrategyLib.Util import PricingUtil
 import datetime
 import pandas as pd
 import numpy as np
-from back_test.model.constant import FrequentType, Util, PricingType, EngineType, ETF, OptionFilter
+from typing import Union
+from back_test.model.constant import FrequentType, Util, PricingType, EngineType, Option50ETF, OptionFilter, OptionType
 from back_test.model.base_product import BaseProduct
 from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
+from OptionStrategyLib.OptionPricing.BlackFormular import BlackFormula
 
 
 class BaseOption(BaseProduct):
@@ -13,42 +13,66 @@ class BaseOption(BaseProduct):
 
     def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
                  frequency: FrequentType = FrequentType.DAILY,
-                 flag_calculate_iv: bool = False, rf: float = 0.03,
-                 pricing_type=PricingType.OptionPlainEuropean,
-                 engine_type=EngineType.AnalyticEuropeanEngine):
-        self.flag_calculate_iv = flag_calculate_iv
-        self.pricing_type = pricing_type
-        self.engine_type = engine_type
-        self.black_calculater: BlackCalculator = None
-        self.implied_vol = None
+                 flag_calculate_iv: bool = False, rf: float = 0.03):
         super().__init__(df_data, df_daily_data, rf, frequency)
+        self.flag_calculate_iv = flag_calculate_iv
+        self.black_calculater: BlackCalculator = None
+        self.implied_vol: float = None
 
     def next(self) -> None:
         self._destroy_black_calculater()
         super().next()
-        # self.implied_vol = None
-        # self.update_current_state()
-        # self.update_current_daily_state()
-        # self._destroy_black_calculater()
 
-    def generate_required_columns_if_missing(self) -> None:
+    def __repr__(self) -> str:
+        return 'BaseOption(id_instrument: {0},eval_date: {1},frequency: {2})' \
+            .format(self.id_instrument(), self.eval_date, self.frequency)
+
+    def _validate_data(self):
+        # If close price is nan value
+        self.df_data[Util.AMT_OPTION_PRICE] = self.df_data.apply(OptionFilter.fun_option_price, axis=1)
+        # For Dividend Adjusts
+        self.df_data[Util.AMT_NEAREST_STRIKE] = self.df_data.apply(OptionFilter.nearest_strike_level, axis=1)
+        self.df_data[Util.AMT_STRIKE_BEFORE_ADJ] = self.df_data.apply(OptionFilter.fun_strike_before_adj, axis=1)
+        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(OptionFilter.fun_applicable_strike, axis=1)
+
+    def _generate_required_columns_if_missing(self) -> None:
         required_column_list = Util.OPTION_COLUMN_LIST
         columns = self.df_data.columns
         for column in required_column_list:
             if column not in columns:
                 self.df_data[column] = None
 
-    def __repr__(self) -> str:
-        return 'BaseOption(id_instrument: {0},eval_date: {1},frequency: {2})' \
-            .format(self.id_instrument(), self.eval_date, self.frequency)
+    """ European Option greeks """
+    # TODO might write this in another class
+    def _get_black_calculater(self) -> Union[BlackCalculator, None]:
+        if self.black_calculater is not None:
+            return self.black_calculater
+        dt_maturity = self.maturitydt()
+        strike = self.applicable_strike()
+        option_type = self.option_type()
+        vol = self.get_implied_vol()
+        spot = self.underlying_close()
+        self.black_calculater = BlackCalculator(self.eval_date, dt_maturity, strike, option_type, spot, vol, self.rf)
+        return self.black_calculater
+
+    def _destroy_black_calculater(self) -> None:
+        self.implied_vol: float = None
+        self.black_calculater: BlackCalculator = None
 
     """ getters """
 
-    def contract_month(self) -> str:
+    def contract_month(self) -> Union[str, None]:
         return self.current_state[Util.NAME_CONTRACT_MONTH]
 
-    def option_type(self) -> str:
-        return self.current_state[Util.CD_OPTION_TYPE]
+    def option_type(self) -> Union[OptionType, None]:
+        type_str = self.current_state[Util.CD_OPTION_TYPE]
+        if type_str == Util.STR_CALL:
+            option_type = OptionType.CALL
+        elif type_str == Util.STR_PUT:
+            option_type = OptionType.PUT
+        else:
+            return
+        return option_type
 
     def id_underlying(self) -> str:
         return self.current_state[Util.ID_UNDERLYING]
@@ -62,170 +86,114 @@ class BaseOption(BaseProduct):
     def nearest_strike(self) -> float:
         return self.current_state[Util.AMT_NEAREST_STRIKE]
 
-    def adj_strike(self) -> float:
-        return self.current_state[Util.AMT_ADJ_STRIKE]
+    # """ 计算由于分红调整的合约，调整前的行权价 """
+    def strike_before_adj(self) -> float:
+        return self.current_state[Util.AMT_STRIKE_BEFORE_ADJ]
 
+    # """ 用于计算的实际行权价序列，分红前为调整前的行权价，分红后即为调整后的行权价 """
     def applicable_strike(self) -> float:
-        """ 应对分红调整，为metrics计算实际使用的行权价 """
-        if self.current_state[Util.AMT_APPLICABLE_STRIKE] is None:
-            print('use origin strike')
-            return self.current_state[Util.AMT_STRIKE]
-        else:
-            return self.current_state[Util.AMT_APPLICABLE_STRIKE]
+        return self.current_state[Util.AMT_APPLICABLE_STRIKE]
 
-    def option_price(self) -> float:
-        """ 如果close price为空，使用settlement price作为option price """
-        return self.current_state[Util.AMT_OPTION_PRICE]
-
-    def adj_option_price(self) -> float:
-        ret = self.current_state[Util.AMT_ADJ_OPTION_PRICE]
-        if ret is None or ret < 0 or np.isnan(ret):
-            return None
-        else:
-            return ret
-
-    def underlying_close(self) -> float:
-        ret = self.current_state[Util.AMT_UNDERLYING_CLOSE]
+    # """ 如果close price为空，使用settlement price作为option price """
+    def option_price(self) -> Union[float, None]:
+        ret = self.current_state[Util.AMT_OPTION_PRICE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    """ last bar/state, not necessarily daily"""
+    def underlying_close(self) -> Union[float, None]:
+        ret = self.current_state[Util.AMT_UNDERLYING_CLOSE]
+        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
+            return
+        return ret
 
-    def underlying_last_close(self) -> float:
+    # """ last bar/state, not necessarily daily"""
+    def underlying_last_close(self) -> Union[float, None]:
         if self.current_index > 0:
             ret = self.df_data.loc[self.current_index - 1][Util.AMT_UNDERLYING_CLOSE]
         else:
             """ if no previous date, use OPEN price """
             ret = self.current_state[Util.AMT_UNDERLYING_OPEN_PRICE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def underlying_open_price(self):
+    def underlying_open_price(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_UNDERLYING_OPEN_PRICE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def implied_vol_given(self):
-        return self.current_state[Util.PCT_IMPLIED_VOL]
+    def implied_vol_given(self) -> Union[float, None]:
+        ret = self.current_state[Util.PCT_IMPLIED_VOL]
+        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
+            return
+        return ret
 
-    def multiplier(self):
+    def multiplier(self) -> Union[int, None]:
         return self.current_state[Util.NBR_MULTIPLIER]
 
     """
     black calculator related calculations.
     """
 
-    # TODO might write this in another class
-    def _get_black_calculater(self, spot: float = None) -> BlackCalculator:
-        if self.black_calculater is not None:
-            return self.black_calculater
-        if spot is None:
-            spot = self.underlying_close()
-        if self.name_code() == "50etf":
-            strike = self.applicable_strike()
-        else:
-            strike = self.strike()
-        pricing_util = PricingUtil()
-        option = EuropeanOption(strike, self.maturitydt(), self.option_type())
-        if self.option_type() == Util.TYPE_PUT:
-            iscall = False
-        else:
-            iscall = True
-        self.black_calculater = BlackCalculator(self.eval_date, spot, option, self.rf, 0.0, iscall)
-        return self.black_calculater
-
-    def _destroy_black_calculater(self) -> None:
-        self.implied_vol = None
-        self.black_calculater = None
-
-    def update_implied_vol(self, spot: float = None, option_price: float = None) -> None:
+    def update_implied_vol(self) -> None:
         if self.flag_calculate_iv:
-            implied_vol = self._get_black_calculater(spot).implied_vol(option_price)
+            dt_maturity = self.maturitydt()
+            strike = self.applicable_strike()
+            option_type = self.option_type()
+            option_price = self.option_price()
+            spot = self.underlying_close()
+            black_formula = BlackFormula(self.eval_date, dt_maturity, strike, option_type, spot, option_price, self.rf)
+            implied_vol = black_formula.ImpliedVolApproximation()
         else:
             implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol
 
-    def get_implied_vol(self):
+    def get_implied_vol(self) -> Union[float, None]:
         if self.implied_vol is None: self.update_implied_vol()
         return self.implied_vol
 
-    def get_delta(self, iv=None):
-        if iv is None:
-            if self.implied_vol is None:
-                self.update_implied_vol()
-            return self._get_black_calculater().delta(self.underlying_close(), self.implied_vol)
-        else:
-            return self._get_black_calculater().delta(self.underlying_close(), iv)
+    def get_delta(self) -> Union[float, None]:
+        return self._get_black_calculater().Delta()
 
-    def get_theta(self):
-        if self.implied_vol is None:
-            self.update_implied_vol()
-        return self._get_black_calculater().theta(self.underlying_close(), self.implied_vol)
+    def get_theta(self) -> Union[float, None]:
+        # TODO
+        return
 
-    def get_vega(self):
-        if self.implied_vol is None:
-            self.update_implied_vol()
-        return self._get_black_calculater().vega(self.underlying_close(), self.implied_vol)
+    def get_vega(self) -> Union[float, None]:
+        # TODO
+        return
 
-    def get_rho(self):
-        if self.implied_vol is None:
-            self.update_implied_vol()
-        return self._get_black_calculater().rho(self.underlying_close(), self.implied_vol)
+    def get_rho(self) -> Union[float, None]:
+        # TODO
+        return
 
-    def get_gamma(self):
-        if self.implied_vol is None:
-            self.update_implied_vol()
-        return self._get_black_calculater().gamma(self.underlying_close(), self.implied_vol)
+    def get_gamma(self) -> Union[float, None]:
+        return self._get_black_calculater().Gamma()
 
-    def get_vomma(self):
-        if self.implied_vol is None:
-            self.update_implied_vol()
-        return self._get_black_calculater().vomma(self.underlying_close(), self.implied_vol)
+    def get_vomma(self) -> Union[float, None]:
+        # TODO
+        return
 
-    """
-    iv(tao-1)-iv(tao), tao:maturity
-    """
+    def get_iv_roll_down(self, black_var_surface, dt) -> Union[float, None]:
+        # TODO
+        return
 
-    # TODO: might need investigation of black_var_surfce
-    def get_iv_roll_down(self, black_var_surface, dt):
-        if self.implied_vol is None:
-            self.update_implied_vol()
-        try:
-            ttm = (self.maturitydt() - self.eval_date).days / 365.0
-            black_var_surface.enableExtrapolation()
-            implied_vol_t1 = black_var_surface.blackVol(ttm - dt, self.strike())
-            iv_roll_down = implied_vol_t1 - self.implied_vol
-        except Exception as e:
-            print(e)
-            iv_roll_down = 0.0
-        return iv_roll_down
+    def get_carry(self, bvs, hp) -> Union[float, None]:
+        # TODO
+        return
 
-    def get_carry(self, bvs, hp):
-        ttm = (self.maturitydt() - self.eval_date).days
-        # if ttm - hp <= 0: # 期限小于hp
-        #     return None, None, None, None
-        iv_roll_down = self.get_iv_roll_down(bvs, hp / 365.0)
-        if np.isnan(iv_roll_down): iv_roll_down = 0.0
-        vega = self.get_vega()
-        theta = self.get_theta()
-        try:
-            option_carry = (vega * iv_roll_down - theta * ttm) / self.option_price() - self.rf
-        except:
-            option_carry = None
-        return option_carry
+    """ init_margin(初始保证金):用于开仓一天，且只有期权卖方收取 """
 
+    # 认购期权义务仓开仓保证金＝[合约前结算价+Max（12%×合约标的前收盘价-认购期权虚值，
+    #                           7%×合约标的前收盘价)]×合约单位
+    # 认沽期权义务仓开仓保证金＝Min[合约前结算价 + Max（12 %×合约标的前收盘价 - 认沽期权虚值，
+    #                               7 %×行权价格），行权价格] ×合约单位
     def get_init_margin(self) -> float:
-        # if self.trade_long_short == self.util.long: return 0.0
-        # 认购期权义务仓开仓保证金＝[合约前结算价+Max（12%×合约标的前收盘价-认购期权虚值，
-        #                           7%×合约标的前收盘价)]×合约单位
-        # 认沽期权义务仓开仓保证金＝Min[合约前结算价 + Max（12 %×合约标的前收盘价 - 认沽期权虚值，
-        #                               7 %×行权价格），行权价格] ×合约单位
         amt_last_settle = self.mktprice_last_settlement()
         amt_underlying_last_close = self.underlying_last_close()
-        if self.option_type() == Util.TYPE_CALL:
+        if self.option_type() == OptionType.CALL:
             otm = max(0.0, self.strike() - self.underlying_close())
             tmp = amt_last_settle + max(0.12 * amt_underlying_last_close - otm,
                                         0.07 * amt_underlying_last_close)
@@ -237,20 +205,19 @@ class BaseOption(BaseProduct):
             init_margin = tmp * self.multiplier()
         return init_margin
 
-    # TODO: optimization is needed
+    """ maintain_margin(维持保证金):用于非开仓一天，且只有期权卖方收取 """
+
+    # 认购期权义务仓维持保证金＝[合约结算价 + Max（12 %×合约标的收盘价 - 认购期权虚值，
+    #                                           7 %×合约标的收盘价）]×合约单位
+    # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
+    #                               行权价格]×合约单位
     def get_maintain_margin(self):
-        if self.trade_long_short == Util.LONG: return 0.0
-        if self.frequency in Util.LOW_FREQUENT and self.trade_dt_open == self.eval_date:
-            return self.get_init_margin()
-        # 认购期权义务仓维持保证金＝[合约结算价 + Max（12 %×合约标的收盘价 - 认购期权虚值，
-        #                                           7 %×合约标的收盘价）]×合约单位
-        # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
-        #                               行权价格]×合约单位
+
         amt_settle = self.mktprice_settlement()
         if amt_settle is None or amt_settle == np.nan:
             amt_settle = self.mktprice_close()
         amt_underlying_close = self.underlying_close()
-        if self.option_type() == self.util.type_call:
+        if self.option_type() == OptionType.CALL:
             otm = max(0.0, self.strike() - amt_underlying_close)
             maintain_margin = (amt_settle + max(0.12 * amt_underlying_close - otm,
                                                 0.07 * amt_underlying_close)) * self.multiplier()
@@ -262,59 +229,32 @@ class BaseOption(BaseProduct):
                                   self.strike()) * self.multiplier()
         return maintain_margin
 
-    def price_limit(self):
-        # 认购期权最大涨幅＝max｛合约标的前收盘价×0.5 %，min[（2×合约标的前收盘价－行权价格），合约标的前收盘价]×10％｝
-        # 认购期权最大跌幅＝合约标的前收盘价×10％
-        # 认沽期权最大涨幅＝max｛行权价格×0.5 %，min[（2×行权价格－合约标的前收盘价），合约标的前收盘价]×10％｝
-        # 认沽期权最大跌幅＝合约标的前收盘价×10％
-        return None
-
-    def get_unit_by_mtmv(self, mtm_value):
-        return np.floor(mtm_value / (self.option_price() * self.multiplier()))
-
-    # TODO: need some work for this one
-    def senario_calculate_option_price(self, underlying_price, vol):
-        return None
-        # self.update_pricing_metrics()
-        # try:
-        #     p = self.pricing_metrics.option_price(self.evaluation, self.rf, underlying_price,
-        #                                           vol, self.engine_type)
-        # except:
-        #     p = None
-        # return p
-
-    """
-    For future based option, we only consider contract in month 1,5,9
-    """
-
     def is_valid_option(self) -> bool:
-        if self.name_code() in Util.FUTURE_BASED_OPTION_NAME_CODE:
-            return int(self.id_underlying()[-2, :]) in Util.FUTURE_BASED_OPTION_MAIN_CONTRACT
+        if self.name_code() in Util.NAME_CODE_159:
+            return int(self.id_underlying()[-2, :]) in Util.MAIN_CONTRACT_159
         return True
 
     """
     update multiplier adjustment.
     """
+    #
+    # # TODO: ask my queen for detail
+    # def update_multiplier_adjustment(self):
+    #     if self.name_code() == '50etf':
+    #         self.df_data[Util.AMT_ADJ_STRIKE] = \
+    #             round(self.df_data[Util.AMT_STRIKE] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
+    #         self.df_data[Util.AMT_ADJ_OPTION_PRICE] = \
+    #             round(self.df_data[Util.AMT_SETTLEMENT] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
+    #     else:
+    #         self.df_data[Util.AMT_ADJ_STRIKE] = self.df_data[Util.AMT_STRIKE]
+    #         self.df_data[Util.AMT_ADJ_OPTION_PRICE] = self.df_data[Util.AMT_SETTLEMENT]
+    #
+    # # TODO: ask my queen for reason of doing nothing for non-50etf
+    # def update_applicable_strikes(self):
+    #     if self.name_code() == '50etf':
+    #         self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(ETF.fun_applicable_strikes, axis=1)
+    #         self.df_data[Util.AMT_APPLICABLE_MULTIPLIER] = self.df_data.apply(ETF.fun_applicable_multiplier, axis=1)
 
-    # TODO: ask kitten for detail
-    def update_multiplier_adjustment(self):
-        if self.name_code() == '50etf':
-            self.df_data[Util.AMT_ADJ_STRIKE] = \
-                round(self.df_data[Util.AMT_STRIKE] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
-            self.df_data[Util.AMT_ADJ_OPTION_PRICE] = \
-                round(self.df_data[Util.AMT_SETTLEMENT] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
-        else:
-            self.df_data[Util.AMT_ADJ_STRIKE] = self.df_data[Util.AMT_STRIKE]
-            self.df_data[Util.AMT_ADJ_OPTION_PRICE] = self.df_data[Util.AMT_SETTLEMENT]
-
-    # TODO: ask kitten for reason of doing nothing for non-50etf
-    def update_applicable_strikes(self):
-        if self.name_code() == '50etf':
-            self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(ETF.fun_applicable_strikes, axis=1)
-            self.df_data[Util.AMT_APPLICABLE_MULTIPLIER] = self.df_data.apply(ETF.fun_applicable_multiplier, axis=1)
     """
     currently only validate option price
     """
-    # TODO: ask kitten if we  need add more
-    def validate_data(self):
-        self.df_data[Util.AMT_OPTION_PRICE] = self.df_data.apply(OptionFilter.fun_option_price, axis=1)

@@ -169,7 +169,6 @@ class BktOptionSet(object):
                 round(self.df_data[self.util.col_strike] * self.df_data[self.util.col_multiplier] / 10000, 2)
             self.df_data[self.util.col_adj_option_price] = \
                 round(self.df_data[self.util.col_settlement] * self.df_data[self.util.col_multiplier] / 10000, 2)
-
         else:
             self.df_data[self.util.col_adj_strike] = self.df_data[self.util.col_strike]
             self.df_data[self.util.col_adj_option_price] = self.df_data[self.util.col_settlement]

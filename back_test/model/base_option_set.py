@@ -17,13 +17,16 @@ class BaseOptionSet(AbstractBaseProductSet):
     To Manage Back Test State of all BktOption Objects
     """
 
-    def __init__(self, df_data: pd.DataFrame, frequency: FrequentType = FrequentType.DAILY,
-                 flag_calculate_iv: bool = True, pricing_type=PricingType.OptionPlainEuropean,
-                 engine_type=EngineType.AnalyticEuropeanEngine, rf: float = 0.03):
+    def __init__(self, df_data: pd.DataFrame,
+                 df_daily_data: pd.DataFrame = None,
+                 df_underlying: pd.DataFrame = None,
+                 frequency: FrequentType = FrequentType.DAILY,
+                 flag_calculate_iv: bool = True, rf: float = 0.03):
+        super().__init__()
         self.df_data: pd.DataFrame = df_data
+        self.df_daily_data = df_daily_data
+        self.df_underlying = df_underlying
         self.frequency: FrequentType = frequency
-        self.pricing_type: PricingType.OptionPlainEuropean = pricing_type
-        self.engine_type: EngineType.AnalyticEuropeanEngine = engine_type
         self.flag_calculate_iv: bool = flag_calculate_iv
         self.option_dict: Dict[datetime.date, List(BaseOption)] = {}
         self.rf: float = rf
@@ -41,16 +44,21 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.next()
 
     def pre_process(self) -> None:
-        self.df_data[Util.AMT_NEAREST_STRIKE] = self.df_data.apply(OptionFilter.nearest_strike_level, axis=1)
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
+        if self.df_daily_data is not None:
+            groups_daily = self.df_daily_data.groupby([Util.ID_INSTRUMENT])
+        else:
+            groups_daily = None
         for key in groups.groups.keys():
+            # manage minute data and daily data.
             df_option = groups.get_group(key).reset_index(drop=True)
-            option = BaseOption(df_option, None, self.frequency, self.flag_calculate_iv,
-                                self.rf, self.pricing_type, self.engine_type)
+            if self.df_daily_data is not None:
+                df_option_daily = groups_daily.get_group(key).reset_index(drop=True)
+            else:
+                df_option_daily=None
+            option = BaseOption(df_option, df_option_daily, self.frequency, self.flag_calculate_iv,
+                                self.rf)
             option.init()
-            option.validate_data()
-            option.update_multiplier_adjustment()
-            option.update_applicable_strikes()
             l = self.option_dict.get(option.eval_date)
             if l is None:
                 l = []
@@ -96,10 +104,10 @@ class BaseOptionSet(AbstractBaseProductSet):
             .format(self.eval_date, self.size)
 
     def get_current_state(self) -> pd.DataFrame:
-        df_current_state = self.df_data[self.df_data[Util.DT_DATE]==self.eval_date].reset_index(drop=True)
+        df_current_state = self.df_data[self.df_data[Util.DT_DATE] == self.eval_date].reset_index(drop=True)
         return df_current_state
 
-    # TODO: Class Optionset contains class underlying.
+    # TODO: Should class Optionset contains class underlying?
     def _underlying_price(self, cd_underlying_price='open'):
         if cd_underlying_price == 'close':
             spot = self.eligible_options[0].underlying_close()  # Use underlying OPEN close as spot
@@ -213,13 +221,13 @@ class BaseOptionSet(AbstractBaseProductSet):
             for mdt in mdt_calls.keys():
                 mdt_options_dict = mdt_calls.get(mdt)
                 idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                            list(mdt_options_dict.keys()), option_type)
+                                                                        list(mdt_options_dict.keys()), option_type)
                 res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         else:
             for mdt in mdt_puts.keys():
                 mdt_options_dict = mdt_puts.get(mdt)
                 idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                            list(mdt_options_dict.keys()), option_type)
+                                                                        list(mdt_options_dict.keys()), option_type)
                 res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         return res_mdt_dict
 
@@ -237,12 +245,12 @@ class BaseOptionSet(AbstractBaseProductSet):
         if option_type == OptionType.CALL:
             mdt_options_dict = mdt_calls.get(maturity)
             idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                        list(mdt_options_dict.keys()), option_type)
+                                                                    list(mdt_options_dict.keys()), option_type)
             res_list = mdt_options_dict.get(idx)
         else:
             mdt_options_dict = mdt_puts.get(maturity)
             idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                        list(mdt_options_dict.keys()), option_type)
+                                                                    list(mdt_options_dict.keys()), option_type)
             res_list = mdt_options_dict.get(idx)
         return res_list
 

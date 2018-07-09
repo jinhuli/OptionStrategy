@@ -104,7 +104,7 @@ class OptionUtil:
         return d
 
 
-class ETF:
+class Option50ETF:
     DIVIDEND_DATES = {
         datetime.date(2016, 11, 29): [
             '1612', '1701', '1703', '1706'
@@ -115,37 +115,40 @@ class ETF:
 
     }
 
+    def fun_strike_before_adj(df:pd.Series)->float:
+        return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)
+
     @staticmethod
-    def fun_applicable_strikes(df: pd.Series) -> float:
+    def fun_applicable_strike(df: pd.Series) -> float:
         eval_date = df[Util.DT_DATE]
         contract_month = df[Util.NAME_CONTRACT_MONTH]
-        dividend_dates = ETF.DIVIDEND_DATES
+        dividend_dates = Option50ETF.DIVIDEND_DATES
         dates = sorted(dividend_dates.keys(), reverse=False)
         if eval_date < dates[0]:
-            return df[Util.AMT_ADJ_STRIKE]  # 分红除息日前反算调整前的行权价
+            return df[Util.AMT_STRIKE_BEFORE_ADJ]  # 分红除息日前反算调整前的行权价
         elif eval_date < dates[1]:
             if contract_month in dividend_dates[dates[1]]:
-                return df[Util.AMT_ADJ_STRIKE]  # 分红除息日前反算调整前的行权价
+                return df[Util.AMT_STRIKE_BEFORE_ADJ]  # 分红除息日前反算调整前的行权价
             else:
                 return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
         else:
             return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
 
-    @staticmethod
-    def fun_applicable_multiplier(df: pd.Series) -> float:
-        eval_date = df[Util.DT_DATE]
-        contract_month = df[Util.NAME_CONTRACT_MONTH]
-        dividend_dates = ETF.DIVIDEND_DATES
-        dates = sorted(dividend_dates.keys(), reverse=False)
-        if eval_date < dates[0]:
-            return 10000  # 分红除息日前
-        elif eval_date < dates[1]:
-            if contract_month in dividend_dates[dates[1]]:
-                return 10000  # 分红除息日前
-            else:
-                return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
-        else:
-            return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+    # @staticmethod
+    # def fun_applicable_multiplier(df: pd.Series) -> float:
+    #     eval_date = df[Util.DT_DATE]
+    #     contract_month = df[Util.NAME_CONTRACT_MONTH]
+    #     dividend_dates = ETF.DIVIDEND_DATES
+    #     dates = sorted(dividend_dates.keys(), reverse=False)
+    #     if eval_date < dates[0]:
+    #         return 10000  # 分红除息日前
+    #     elif eval_date < dates[1]:
+    #         if contract_month in dividend_dates[dates[1]]:
+    #             return 10000  # 分红除息日前
+    #         else:
+    #             return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+    #     else:
+    #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
 
 
 class OptionFilter:
@@ -170,6 +173,20 @@ class OptionFilter:
         else:
             return round(round(strike / 0.1) * 0.1, 2)
 
+    @staticmethod
+    def fun_strike_before_adj(df:pd.Series)->float:
+        if df[Util.NAME_CODE] == Util.STR_50ETF:
+            return Option50ETF.fun_strike_before_adj(df)
+        else:
+            return df[Util.AMT_STRIKE]
+
+    @staticmethod
+    def fun_applicable_strike(df:pd.Series) -> float:
+        if df[Util.NAME_CODE] ==Util.STR_50ETF:
+            return Option50ETF.fun_applicable_strike(df)
+        else:
+            return df[Util.AMT_STRIKE]
+
 
 class Util:
     """database column names"""
@@ -185,7 +202,7 @@ class Util:
     CD_OPTION_TYPE = 'cd_option_type'
     NAME_CONTRACT_MONTH = 'name_contract_month'
     AMT_STRIKE = 'amt_strike'
-    AMT_ADJ_STRIKE = 'amt_adj_strike'
+    AMT_STRIKE_BEFORE_ADJ = 'amt_strike_before_adj'
     AMT_CLOSE = 'amt_close'
     AMT_OPEN = 'amt_open'
     AMT_ADJ_OPTION_PRICE = 'amt_adj_option_price'
@@ -217,11 +234,15 @@ class Util:
     RISK_FREE_RATE = 'risk_free_rate'
     AMT_APPLICABLE_STRIKE = 'amt_applicable_strike'
     AMT_APPLICABLE_MULTIPLIER = 'amt_applicable_multiplier'
-    TYPE_CALL = 'call'
-    TYPE_PUT = 'put'
+    NAME_CODE = 'name_code'
+    STR_CALL = 'call'
+    STR_PUT = 'put'
+    STR_50ETF = '50etf'
+    STR_INDEX_50ETF = 'index_50etf'
     NAN_VALUE = -999.0
-    LONG = 1
-    SHORT = -1
+
+    STR_SR = 'sr'
+    STR_m = 'm'
     LOW_FREQUENT = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]
     PRODUCT_COLUMN_LIST = [ID_INSTRUMENT, AMT_CLOSE, AMT_OPEN, AMT_SETTLEMENT, AMT_MORNING_OPEN_15MIN,
                            AMT_MORNING_CLOSE_15MIN, AMT_AFTERNOON_CLOSE_15MIN, AMT_MORNING_AVG, AMT_AFTERNOON_AVG,
@@ -229,14 +250,16 @@ class Util:
                            AMT_LAST_CLOSE]
     INSTRUMENT_COLUMN_LIST = PRODUCT_COLUMN_LIST
     OPTION_COLUMN_LIST = PRODUCT_COLUMN_LIST + \
-                         [NAME_CONTRACT_MONTH, AMT_STRIKE, AMT_ADJ_STRIKE, AMT_APPLICABLE_STRIKE, DT_MATURITY,
+                         [NAME_CONTRACT_MONTH, AMT_STRIKE, AMT_STRIKE_BEFORE_ADJ, AMT_APPLICABLE_STRIKE, DT_MATURITY,
                           CD_OPTION_TYPE, AMT_OPTION_PRICE, AMT_ADJ_OPTION_PRICE, ID_UNDERLYING, AMT_UNDERLYING_CLOSE,
                           AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER, AMT_LAST_SETTLEMENT,
                           AMT_SETTLEMENT]
-    FUTURE_BASED_OPTION_NAME_CODE = ['sr', 'm']
-    FUTURE_BASED_OPTION_MAIN_CONTRACT = [1, 5, 9]
-
+    NAME_CODE_159 = ['sr', 'm','ru']
+    MAIN_CONTRACT_159 = [1, 5, 9]
+    NAME_CODE_1to12 = ['cu']
     # Trade
+    LONG = 1
+    SHORT = -1
     UUID = 'uuid'
     DT_TRADE = 'dt_trade'
     TRADING_TYPE = 'trading_type'

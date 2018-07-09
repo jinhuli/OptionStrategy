@@ -13,7 +13,7 @@ from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 """
 
 
-class BlackFormulaImpliedStdDevApproximation(object):
+class BlackFormula(object):
 
     def __init__(self,
                  dt_eval: datetime.date,
@@ -55,12 +55,14 @@ class BlackFormulaImpliedStdDevApproximation(object):
             stddev = temp / (self.forward + strike)
         self.stddev = stddev
 
-    def ImpliedVol(self):
+    def ImpliedVolApproximation(self):
         return self.stddev / math.sqrt(PricingUtil.get_ttm(self.dt_eval, self.dt_maturity))
 
+    def ImpliedVol(self):
+        return
 
-"""   Black 1976 implied standard deviation, 
-i.e. volatility*sqrt(timeToMaturity) """
+""" Black 1976 implied standard deviation, 
+    i.e. volatility*sqrt(timeToMaturity) """
 
 
 class BlackFormulaImpliedStdDev(object):
@@ -90,6 +92,9 @@ class BlackFormulaImpliedStdDev(object):
         self.displacement = displacement
 
         # TODO: SOLVE
+
+    def ImpliedVol(self):
+        return
 
 # dt_eval = datetime.date(2018, 7, 6)
 # dt_maturity = datetime.date(2018, 7, 25)

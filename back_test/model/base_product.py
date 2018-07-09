@@ -1,9 +1,10 @@
 import datetime
 import numpy as np
 import pandas as pd
+from abc import abstractmethod
 from back_test.model.abstract_base_product import AbstractBaseProduct
 from back_test.model.constant import FrequentType, Util
-
+from typing import Union
 
 class BaseProduct(AbstractBaseProduct):
     """
@@ -15,8 +16,7 @@ class BaseProduct(AbstractBaseProduct):
         super().__init__()
         self.frequency: FrequentType = frequency
         self.df_data: pd.DataFrame = df_data
-        # Used in high frequency data
-        self.df_daily_data: pd.DataFrame = df_daily_data
+        self.df_daily_data: pd.DataFrame = df_daily_data # Used in high frequency data
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
         self._name_code: str = self._id_instrument.split('_')[0]
@@ -43,7 +43,12 @@ class BaseProduct(AbstractBaseProduct):
         else:
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
 
-        self.generate_required_columns_if_missing()
+        self._generate_required_columns_if_missing()
+        self._validate_data()
+
+    @abstractmethod
+    def _validate_data(self):
+        return
 
     def next(self) -> None:
         if not self.has_next():
@@ -71,10 +76,10 @@ class BaseProduct(AbstractBaseProduct):
     def get_current_state(self) -> pd.Series:
         return self.current_state
 
-    def get_current_dayli_state(self) -> pd.Series:
+    def get_current_dayly_state(self) -> pd.Series:
         return self.current_daily_state
 
-    def generate_required_columns_if_missing(self) -> None:
+    def _generate_required_columns_if_missing(self) -> None:
         required_column_list = Util.PRODUCT_COLUMN_LIST
         columns = self.df_data.columns
         for column in required_column_list:
@@ -100,76 +105,76 @@ class BaseProduct(AbstractBaseProduct):
     def code_instrument(self) -> str:
         return self.current_state[Util.CODE_INSTRUMENT]
 
-    def mktprice_close(self) -> float:
+    def mktprice_close(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_CLOSE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_open(self) -> float:
+    def mktprice_open(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_OPEN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_settlement(self) -> float:
+    def mktprice_settlement(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_SETTLEMENT]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_morning_open_15min(self) -> float:
+    def mktprice_morning_open_15min(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_MORNING_OPEN_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_morning_close_15min(self) -> float:
+    def mktprice_morning_close_15min(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_MORNING_CLOSE_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_afternoon_open_15min(self) -> float:
+    def mktprice_afternoon_open_15min(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_AFTERNOON_OPEN_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_afternoon_close_15min(self) -> float:
+    def mktprice_afternoon_close_15min(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_AFTERNOON_CLOSE_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_morning_avg(self) -> float:
+    def mktprice_morning_avg(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_MORNING_AVG]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_afternoon_avg(self) -> float:
+    def mktprice_afternoon_avg(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_AFTERNOON_AVG]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def mktprice_daily_avg(self) -> float:
+    def mktprice_daily_avg(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_DAILY_AVG]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def holding_volume(self) -> float:
+    def holding_volume(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_HOLDING_VOLUME]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
-    def trading_volume(self) -> float:
+    def trading_volume(self) -> Union[float,None]:
         ret = self.current_state[Util.AMT_TRADING_VOLUME]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return None
+            return
         return ret
 
     """ last settlement, daily"""
