@@ -361,8 +361,8 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 
 ############################################################################################
 # Eval Settings
-dt_date = datetime.date(2018, 6, 29)  # Set as Friday
-dt_last_week = datetime.date(2018, 6, 25)
+dt_date = datetime.date(2018, 7, 6)  # Set as Friday
+dt_last_week = datetime.date(2018, 7, 2)
 # current_core_underlying = 'sr_1809'
 # namecode = 'sr'
 # exchange_code = 'czce'
