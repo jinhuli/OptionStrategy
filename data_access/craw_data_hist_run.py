@@ -20,57 +20,101 @@ futures_mktdata_daily = admin.table_futures_mktdata()
 futures_institution_positions = admin.table_futures_institution_positions()
 
 conn_intraday = admin.conn_intraday()
-equity_index_intraday = admin.table_equity_index_mktdata_intraday()
+equity_index_intraday = admin.table_index_mktdata_intraday()
 option_mktdata_intraday = admin.table_option_mktdata_intraday()
 index_daily = admin.table_indexes_mktdata()
 
 dc = DataCollection()
 #####################################################################################
-beg_date = datetime.date(2004, 1, 1)
-end_date = datetime.date(2004, 12, 31)
+# beg_date = datetime.date(2004, 1, 1)
+# end_date = datetime.date(2004, 12, 31)
+
+# 国债到期收益率
+
+codes_dict = {
+    "M1004136" : "gov_bond_yield_to_maturity_0",
+    "M1004677" : "gov_bond_yield_to_maturity_1M",
+    "M1004829" : "gov_bond_yield_to_maturity_2M",
+    "S0059741" : "gov_bond_yield_to_maturity_3M",
+    "S0059742" : "gov_bond_yield_to_maturity_6M",
+    "S0059743" : "gov_bond_yield_to_maturity_9M",
+    "S0059744" : "gov_bond_yield_to_maturity_1Y",
+    "S0059745" : "gov_bond_yield_to_maturity_2Y",
+    "S0059746" : "gov_bond_yield_to_maturity_3Y",
+    "M0057946" : "gov_bond_yield_to_maturity_4Y",
+    "S0059747" : "gov_bond_yield_to_maturity_5Y",
+    "M0057947" : "gov_bond_yield_to_maturity_6Y",
+    "S0059748" : "gov_bond_yield_to_maturity_7Y",
+    "M1000165" : "gov_bond_yield_to_maturity_8Y",
+    "M1004678" : "gov_bond_yield_to_maturity_9Y",
+    "S0059749" : "gov_bond_yield_to_maturity_10Y",
+    "S0059750" : "gov_bond_yield_to_maturity_15Y",
+    "S0059751" : "gov_bond_yield_to_maturity_20Y",
+    "S0059752" : "gov_bond_yield_to_maturity_30Y",
+    "M1004711" : "gov_bond_yield_to_maturity_40Y",
+    "M1000170" : "gov_bond_yield_to_maturity_50Y"
+}
+
+res = w.edb("M1004136,M1004677,M1004829,S0059741,S0059742,S0059743,S0059744,S0059745,S0059746,M0057946,S0059747,M0057947,S0059748,M1000165,M1004678,S0059749,S0059750,S0059751,S0059752,M1004711,M1000170",
+      "2018-07-01", "2018-07-11","Fill=Previous")
+print(res)
+codes = res.Codes
+data = res.Data
+df_res = pd.DataFrame()
+for i, code in enumerate(res.Codes):
+    df = pd.DataFrame()
+    id_instrument = codes_dict[code]
+    df['amt_close'] = res.Data[i]
+    df['id_instrument'] = id_instrument
+    df['code_instrument'] = code
+    df['dt_date'] = res.Times
+    df_res = pd.concat([df_res,df],axis=0,ignore_index=True)
+
+df_res.to_sql('interest_rates', con=admin.engine, if_exists='append')
 
 
-windcode = "510050.SH"
-id_instrument = 'index_50etf'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-50etf -- inserted into data base succefully')
-except Exception as e:
-    print(e)
 
-
-windcode = "000016.SH"
-id_instrument = 'index_50sh'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-50sh -- inserted into data base succefully')
-except Exception as e:
-    print(e)
-
-
-windcode = "000300.SH"
-id_instrument = 'index_300sh'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-300sh -- inserted into data base succefully')
-except Exception as e:
-    print(e)
-
-
-windcode = "000905.SH"
-id_instrument = 'index_500sh'
-db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
-
-try:
-    conn.execute(index_daily.insert(), db_data)
-    print('equity_index-500sh -- inserted into data base succefully')
-except Exception as e:
-    print(e)
+# windcode = "510050.SH"
+# id_instrument = 'index_50etf'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-50etf -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
+#
+#
+# windcode = "000016.SH"
+# id_instrument = 'index_50sh'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+#
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-50sh -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
+#
+#
+# windcode = "000300.SH"
+# id_instrument = 'index_300sh'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+#
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-300sh -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
+#
+#
+# windcode = "000905.SH"
+# id_instrument = 'index_500sh'
+# db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
+#
+# try:
+#     conn.execute(index_daily.insert(), db_data)
+#     print('equity_index-500sh -- inserted into data base succefully')
+# except Exception as e:
+#     print(e)
 
 
 

@@ -55,7 +55,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             if self.df_daily_data is not None:
                 df_option_daily = groups_daily.get_group(key).reset_index(drop=True)
             else:
-                df_option_daily=None
+                df_option_daily = None
             option = BaseOption(df_option, df_option_daily, self.frequency, self.flag_calculate_iv,
                                 self.rf)
             option.init()

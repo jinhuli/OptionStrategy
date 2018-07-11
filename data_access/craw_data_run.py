@@ -10,7 +10,7 @@ from Utilities import admin_util as admin
 
 w.start()
 
-date = datetime.date(2018, 6, 21)
+date = datetime.date(2018, 7, 10)
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
