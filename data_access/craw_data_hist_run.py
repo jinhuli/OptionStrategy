@@ -10,7 +10,7 @@ from data_access import spider_api_dce as dce
 from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
-from Utilities import admin_util as admin
+from Utilities import admin_write_util as admin
 
 w.start()
 
@@ -56,7 +56,7 @@ codes_dict = {
 }
 
 res = w.edb("M1004136,M1004677,M1004829,S0059741,S0059742,S0059743,S0059744,S0059745,S0059746,M0057946,S0059747,M0057947,S0059748,M1000165,M1004678,S0059749,S0059750,S0059751,S0059752,M1004711,M1000170",
-      "2018-07-01", "2018-07-11","Fill=Previous")
+      "2014-01-01", "2014-12-31","Fill=Previous")
 print(res)
 codes = res.Codes
 data = res.Data
@@ -68,9 +68,10 @@ for i, code in enumerate(res.Codes):
     df['id_instrument'] = id_instrument
     df['code_instrument'] = code
     df['dt_date'] = res.Times
+    df['timestamp'] = datetime.datetime.now()
     df_res = pd.concat([df_res,df],axis=0,ignore_index=True)
 
-df_res.to_sql('interest_rates', con=admin.engine, if_exists='append')
+df_res.to_sql('interest_rates', con=admin.engine, if_exists='append',index=False)
 
 
 
