@@ -8,8 +8,8 @@ import datetime
 
 pu = PlotUtil()
 table_index = admin.table_indexes_mktdata()
-name_index = 'index_50sh'
-start_date = datetime.date(2004,1,1)
+name_index = 'index_300sh'
+start_date = datetime.date(2000,1,1)
 
 
 query = admin.session_mktdata().query(table_index.c.dt_date, table_index.c.amt_close, table_index.c.id_instrument) \
@@ -20,7 +20,10 @@ print(len(df))
 df = df.dropna()
 print(len(df))
 
-histvol = calculate_histvol(df['amt_close'],20)
-print(histvol)
-pu.plot_line_chart(df['dt_date'],[histvol],['hist vol'])
-plt.show()
+df['hv_1M_300sh'] = calculate_histvol(df['amt_close'],20)
+
+df.to_excel('../histvol.xlsx')
+
+# histvol = calculate_histvol(df['amt_close'],20)
+# pu.plot_line_chart(df['dt_date'],[histvol],['hist vol'])
+# plt.show()
