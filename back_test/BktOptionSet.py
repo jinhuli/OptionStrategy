@@ -694,21 +694,22 @@ class BktOptionSet(object):
         df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
         bktoption_list = self.bktoptionset
         if len(bktoption_list) == 0: return df
-        if self.option_code == '50etf':
-            df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
-        else:
-            df_data = self.df_daily_state
-        df_data_call = self.util.get_df_by_type(df_data, self.util.type_call)
-        df_data_put = self.util.get_df_by_type(df_data, self.util.type_put)
-        bvs_call = self.get_volsurface_squre(df_data_call)
-        bvs_put = self.get_volsurface_squre(df_data_put)
+        # if self.option_code == '50etf':
+        #     df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+        # else:
+        #     df_data = self.df_daily_state
+        # df_data_call = self.util.get_df_by_type(df_data, self.util.type_call)
+        # df_data_put = self.util.get_df_by_type(df_data, self.util.type_put)
+        # bvs_call = self.get_volsurface_squre(df_data_call)
+        # bvs_put = self.get_volsurface_squre(df_data_put)
+        carry = None
         for idx, option in enumerate(bktoption_list):
             if option.option_price() > 0.0:
                 iv = option.get_implied_vol()
-                if option.option_type == self.util.type_call:
-                    carry = option.get_carry(bvs_call, hp)
-                else:
-                    carry = option.get_carry(bvs_put, hp)
+                # if option.option_type == self.util.type_call:
+                #     carry = option.get_carry(bvs_call, hp)
+                # else:
+                #     carry = option.get_carry(bvs_put, hp)
                 theta = option.get_theta()
                 vega = option.get_vega()
 
