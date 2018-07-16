@@ -353,7 +353,7 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
     ax3.spines['right'].set_visible(False)
     ax3.yaxis.set_ticks_position('left')
     ax3.xaxis.set_ticks_position('bottom')
-    f3.set_size_inches((12,6))
+    f3.set_size_inches((12,8))
 
     f3.savefig('../save_figure/'+nameCode+'_holdings_' + evalDate + '.png', dpi=300,
                  format='png',bbox_inches='tight')
@@ -415,7 +415,7 @@ hist_vol(df_underlying_core)
 print('Part [历史已实现波动率] completed')
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
-hist_atm_ivs(dt_date,dt_last_week,w,namecode,exchange_code,df_srf)
+hist_atm_ivs(dt_date,startDate,w,namecode,exchange_code,df_srf)
 print('Part [历史隐含波动率] completed')
 trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
 print('Part [当日成交持仓量] completed')
