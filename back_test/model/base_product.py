@@ -97,11 +97,6 @@ class BaseProduct(AbstractBaseProduct):
     open/close position
     """
 
-    @abstractmethod
-    def execute_order(self, dt_trade, id_instrument, trade_type, trade_unit, trade_price,
-                      time_signal) -> bool:
-        pass
-
     def open_long(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None) -> bool:  # 多开
         trade_type = TradeType.OPEN_LONG
         self.execute_order(dt_trade, id_instrument, trade_type, abs(trade_unit), trade_price, time_signal)

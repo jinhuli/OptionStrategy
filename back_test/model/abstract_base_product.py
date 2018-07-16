@@ -62,3 +62,9 @@ class AbstractBaseProduct(ABC):
     open/close position: 返回开平仓是否成功的信号
     """
 
+    @abstractmethod
+    def execute_order(self, dt_trade, id_instrument, trade_type, trade_unit, trade_price,
+                      time_signal) -> bool:
+        pass
+
+    
