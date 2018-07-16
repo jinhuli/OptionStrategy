@@ -1,5 +1,6 @@
 from pandas import Series
 from abc import ABC, abstractmethod
+from back_test.model.trade import Order
 
 """
     AbstractBaseProduct: an abstract class of base product.
@@ -59,12 +60,12 @@ class AbstractBaseProduct(ABC):
         pass
 
     """
-    open/close position: 返回开平仓是否成功的信号
+    excecute_order: execute an order
     """
-
     @abstractmethod
-    def execute_order(self, dt_trade, id_instrument, trade_type, trade_unit, trade_price,
-                      time_signal) -> bool:
+    def execute_order(self, order: Order) -> bool:
         pass
 
-    
+    @abstractmethod
+    def validate_data(self):
+        pass

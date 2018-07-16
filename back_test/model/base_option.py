@@ -2,10 +2,11 @@ import datetime
 import pandas as pd
 import numpy as np
 from typing import Union
-from back_test.model.constant import FrequentType, Util, PricingType, EngineType, Option50ETF, OptionFilter, OptionType
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType
 from back_test.model.base_product import BaseProduct
 from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 from OptionStrategyLib.OptionPricing.BlackFormular import BlackFormula
+from back_test.model.trade import Order
 
 
 class BaseOption(BaseProduct):
@@ -43,6 +44,7 @@ class BaseOption(BaseProduct):
                 self.df_data[column] = None
 
     """ European Option greeks """
+
     # TODO might write this in another class
     def _get_black_calculater(self) -> Union[BlackCalculator, None]:
         if self.black_calculater is not None:
@@ -234,9 +236,12 @@ class BaseOption(BaseProduct):
             return int(self.id_underlying()[-2, :]) in Util.MAIN_CONTRACT_159
         return True
 
-    """
-    update multiplier adjustment.
-    """
+    def execute_order(self, order: Order):
+        ret: pd.Series =order.trade_with_current_volume(int(self.trading_volume()))
+        print(ret)
+        """
+        update multiplier adjustment.
+        """
     #
     # # TODO: ask my queen for detail
     # def update_multiplier_adjustment(self):
@@ -254,7 +259,3 @@ class BaseOption(BaseProduct):
     #     if self.name_code() == '50etf':
     #         self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(ETF.fun_applicable_strikes, axis=1)
     #         self.df_data[Util.AMT_APPLICABLE_MULTIPLIER] = self.df_data.apply(ETF.fun_applicable_multiplier, axis=1)
-
-    """
-    currently only validate option price
-    """
