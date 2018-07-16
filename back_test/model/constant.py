@@ -245,6 +245,7 @@ class Util:
     STR_PUT = 'put'
     STR_50ETF = '50etf'
     STR_INDEX_50ETF = 'index_50etf'
+    STR_ALL = 'all'
     NAN_VALUE = -999.0
 
     STR_SR = 'sr'
@@ -277,22 +278,23 @@ class Util:
     TRADE_MARGIN_CAPITAL = 'trade_margin_capital'
 
     DICT_FUTURE_MARGIN_RATE = {'m': 0.05}  # 合约价值的百分比
-
     DICT_FUTURE_FEE = {'m': 3.0}  # 元/手
-
-    DICT_FUTURE_CONTRACT_MULTIPLIER = {'m': 10} # 合约乘数
+    DICT_FUTURE_CONTRACT_MULTIPLIER = {'m': 10}  # 合约乘数
+    DICT_FUTURE_CORE_CONTRACT = {'m': [1, 5, 9],
+                                 'sr': [1, 5, 6],
+                                 STR_50ETF: STR_ALL}
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
         cur_date = x[Util.DT_DATE]
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-                        x[
-                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                                   00):
+                x[
+                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
+                                                           00):
             return True
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-                        x[
-                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                                   00):
+                x[
+                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
+                                                           00):
             return True
         return False
