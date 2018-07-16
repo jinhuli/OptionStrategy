@@ -40,11 +40,13 @@ class OptionType(Enum):
     CALL = 1
     PUT = -1
 
+
 class TradeType(Enum):
     OPEN_LONG = 1
     OPEN_SHORT = 2
     CLOSE_LONG = -1
     CLOSE_SHORT = -2
+
 
 class OptionUtil:
     MONEYNESS_POINT = 3.0
@@ -120,7 +122,7 @@ class Option50ETF:
 
     }
 
-    def fun_strike_before_adj(df:pd.Series)->float:
+    def fun_strike_before_adj(df: pd.Series) -> float:
         return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)
 
     @staticmethod
@@ -139,25 +141,24 @@ class Option50ETF:
         else:
             return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
 
-    # @staticmethod
-    # def fun_applicable_multiplier(df: pd.Series) -> float:
-    #     eval_date = df[Util.DT_DATE]
-    #     contract_month = df[Util.NAME_CONTRACT_MONTH]
-    #     dividend_dates = ETF.DIVIDEND_DATES
-    #     dates = sorted(dividend_dates.keys(), reverse=False)
-    #     if eval_date < dates[0]:
-    #         return 10000  # 分红除息日前
-    #     elif eval_date < dates[1]:
-    #         if contract_month in dividend_dates[dates[1]]:
-    #             return 10000  # 分红除息日前
-    #         else:
-    #             return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
-    #     else:
-    #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+            # @staticmethod
+            # def fun_applicable_multiplier(df: pd.Series) -> float:
+            #     eval_date = df[Util.DT_DATE]
+            #     contract_month = df[Util.NAME_CONTRACT_MONTH]
+            #     dividend_dates = ETF.DIVIDEND_DATES
+            #     dates = sorted(dividend_dates.keys(), reverse=False)
+            #     if eval_date < dates[0]:
+            #         return 10000  # 分红除息日前
+            #     elif eval_date < dates[1]:
+            #         if contract_month in dividend_dates[dates[1]]:
+            #             return 10000  # 分红除息日前
+            #         else:
+            #             return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+            #     else:
+            #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
 
 
 class OptionFilter:
-
     @staticmethod
     def fun_option_price(df: pd.Series) -> float:
         if df[Util.AMT_CLOSE] != Util.NAN_VALUE:
@@ -179,15 +180,15 @@ class OptionFilter:
             return round(round(strike / 0.1) * 0.1, 2)
 
     @staticmethod
-    def fun_strike_before_adj(df:pd.Series)->float:
+    def fun_strike_before_adj(df: pd.Series) -> float:
         if df[Util.NAME_CODE] == Util.STR_50ETF:
             return Option50ETF.fun_strike_before_adj(df)
         else:
             return df[Util.AMT_STRIKE]
 
     @staticmethod
-    def fun_applicable_strike(df:pd.Series) -> float:
-        if df[Util.NAME_CODE] ==Util.STR_50ETF:
+    def fun_applicable_strike(df: pd.Series) -> float:
+        if df[Util.NAME_CODE] == Util.STR_50ETF:
             return Option50ETF.fun_applicable_strike(df)
         else:
             return df[Util.AMT_STRIKE]
@@ -259,7 +260,7 @@ class Util:
                           CD_OPTION_TYPE, AMT_OPTION_PRICE, AMT_ADJ_OPTION_PRICE, ID_UNDERLYING, AMT_UNDERLYING_CLOSE,
                           AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER, AMT_LAST_SETTLEMENT,
                           AMT_SETTLEMENT]
-    NAME_CODE_159 = ['sr', 'm','ru']
+    NAME_CODE_159 = ['sr', 'm', 'ru']
     MAIN_CONTRACT_159 = [1, 5, 9]
     NAME_CODE_1to12 = ['cu']
     # Trade
@@ -275,17 +276,23 @@ class Util:
     CASH = 'cash'
     TRADE_MARGIN_CAPITAL = 'trade_margin_capital'
 
+    DICT_FUTURE_MARGIN_RATE = {'m': 0.05}  # 合约价值的百分比
+
+    DICT_FUTURE_FEE = {'m': 3.0}  # 元/手
+
+    DICT_FUTURE_CONTRACT_MULTIPLIER = {'m': 10} # 合约乘数
+
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
         cur_date = x[Util.DT_DATE]
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-                x[
-                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                           00):
+                        x[
+                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
+                                                                   00):
             return True
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-                x[
-                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                           00):
+                        x[
+                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
+                                                                   00):
             return True
         return False

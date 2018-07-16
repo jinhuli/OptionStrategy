@@ -57,3 +57,8 @@ class AbstractBaseProduct(ABC):
     @abstractmethod
     def get_current_state(self) -> Series:
         pass
+
+    """
+    open/close position: 返回开平仓是否成功的信号
+    """
+

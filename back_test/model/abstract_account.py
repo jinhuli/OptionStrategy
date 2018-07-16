@@ -21,9 +21,9 @@ class AbstractAccount(ABC):
     def init(self) -> None:
         pass
 
-    """
-    open_position: 
-    """
-    @abstractmethod
-    def add_record(self) -> bool:
-        pass
+    # """
+    # open_position:
+    # """
+    # @abstractmethod
+    # def add_record(self) -> bool:
+    #     pass

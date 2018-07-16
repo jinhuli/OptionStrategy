@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 from abc import abstractmethod
 from back_test.model.abstract_base_product import AbstractBaseProduct
-from back_test.model.constant import FrequentType, Util
+from back_test.model.constant import FrequentType, Util, TradeType
 from typing import Union
+
 
 class BaseProduct(AbstractBaseProduct):
     """
@@ -16,7 +17,7 @@ class BaseProduct(AbstractBaseProduct):
         super().__init__()
         self.frequency: FrequentType = frequency
         self.df_data: pd.DataFrame = df_data
-        self.df_daily_data: pd.DataFrame = df_daily_data # Used in high frequency data
+        self.df_daily_data: pd.DataFrame = df_daily_data  # Used in high frequency data
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
         self._name_code: str = self._id_instrument.split('_')[0]
@@ -93,6 +94,36 @@ class BaseProduct(AbstractBaseProduct):
             .format(self.id_instrument(), self.eval_date, self.frequency)
 
     """
+    open/close position
+    """
+
+    @abstractmethod
+    def execute_order(self, dt_trade, id_instrument, trade_type, trade_unit, trade_price,
+                      time_signal) -> bool:
+        pass
+
+    def open_long(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None) -> bool:  # 多开
+        trade_type = TradeType.OPEN_LONG
+        self.execute_order(dt_trade, id_instrument, trade_type, abs(trade_unit), trade_price, time_signal)
+        return True
+
+    def open_short(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None) -> bool:  # 空开
+        trade_type = TradeType.OPEN_SHORT
+        self.execute_order(dt_trade, id_instrument, trade_type, -abs(trade_unit), trade_price, time_signal)
+        return True
+
+    def close_out(self,dt_trade, id_instrument, trade_price, time_signal=None):
+        # Find current aggregated open interest on id_instrument
+
+        return True
+
+    """ Close not all open interests on 'id_instrument' """
+    def close_partial(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None):
+        # TODO
+        return True
+
+
+    """
     getters
     """
 
@@ -105,73 +136,73 @@ class BaseProduct(AbstractBaseProduct):
     def code_instrument(self) -> str:
         return self.current_state[Util.CODE_INSTRUMENT]
 
-    def mktprice_close(self) -> Union[float,None]:
+    def mktprice_close(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_CLOSE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_open(self) -> Union[float,None]:
+    def mktprice_open(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_OPEN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_settlement(self) -> Union[float,None]:
+    def mktprice_settlement(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_SETTLEMENT]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_morning_open_15min(self) -> Union[float,None]:
+    def mktprice_morning_open_15min(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_MORNING_OPEN_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_morning_close_15min(self) -> Union[float,None]:
+    def mktprice_morning_close_15min(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_MORNING_CLOSE_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_afternoon_open_15min(self) -> Union[float,None]:
+    def mktprice_afternoon_open_15min(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_AFTERNOON_OPEN_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_afternoon_close_15min(self) -> Union[float,None]:
+    def mktprice_afternoon_close_15min(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_AFTERNOON_CLOSE_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_morning_avg(self) -> Union[float,None]:
+    def mktprice_morning_avg(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_MORNING_AVG]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_afternoon_avg(self) -> Union[float,None]:
+    def mktprice_afternoon_avg(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_AFTERNOON_AVG]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def mktprice_daily_avg(self) -> Union[float,None]:
+    def mktprice_daily_avg(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_DAILY_AVG]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def holding_volume(self) -> Union[float,None]:
+    def holding_volume(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_HOLDING_VOLUME]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
         return ret
 
-    def trading_volume(self) -> Union[float,None]:
+    def trading_volume(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_TRADING_VOLUME]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return
