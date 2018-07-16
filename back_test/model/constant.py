@@ -40,6 +40,11 @@ class OptionType(Enum):
     CALL = 1
     PUT = -1
 
+class TradeType(Enum):
+    OPEN_LONG = 1
+    OPEN_SHORT = 2
+    CLOSE_LONG = -1
+    CLOSE_SHORT = -2
 
 class OptionUtil:
     MONEYNESS_POINT = 3.0
@@ -262,13 +267,13 @@ class Util:
     SHORT = -1
     UUID = 'uuid'
     DT_TRADE = 'dt_trade'
-    TRADING_TYPE = 'trading_type'
-    TRADING_PRICE = 'trade_price'
-    TRADING_COST = 'trading_cost'
-    UNIT = 'unit'
-    PREMIIUM_PAID = 'premium paid'
+    TRADE_TYPE = 'trade_type'
+    TRADE_PRICE = 'trade_price'
+    TRADE_COST = 'trade_cost'
+    TRADE_UNIT = 'trade_unit'
+    OPTION_PREMIIUM = 'option_premium'
     CASH = 'cash'
-    MARGIN_CAPITAL = 'margin capital'
+    TRADE_MARGIN_CAPITAL = 'trade_margin_capital'
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
