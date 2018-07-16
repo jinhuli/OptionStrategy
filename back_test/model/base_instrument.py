@@ -1,6 +1,7 @@
 import pandas as pd
 from back_test.model.constant import FrequentType, Util
 from back_test.model.base_product import BaseProduct
+from back_test.model.trade import Order
 
 
 class BaseInstrument(BaseProduct):
@@ -16,3 +17,6 @@ class BaseInstrument(BaseProduct):
     def __repr__(self) -> str:
         return 'BaseInstrument(id_instrument: {0},eval_date: {1},frequency: {2})' \
             .format(self.id_instrument(), self.eval_date, self.frequency)
+
+    def execute_order(self, order: Order):
+        return True

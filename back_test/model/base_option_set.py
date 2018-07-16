@@ -4,8 +4,10 @@ from collections import deque
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
-    MoneynessMethod, OptionFilter, OptionType, OptionUtil
+    MoneynessMethod, OptionFilter, OptionType, OptionUtil, TradeType
 from typing import Dict, List, Tuple
+
+from back_test.model.trade import Order
 
 
 class BaseOptionSet(AbstractBaseProductSet):
@@ -98,6 +100,19 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     def has_next(self) -> bool:
         return self.current_date_index < self.nbr_index - 1
+
+    def scan(self) -> None:
+        for option in self.eligible_options:
+            option.execute_order(
+                Order(
+                    datetime.date(2017, 1, 1),
+                    '50etf_dd',
+                    TradeType.OPEN_SHORT,
+                    1000,
+                    11.1,
+                    datetime.date(2017, 1, 1),
+                )
+            )
 
     def __repr__(self) -> str:
         return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \

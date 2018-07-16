@@ -4,6 +4,7 @@ import pandas as pd
 from abc import abstractmethod
 from back_test.model.abstract_base_product import AbstractBaseProduct
 from back_test.model.constant import FrequentType, Util, TradeType
+from back_test.model.trade import Order
 from typing import Union
 
 
@@ -45,10 +46,9 @@ class BaseProduct(AbstractBaseProduct):
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
 
         self._generate_required_columns_if_missing()
-        self._validate_data()
+        self.validate_data()
 
-    @abstractmethod
-    def _validate_data(self):
+    def validate_data(self) -> None:
         return
 
     def next(self) -> None:
@@ -97,27 +97,27 @@ class BaseProduct(AbstractBaseProduct):
     open/close position
     """
 
-    def open_long(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None) -> bool:  # 多开
-        trade_type = TradeType.OPEN_LONG
-        self.execute_order(dt_trade, id_instrument, trade_type, abs(trade_unit), trade_price, time_signal)
-        return True
+    def open_long(self, order: Order) -> bool:  # 多开
+        order.trade_type = TradeType.OPEN_LONG
+        return self.execute_order(order)
 
-    def open_short(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None) -> bool:  # 空开
-        trade_type = TradeType.OPEN_SHORT
-        self.execute_order(dt_trade, id_instrument, trade_type, -abs(trade_unit), trade_price, time_signal)
-        return True
+    def open_short(self, order: Order) -> bool:  # 空开
+        order.trade_type = TradeType.OPEN_SHORT
+        return self.execute_order(order)
 
-    def close_out(self,dt_trade, id_instrument, trade_price, time_signal=None):
+    def close_out(self, dt_trade, id_instrument, trade_price, time_signal=None):
         # Find current aggregated open interest on id_instrument
 
         return True
 
     """ Close not all open interests on 'id_instrument' """
+
     def close_partial(self, dt_trade, id_instrument, trade_price, trade_unit, time_signal=None):
         # TODO
         return True
 
-
+    def execute_order(self, order: Order) -> bool:
+        raise NotImplementedError("Child class not implement method execute_order.")
     """
     getters
     """
