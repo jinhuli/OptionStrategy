@@ -11,44 +11,10 @@ from data_access.db_tables import DataBaseTables as dbt
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 import QuantLib as ql
+from Utilities.calculate import calculate_histvol
+from Utilities import admin_util as admin
 
 
-# dates = df_srf['dt_date'].unique()
-# df_core = pd.DataFrame()
-# for idx, date in enumerate(dates):
-#     df1 = df_srf[df_srf['dt_date'] == date]
-#     df1 = df1.sort_values(by='amt_trading_volume', ascending=False)
-#     close = df1['amt_close'].values[0]
-#     id_ins = df1['id_instrument'].values[0]
-#     df_core.loc[idx, 'dt_date'] = date
-#     df_core.loc[idx, 'id_core'] = id_ins
-#     df_core.loc[idx, 'amt_close'] = close
-#
-# for (idx, row) in df_core.iterrows():
-#     if idx == 0: r = 0.0
-#     else:
-#         r = np.log(float(row['amt_close']) / float(df_core.loc[idx - 1, 'amt_close']))
-#         df_core.loc[idx, 'yield'] = r
-#
-# for idx_mkt in range(len(df_core)):
-#     if idx_mkt >= bd_6m:
-#         df_core.loc[idx_mkt, '5近半年'] = np.std(df_core['yield'][idx_mkt-bd_6m:idx_mkt])*np.sqrt(252)*100
-#     if idx_mkt >= bd_3m:
-#         df_core.loc[idx_mkt, '4近三月'] = np.std(df_core['yield'][idx_mkt-bd_3m:idx_mkt])*np.sqrt(252)*100
-#     if idx_mkt >= bd_2m:
-#         df_core.loc[idx_mkt, '3近两月'] = np.std(df_core['yield'][idx_mkt-bd_2m:idx_mkt])*np.sqrt(252)*100
-#     if idx_mkt >= bd_1m:
-#         df_core.loc[idx_mkt, '2近一月'] = np.std(df_core['yield'][idx_mkt-bd_1m:idx_mkt])*np.sqrt(252)*100
-#
-# df_core = df_core[df_core['dt_date']>=startDate]
-# df_core = df_core[['dt_date','2近一月','3近两月','4近三月','5近半年']]
-# df_core = df_core.sort_values(by='dt_date',ascending=False)
-# df_core.to_csv('../save_results/m_future_hist_vols.csv')
-# print('part1 completed')
-######################################## PART 2 : 成交持仓认沽认购比 #####################################################
-
-
-###########################################################################################
 """成交持仓认沽认购比P/C"""
 def pcr(df_pcr):
     # 按期权合约持仓量最大选取主力合约
@@ -86,90 +52,31 @@ def pcr(df_pcr):
 
     return df_underlying_core
 
-"""标的已实现历史波动率"""
+"""标的历史波动率"""
 def hist_vol(df_underlying_core):
-    """历史已实现波动率：1M、2M、3M、6M"""
-    for (idx, row) in df_underlying_core.iterrows():
-        if idx == 0:
-            r = 0.0
-        else:
-            p1 = float(row['amt_close'])
-            p0 = float(df_underlying_core.loc[idx-1,'amt_close'])
-            if p0 == 0.0 or p1 == 0.0:
-                r = 0.0
-            else:
-                r = (p1-p0) / p0
-        df_underlying_core.loc[idx, 'yield'] = r
 
-    for idx_mkt in range(len(df_underlying_core)):
-        if idx_mkt >= bd_6m:
-            df_underlying_core.loc[idx_mkt, '5近半年'] = np.std(df_underlying_core['yield'][idx_mkt-bd_6m:idx_mkt])*np.sqrt(252)*100
-        if idx_mkt >= bd_3m:
-            df_underlying_core.loc[idx_mkt, '4近三月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_3m:idx_mkt])*np.sqrt(252)*100
-        if idx_mkt >= bd_2m:
-            df_underlying_core.loc[idx_mkt, '3近两月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_2m:idx_mkt])*np.sqrt(252)*100
-        if idx_mkt >= bd_1m:
-            df_underlying_core.loc[idx_mkt, '2近一月'] = np.std(df_underlying_core['yield'][idx_mkt-bd_1m:idx_mkt])*np.sqrt(252)*100
-
-    df_histvol = df_underlying_core[df_underlying_core['dt_date']>=startDate]
-    df_histvol = df_histvol[['dt_date','2近一月','3近两月','4近三月','5近半年']]
-    df_histvol = df_histvol.sort_values(by='dt_date',ascending=False)
-    df_histvol.to_csv('../save_results/'+namecode+'_future_hist_vols.csv')
-    print('Part [历史已实现波动率] completed')
-
-    """历史波动率锥"""
-    histvols_6 = list(df_underlying_core['5近半年'].dropna())
-    histvols_3 = list(df_underlying_core['4近三月'].dropna())
-    histvols_2 = list(df_underlying_core['3近两月'].dropna())
-    histvols_1 = list(df_underlying_core['2近一月'].dropna())
-    max_vols = [max(histvols_6), max(histvols_3), max(histvols_2), max(histvols_1)]
-    min_vols = [min(histvols_6), min(histvols_3), min(histvols_2), min(histvols_1)]
-    median_vols = [np.median(histvols_6), np.median(histvols_3), np.median(histvols_2),
-                   np.median(histvols_1)]
-    p75_vols = [np.percentile(histvols_6, 75), np.percentile(histvols_3, 75),
-                np.percentile(histvols_2, 75), np.percentile(histvols_1, 75)]
-    p25_vols = [np.percentile(histvols_6, 25), np.percentile(histvols_3, 25),
-                np.percentile(histvols_2, 25), np.percentile(histvols_1, 25)]
-    current_vols = [histvols_6[-1], histvols_3[-1], histvols_2[-1], histvols_1[-1]]
-    print('current_vols : ', current_vols)
-    histvolcone = [current_vols, max_vols, min_vols, median_vols, p75_vols, p25_vols]
-    x = [6, 3, 2, 1]
-    f2, ax2 = plt.subplots()
-    ldgs = ['当前水平', '最大值', '最小值', '中位数', '75分位数', '25分位数']
-    for cont2, y in enumerate(histvolcone):
-        pu.plot_line(ax2, cont2, x, y, ldgs[cont2], '时间：月', '波动率（%）')
-    ax2.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-               ncol=6, mode="expand", borderaxespad=0., frameon=False)
-    f2.set_size_inches((12, 6))
-
-    f2.savefig('../save_figure/'+namecode+'_hist_vol_cone_' + str(evalDate) + '.png', dpi=300, format='png')
-    df_vol_cone = pd.DataFrame({'1-term': ['6月', '3月', '2月', '1月'],
-                                '2-当前隐含波动率': current_vols,
-                                '3-最大值': max_vols,
-                                '4-最小值': min_vols,
-                                '5-中位数': median_vols,
-                                '6-75分位数': p75_vols,
-                                '7-25分位数': p25_vols})
-    df_vol_cone.to_csv('../save_results/'+namecode+'_hist_vol_cone.csv')
-    print('Part [历史波动率锥] completed')
+    df_underlying_core['5近半年'] = list(calculate_histvol(df_underlying_core['amt_close'],120)*100)
+    df_underlying_core['4近三月'] = list(calculate_histvol(df_underlying_core['amt_close'],60)*100)
+    df_underlying_core['3近两月'] = list(calculate_histvol(df_underlying_core['amt_close'],40)*100)
+    df_underlying_core['2近一月'] = list(calculate_histvol(df_underlying_core['amt_close'],20)*100)
+    df_histvol = df_underlying_core[df_underlying_core['dt_date'] >= startDate]
+    df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
+    df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
+    df_histvol.to_csv('../save_results/' + namecode + '_future_hist_vols.csv')
 
 """隐含波动率期限结构"""
 def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
 
     pu = PlotUtil()
-    engine1 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
+    engine1 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata',
                            echo=False)
     Session1 = sessionmaker(bind=engine1)
     sess1 = Session1()
-
-    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics',
+    engine2 = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics',
                            echo=False)
     Session2 = sessionmaker(bind=engine2)
     sess2 = Session2()
 
-
-    futuresMkt = dbt.FutureMkt
-    optionsInfo = dbt.Options
     optionMetrics = dbt.OptionMetrics
 
     dt_1w = w.tdaysoffset(-1, evalDate, "Period=W").Data[0][0].strftime("%Y-%m-%d")
@@ -182,51 +89,6 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
 
     """波动率期限结构"""
     dates = [evalDate, dt_1w, dt_2w, dt_3w,dt_4w,dt_5w]
-    # optiondata_df = pd.DataFrame()
-    # columns = [
-    #     'date', 'id_instrument', 'implied_vol', 'contract_month',
-    #     'option_type', 'strike', 'underlying_price', 'atm_dif']
-    # optiondata_atm_df = pd.DataFrame(columns=columns)
-    # idx_o = 0
-    # for date in dates:
-    #     optiondataset = sess.query(optionmkt_table, options_table, futuremkt_table) \
-    #         .join(futuremkt_table, optionmkt_table.id_underlying == futuremkt_table.id_instrument) \
-    #         .join(options_table, optionmkt_table.id_instrument == options_table.id_instrument) \
-    #         .filter(optionmkt_table.dt_date == date) \
-    #         .filter(optionmkt_table.datasource == exchangeCode) \
-    #         .filter(optionmkt_table.flag_night != 1) \
-    #         .filter(futuremkt_table.dt_date == date) \
-    #         .filter(futuremkt_table.name_code == nameCode) \
-    #         .filter(futuremkt_table.flag_night != 1) \
-    #         .all()
-    #
-    #     contract_months = []
-    #     for optiondata in optiondataset:
-    #         if optiondata.Options.cd_option_type == 'put': continue
-    #         if int(optiondata.Options.name_contract_month[-2:]) not in [1,5,9]: continue
-    #         optiondata_df.loc[idx_o, 'date'] = date
-    #         optiondata_df.loc[idx_o, 'id_instrument'] = optiondata.OptionMkt.id_instrument
-    #         optiondata_df.loc[idx_o, 'implied_vol'] = optiondata.OptionMkt.pct_implied_vol
-    #         optiondata_df.loc[idx_o, 'contract_month'] = optiondata.Options.name_contract_month
-    #         optiondata_df.loc[idx_o, 'option_type'] = optiondata.Options.cd_option_type
-    #         optiondata_df.loc[idx_o, 'strike'] = optiondata.Options.amt_strike
-    #         optiondata_df.loc[idx_o, 'underlying_price'] = optiondata.FutureMkt.amt_settlement
-    #         optiondata_df.loc[idx_o, 'atm_dif'] = abs(
-    #             optiondata.Options.amt_strike - optiondata.FutureMkt.amt_settlement)
-    #         cm = optiondata.Options.name_contract_month
-    #         if optiondata.Options.name_contract_month not in contract_months:
-    #             contract_months.append(optiondata.Options.name_contract_month)
-    #         idx_o += 1
-    #
-    #     for cm1 in contract_months:
-    #         c = optiondata_df['contract_month'].map(lambda x: x == cm1)
-    #         c1 = optiondata_df['date'].map(lambda x: x == date)
-    #         critiron = c & c1
-    #         df = optiondata_df[critiron]
-    #         idx = df['atm_dif'].idxmin()
-    #         optiondata_atm_df = optiondata_atm_df.append(df.loc[idx], ignore_index=True)
-    # print('atm_implied_vols')
-    # print(optiondata_atm_df)
 
     query_f = sess1.query(futureMkt.dt_date, futureMkt.id_instrument.label('id_underlying'),
                             futureMkt.amt_settlement,futureMkt.flag_night,futureMkt.name_code) \
@@ -239,11 +101,10 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
                                 optionMetrics.pct_implied_vol,optionMetrics.amt_option_price) \
         .filter(or_(optionMetrics.dt_date == evalDate, optionMetrics.dt_date == dt_1w, optionMetrics.dt_date == dt_2w,
                     optionMetrics.dt_date == dt_3w, optionMetrics.dt_date == dt_4w, optionMetrics.dt_date == dt_5w)) \
-        # .filter(optionMetrics.name_code == nameCode)
+        .filter(optionMetrics.name_code == nameCode)
 
     df_future = pd.read_sql(query_f.statement, query_f.session.bind)
     df_metrics = pd.read_sql(query_metrics.statement, query_metrics.session.bind)
-    # df_metrics = df_metrics[(df_metrics['id_instrument'][0] != '5')].reset_index()
     for (idx,row) in df_metrics.iterrows():
         id_option = row['id_instrument']
 
@@ -274,8 +135,6 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
     df_metrics = df_metrics[df_metrics['flag'] == 1].reset_index()
     idx = df_metrics.groupby(['dt_date','id_underlying','cd_option_type'])['diff'].transform(min) == df_metrics['diff']
 
-    # idx = df_metrics.groupby(['dt_date','id_underlying','cd_option_type'])['diff'].max()
-    # df_iv = df_metrics[idx].to_frame()
     df_iv = df_metrics[idx]
     df_call_iv = df_iv[df_iv['cd_option_type']=='call'].sort_values(by=['dt_date','id_underlying'],ascending=False).reset_index()# 选取认购平值合约
     df_put_iv = df_iv[df_iv['cd_option_type']=='put'].sort_values(by=['dt_date','id_underlying'],ascending=False).reset_index()# 选取认沽平值合约
@@ -299,104 +158,21 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
     ax1.set_xticks(range(len(contracts)))
     ax1.set_xticklabels(contracts)
     f1.set_size_inches((12,6))
-    # optiondata_atm_df = optiondata_atm_df[['date','contract_month','implied_vol']]
     optiondata_atm_df.to_csv('../save_results/'+nameCode+'_implied_vol_term_structure.csv')
     f1.savefig('../save_figure/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
-    # ################ #Implied Vol Surface
-
-    # dates_week = [evalDate,w.tdaysoffset(-5, evalDate, "").Data[0][0].strftime("%Y-%m-%d")]
-    # black_var_surfaces = []
-    # for dt in dates_week:
-    #     optionivs_df = pd.DataFrame()
-    #     date = evalDate
-    #     dt_eval = datetime.datetime.strptime(evalDate, '%Y-%m-%d').date()
-    #     ql_evalDate = ql.Date(dt_eval.day, dt_eval.month, dt_eval.year)
-    #     calendar = ql.China()
-    #     daycounter = ql.ActualActual()
-    #     optiondataset = sess.query(optionmkt_table, options_table) \
-    #         .join(options_table, optionmkt_table.id_instrument == options_table.id_instrument) \
-    #         .filter(optionmkt_table.dt_date == date) \
-    #         .filter(optionmkt_table.datasource == 'czce') \
-    #         .all()
-    #     idx_ivs = 0
-    #     for optiondata in optiondataset:
-    #         if optiondata.Options.cd_option_type == 'put': continue
-    #         if optiondata.Options.name_contract_month not in contracts: continue
-    #         optionivs_df.loc[idx_ivs, 'id_instrument'] = optiondata.OptionMkt.id_instrument
-    #         optionivs_df.loc[idx_ivs, 'pct_implied_vol'] = float(optiondata.OptionMkt.pct_implied_vol)
-    #         optionivs_df.loc[idx_ivs, 'dt_maturity'] = optiondata.Options.dt_maturity
-    #         optionivs_df.loc[idx_ivs, 'amt_strike'] = float(optiondata.Options.amt_strike)
-    #         idx_ivs += 1
-    #
-    #     maturities = optionivs_df['dt_maturity'].unique()
-    #     strikes = optionivs_df['amt_strike'].unique()
-    #     volset = []
-    #     year_fracs = []
-    #     core_strikes = []
-    #     ql_maturities = []
-    #     for k in strikes:
-    #         nbr_k = len(optionivs_df[optionivs_df['amt_strike'].map(lambda x: x == k)])
-    #         if nbr_k == maturities.size:
-    #             core_strikes.append(k)
-    #     for dt_m in maturities:
-    #         c0 = optionivs_df['dt_maturity'].map(lambda x: x == dt_m)
-    #         volset.append(optionivs_df[c0]['pct_implied_vol'].values.tolist())
-    #         year_fracs.append((dt_m - dt_eval).days / 365.0)
-    #         ql_maturities.append(ql.Date(dt_m.day, dt_m.month, dt_m.year))
-    #
-    #     implied_vols = ql.Matrix(len(core_strikes), len(maturities))
-    #     for i in range(implied_vols.rows()):
-    #         for j in range(implied_vols.columns()):
-    #             implied_vols[i][j] = volset[j][i]
-    #     plot_years = np.arange(min(year_fracs), max(year_fracs), 0.01)
-    #     plot_strikes = np.arange(min(core_strikes), max(core_strikes), 10.0)
-    #     black_var_surface = ql.BlackVarianceSurface(
-    #         ql_evalDate, calendar, ql_maturities, core_strikes, implied_vols,
-    #         daycounter)
-    #     black_var_surfaces.append(black_var_surface)
-    #
-    # X, Y = np.meshgrid(plot_strikes, plot_years)
-    # Z = np.array([black_var_surfaces[0].blackVol(y, x)
-    #               for xr, yr in zip(X, Y)
-    #               for x, y in zip(xr, yr)]
-    #              ).reshape(len(X), len(X[0]))
-    #
-    # fig2 = plt.figure()
-    # ax_ivs2 = fig2.gca(projection='3d')
-    # surf2 = ax_ivs2.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=plt_cm.coolwarm, linewidth=0.1)
-    # ax_ivs2.set_xlabel('行权价')
-    # ax_ivs2.set_ylabel('期限')
-    # ax_ivs2.set_zlabel('波动率（%）')
-    # fig2.colorbar(surf2, shrink=0.5, aspect=5)
-    #
-    # fig2.savefig('../save_figure/sr_iv_surface_' + str(evalDate) + '.png', dpi=300, format='png')
-
 """历史隐含波动率"""
-def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_future):
-    pu = PlotUtil()
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
-                           echo=False)
-    Session = sessionmaker(bind=engine)
-    sess = Session()
-    engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/metrics',
-                           echo=False)
-    Session2 = sessionmaker(bind=engine2)
-    sess2 = Session2()
+def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,df_future):
 
     optionMetrics = dbt.OptionMetrics
     options_table = dbt.Options
 
-
-    plt.rcParams['font.sans-serif'] = ['STKaiti']
-    plt.rcParams.update({'font.size': 15})
-
-    query_sro = sess2.query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
+    query_sro = admin.session_metrics().query(optionMetrics.dt_date,optionMetrics.id_instrument,optionMetrics.id_underlying,
                             optionMetrics.amt_strike,
                            optionMetrics.cd_option_type,optionMetrics.pct_implied_vol)\
-        .filter(optionMetrics.name_code == nameCode).filter(optionMetrics.dt_date>=dt_last_week)
+        .filter(optionMetrics.name_code == nameCode).filter(optionMetrics.dt_date >= dt_last_week)
 
-    query_mdt = sess.query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
+    query_mdt = admin.session_mktdata().query(options_table.id_instrument,options_table.id_underlying,options_table.dt_maturity)\
         .filter(options_table.cd_exchange == exchangeCode)
 
     df_srf = df_future
@@ -447,63 +223,55 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,contracts,df_futu
         for i in range(2):
             iv = df0.loc[i,'pct_implied_vol']
             if iv == 0.0:iv=np.nan
-            df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = iv
+            df_iv_results.loc[idx_dt,'contract-'+str(i+1)] = iv*100
 
     df_iv_results = df_iv_results.sort_values(by='dt_date',ascending=False)
-    # df = df_iv_results.replace(0.0, None)
     df_iv_results = df_iv_results.dropna()
-    core_ivs = df_iv_results['contract-1'].tolist()
-    current_iv = core_ivs[0]
-    p_75 = np.percentile(core_ivs,75)
-    p_25 = np.percentile(core_ivs,25)
-    p_mid = np.percentile(core_ivs,50)
-    df_iv_results.loc[:,'75分位数（主力合约）'] = p_75
-    df_iv_results.loc[:,'25分位数（主力合约）'] = p_25
-    df_iv_results.loc[:,'中位数（主力合约）'] = p_mid
-    print('hist atm ivs:')
-    print('p_75 : ',p_75)
-    print('p_25 : ',p_25)
-    print('p_mid : ',p_mid)
-    current_iv_pct = 0
-    diff_min = 10000.0
-    for i in range(0,100):
-        p = np.percentile(core_ivs,i)
-        diff = abs(p-current_iv)
-        if diff < diff_min :
-            diff_min = diff
-            current_iv_pct = p
-    print(current_iv_pct)
-    f1, ax1 = plt.subplots()
-
-    pu.plot_line(ax1, 0, df_iv_results['dt_date'], core_ivs, '隐含波动率', '日期', '(%)')
-    pu.plot_line(ax1, 1, df_iv_results['dt_date'], [p_75]*len(core_ivs), '75分位数', '日期', '(%)')
-    pu.plot_line(ax1, 2, df_iv_results['dt_date'], [p_25]*len(core_ivs), '25分位数', '日期', '(%)')
-    pu.plot_line(ax1, 3, df_iv_results['dt_date'], [p_mid]*len(core_ivs), '中位数', '日期', '(%)')
-
-    ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
-               ncol=3, mode="expand", borderaxespad=0.,frameon=False)
-    f1.set_size_inches((12,6))
-    f1.savefig('../save_figure/'+nameCode+'_hist_atm_ivs_' + str(evalDate) + '.png', dpi=300, format='png')
+    # core_ivs = df_iv_results['contract-1'].tolist()
+    # current_iv = core_ivs[0]
+    # p_75 = np.percentile(core_ivs,75)
+    # p_25 = np.percentile(core_ivs,25)
+    # p_mid = np.percentile(core_ivs,50)
+    # df_iv_results.loc[:,'75分位数（主力合约）'] = p_75
+    # df_iv_results.loc[:,'25分位数（主力合约）'] = p_25
+    # df_iv_results.loc[:,'中位数（主力合约）'] = p_mid
+    # print('hist atm ivs:')
+    # print('p_75 : ',p_75)
+    # print('p_25 : ',p_25)
+    # print('p_mid : ',p_mid)
+    # current_iv_pct = 0
+    # diff_min = 10000.0
+    # for i in range(0,100):
+    #     p = np.percentile(core_ivs,i)
+    #     diff = abs(p-current_iv)
+    #     if diff < diff_min :
+    #         diff_min = diff
+    #         current_iv_pct = p
+    # print(current_iv_pct)
+    # f1, ax1 = plt.subplots()
+    #
+    # pu.plot_line(ax1, 0, df_iv_results['dt_date'], core_ivs, '隐含波动率', '日期', '(%)')
+    # pu.plot_line(ax1, 1, df_iv_results['dt_date'], [p_75]*len(core_ivs), '75分位数', '日期', '(%)')
+    # pu.plot_line(ax1, 2, df_iv_results['dt_date'], [p_25]*len(core_ivs), '25分位数', '日期', '(%)')
+    # pu.plot_line(ax1, 3, df_iv_results['dt_date'], [p_mid]*len(core_ivs), '中位数', '日期', '(%)')
+    #
+    # ax1.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
+    #            ncol=3, mode="expand", borderaxespad=0.,frameon=False)
+    # f1.set_size_inches((12,6))
+    # f1.savefig('../save_figure/'+nameCode+'_hist_atm_ivs_' + str(evalDate) + '.png', dpi=300, format='png')
 
     df_iv_results.to_csv('../save_results/'+nameCode+'_hist_atm_ivs.csv')
 
 """当日成交持仓数据"""
 def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
-    w.start()
     pu = PlotUtil()
-    engine = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata',
-                           echo=False)
-    metadata = MetaData(engine)
-    Session = sessionmaker(bind=engine)
-    sess = Session()
-    options_mkt = Table('options_mktdata', metadata, autoload=True)
-
+    options_mkt = admin.table_options_mktdata()
     evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
     plt.rcParams['font.sans-serif'] = ['STKaiti']
     plt.rcParams.update({'font.size': 15})
 
     """当日成交持仓量 """
-    query_volume = sess.query(options_mkt.c.dt_date,
+    query_volume = admin.session_mktdata().query(options_mkt.c.dt_date,
                               options_mkt.c.cd_option_type,
                               options_mkt.c.amt_strike,
                               options_mkt.c.amt_holding_volume,
@@ -591,19 +359,16 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
                  format='png',bbox_inches='tight')
 
 
-
 ############################################################################################
 # Eval Settings
-
-dt_date = datetime.date(2018, 4, 20)  # Set as Friday
-dt_last_week = datetime.date(2018, 4, 13)
+dt_date = datetime.date(2018, 6, 22)  # Set as Friday
+dt_last_week = datetime.date(2018, 6, 18)
 current_core_underlying = 'sr_1809'
 namecode = 'sr'
 exchange_code = 'czce'
 # current_core_underlying = 'm_1809'
 # namecode = 'm'
 # exchange_code = 'dce'
-contracts = ['1809', '1901', '1905','1909']
 
 ############################################################################################
 w.start()
@@ -618,17 +383,17 @@ bd_6m = 6 * bd_1m
 calendar = ql.China()
 pu = PlotUtil()
 ###########################################################################################
-engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
-metadata2 = MetaData(engine2)
-Session2 = sessionmaker(bind=engine2)
-sess2 = Session2()
+# engine2 = create_engine('mysql+pymysql://guest:passw0rd@101.132.148.152/mktdata', echo=False)
+# metadata2 = MetaData(engine2)
+# Session2 = sessionmaker(bind=engine2)
+# sess2 = Session2()
 futureMkt = dbt.FutureMkt
 optionMkt = dbt.OptionMkt
 
 futuremkt_table = dbt.FutureMkt
 options_table = dbt.Options
 
-query_pcr = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id_underlying,
+query_pcr = admin.session_mktdata().query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id_underlying,
                            func.sum(optionMkt.amt_holding_volume).label('total_holding_volume'),
                            func.sum(optionMkt.amt_trading_volume).label('total_trading_volume')
                            ) \
@@ -636,7 +401,7 @@ query_pcr = sess2.query(optionMkt.dt_date, optionMkt.cd_option_type,optionMkt.id
     .filter(optionMkt.name_code == namecode) \
     .group_by(optionMkt.cd_option_type, optionMkt.dt_date,optionMkt.id_underlying)
 
-query_srf = sess2.query(futureMkt.dt_date, futureMkt.id_instrument,
+query_srf = admin.session_mktdata().query(futureMkt.dt_date, futureMkt.id_instrument,
                         futureMkt.amt_close, futureMkt.amt_trading_volume,
                         futureMkt.amt_settlement) \
     .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == namecode)\
@@ -647,10 +412,10 @@ df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
 
 df_underlying_core = pcr(df_pcr)
 hist_vol(df_underlying_core)
-
+print('Part [历史已实现波动率] completed')
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
-hist_atm_ivs(dt_date,dt_last_week,w,namecode,exchange_code,contracts,df_srf)
+hist_atm_ivs(dt_date,dt_last_week,w,namecode,exchange_code,df_srf)
 print('Part [历史隐含波动率] completed')
 trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
 print('Part [当日成交持仓量] completed')

@@ -1,4 +1,4 @@
-from back_test.bkt_strategy import BktOptionStrategy
+from back_test.BktOptionStrategy import BktOptionStrategy
 import pandas as pd
 import QuantLib as ql
 

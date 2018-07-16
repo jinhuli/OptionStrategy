@@ -19,7 +19,7 @@ from OptionStrategyLib.OptionPricing.Options import OptionPlainEuropean
 w.start()
 
 ##################################################################################################
-evalDate = datetime.date(2017,12,8)
+evalDate = datetime.date(2015,8,20)
 ql_evalDate = ql.Date(evalDate.day,evalDate.month,evalDate.year)
 rf = 0.03
 engineType = 'AnalyticEuropeanEngine'
@@ -76,7 +76,7 @@ for (idx,row) in df_option.iterrows():
     close = row['amt_close']
     euro_option = OptionPlainEuropean(strike,ql_mdt,ql_optiontype)
     option_metrics = OptionMetrics(euro_option)
-    implied_vol = option_metrics.implied_vol(evaluation, rf, spot, close)
+    implied_vol = option_metrics.implied_vol(evaluation, rf, spot, close,engineType)
     df_option['pct_implied_vol'].loc[idx] = implied_vol
     df_option['amt_strike'].loc[idx] = strike
 

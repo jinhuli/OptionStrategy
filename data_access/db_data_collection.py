@@ -696,7 +696,7 @@ class DataCollection():
                 pct_change_limit = df['change_limit']
                 dt_listed = df['contract_issue_date'].date()
                 dt_maturity = df['last_trade_date'].date()
-                dt_settlement = df['last_delivery_mouth'].date()
+                # dt_settlement = df['last_delivery_mouth'].date()
                 id_instrument = name_code + '_' + name_contract_month
 
                 db_row = {'id_instrument': id_instrument,
@@ -708,7 +708,7 @@ class DataCollection():
                           'pct_change_limit': pct_change_limit,
                           'dt_listed': dt_listed,
                           'dt_maturity': dt_maturity,
-                          'dt_settlement': dt_settlement,
+                          # 'dt_settlement': dt_settlement,
                           'nbr_multiplier': nbr_multiplier,
                           'cd_exchange': cd_exchange,
                           'timestamp': datetime.datetime.today()
@@ -727,7 +727,7 @@ class DataCollection():
             data = w.wset("optioncontractbasicinfo", "exchange=sse;windcode=510050.SH;status=all")
             optionData = data.Data
             optionFlds = data.Fields
-
+            print('ErrorCode : ',data.ErrorCode)
             wind_code = optionData[optionFlds.index('wind_code')]
             trade_code = optionData[optionFlds.index('trade_code')]
             sec_name = optionData[optionFlds.index('sec_name')]
@@ -938,6 +938,44 @@ class DataCollection():
                 if np.isnan(low): low = -1.0
                 if np.isnan(high): high = -1.0
                 if np.isnan(open_price): open_price = -1.0
+                db_row = {'dt_date': dt,
+                          'id_instrument': id_instrument,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'amt_close': close,
+                          'amt_open': open_price,
+                          'amt_high': high,
+                          'amt_low': low,
+                          'amt_trading_volume': volume,
+                          'amt_trading_value': amt,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
+        def wind_data_index_hist(self, windcode, begdate, enddate, id_instrument):
+            db_data = []
+            datasource = 'wind'
+            data = w.wsd(windcode, "open,high,low,close,volume,amt",
+                         begdate, enddate, "Fill=Previous")
+            df = pd.DataFrame()
+            for i, f in enumerate(data.Fields):
+                df[f] = data.Data[i]
+            df['times'] = data.Times
+            df.fillna(0.0)
+            for (idx, row) in df.iterrows():
+                open_price = row['OPEN']
+                dt = row['times']
+                high = row['HIGH']
+                low = row['LOW']
+                close = row['CLOSE']
+                volume = row['VOLUME']
+                amt = row['AMT']
+                if volume==None: volume = 0.0
+                if amt==None: amt = 0.0
+                if low==None: low = -1.0
+                if high==None: high = -1.0
+                if open_price==None: open_price = -1.0
                 db_row = {'dt_date': dt,
                           'id_instrument': id_instrument,
                           'datasource': datasource,

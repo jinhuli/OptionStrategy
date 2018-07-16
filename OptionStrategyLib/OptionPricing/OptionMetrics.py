@@ -3,74 +3,54 @@ from OptionStrategyLib.OptionPricing import OptionPricingUtil as util
 
 
 class OptionMetrics:
-    def __init__(self, option):
+    def __init__(self, option, rf, engineType):
+        self.Option = option
+        self.rf = rf
+        self.engineType = engineType
+        # self.implied_vol = -1.0
+
+    def reset_option(self, option):
         self.Option = option
 
-    def option_price(self, evaluation, rf, spot_price, vol, engineType):
+    def set_evaluation(self, evaluation):
+        self.evaluation = evaluation
+        return self
 
-        ql_evalDate = evaluation.evalDate
-        # ql.Settings.instance().evaluationDate = ql_evalDate
-        calendar = evaluation.calendar
-        daycounter = evaluation.daycounter
+    def option_price(self, spot_price, vol):
         option = self.Option.option_ql
-        flat_vol_ts = ql.BlackVolTermStructureHandle(
-            ql.BlackConstantVol(ql_evalDate, calendar, vol, daycounter))
-        dividend_ts = ql.YieldTermStructureHandle(
-            ql.FlatForward(ql_evalDate, 0.0, daycounter))
-        yield_ts = ql.YieldTermStructureHandle(ql.FlatForward(ql_evalDate, rf, daycounter))
-        process = ql.BlackScholesMertonProcess(ql.QuoteHandle(ql.SimpleQuote(spot_price)), dividend_ts, yield_ts,
-                                               flat_vol_ts)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
-        # try:
         p = option.NPV()
-        # except RuntimeError as e:
-        #     p = 0.0
         return p
 
-    def implied_vol(self, evaluation, rf, spot_price, option_price, engineType):
-
-        ql_evalDate = evaluation.evalDate
-        # ql.Settings.instance().evaluationDate = ql_evalDate
-        calendar = evaluation.calendar
-        daycounter = evaluation.daycounter
+    def implied_vol(self, spot_price, option_price):
         option = self.Option.option_ql
-        flat_vol_ts = ql.BlackVolTermStructureHandle(
-            ql.BlackConstantVol(ql_evalDate, calendar, 0.0, daycounter))
-        dividend_ts = ql.YieldTermStructureHandle(
-            ql.FlatForward(ql_evalDate, 0.0, daycounter))
-        yield_ts = ql.YieldTermStructureHandle(ql.FlatForward(ql_evalDate, rf, daycounter))
-        process = ql.BlackScholesMertonProcess(ql.QuoteHandle(ql.SimpleQuote(spot_price)), dividend_ts, yield_ts,
-                                               flat_vol_ts)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, 0.0)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
+        # print('pricing metrics eval date : ',self.evaluation.evalDate)
         try:
             implied_vol = option.impliedVolatility(option_price, process, 1.0e-3, 300, 0.05, 5.0)
-        except RuntimeError as e:
+        except:
             implied_vol = 0.0
-        option = None
-        engine = None
+        # self.implied_vol = implied_vol
         return implied_vol
 
-    def delta(self, evaluation, rf, spot_price, option_price, engineType, implied_vol):
+    def delta(self, spot_price, implied_vol):
         option = self.Option.option_ql
-        # if implied_vol == None :
-        #     implied_vol = self.implied_vol(evaluation,rf, spot_price, option_price, engineType)
-        process = evaluation.get_bsmprocess_cnstvol(rf, spot_price, implied_vol)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
         delta = option.delta()
         return delta
 
-    def effective_delta(self, evaluation, rf, spot_price, option_price, engineType,
-                        implied_vol, dS=0.001):
+    def effective_delta(self, spot_price, implied_vol, dS=0.001):
         option_ql = self.Option.option_ql
-        # if implied_vol == None :
-        #     implied_vol = self.implied_vol(evaluation,rf, spot_price, option_price, engineType)
-        process1 = evaluation.get_bsmprocess_cnstvol(rf, spot_price + dS, implied_vol)
-        process2 = evaluation.get_bsmprocess_cnstvol(rf, spot_price - dS, implied_vol)
-        engine1 = util.get_engine(process1, engineType)
-        engine2 = util.get_engine(process2, engineType)
+        process1 = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price + dS, implied_vol)
+        process2 = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price - dS, implied_vol)
+        engine1 = util.get_engine(process1, self.engineType)
+        engine2 = util.get_engine(process2, self.engineType)
         option_ql.setPricingEngine(engine1)
         option_price1 = option_ql.NPV()
         option_ql.setPricingEngine(engine2)
@@ -78,53 +58,63 @@ class OptionMetrics:
         delta_eff = (option_price1 - option_price2) / (2 * dS)
         return delta_eff
 
-    def theta(self, evaluation, rf, spot_price, option_price, engineType,
-              implied_vol):
+    def theta(self, spot_price,implied_vol):
+        """The rate of change in the fair value of the option per one day decrease
+        in the option time when other variables remain constant.
+        This is the negative of the derivative of the option price
+        with respect to the option time (in years), divided by 365."""
         option = self.Option.option_ql
-        # if implied_vol == None:
-        #     implied_vol = self.implied_vol(evaluation, rf, spot_price, option_price, engineType)
-        # print(implied_vol)
-        process = evaluation.get_bsmprocess_cnstvol(rf, spot_price, implied_vol)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
-        theta = option.theta()
+        theta = option.theta()/365.0
         return theta
 
-    def vega(self, evaluation, rf, spot_price, option_price, engineType,
-             implied_vol):
+    def vega(self, spot_price, implied_vol):
+        """The rate of change in the fair value of the option per 1% change in volatility
+         when other variables remain constant.
+         This is the derivative of the option price with respect to the volatility,
+         divided by 100."""
         option = self.Option.option_ql
-        # if implied_vol == None:
-        #     implied_vol = self.implied_vol(evaluation, rf, spot_price, option_price, engineType)
-        process = evaluation.get_bsmprocess_cnstvol(rf, spot_price, implied_vol)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
-        vega = option.vega()
+        vega = option.vega()/100.0
+        # price1 = self.option_price(spot_price, implied_vol)
+        # price2 = self.option_price(spot_price, implied_vol + 0.01)
+        # vega = price2 - price1
         return vega
 
-    def rho(self, evaluation, rf, spot_price, option_price, engineType,
-            implied_vol):
+    def vega_effective(self, spot_price, implied_vol):
+        # option = self.Option.option_ql
+        # process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        # engine = util.get_engine(process, self.engineType)
+        # option.setPricingEngine(engine)
+        # vega = option.vega()
+        price1 = self.option_price(spot_price, implied_vol)
+        price2 = self.option_price(spot_price, implied_vol + 0.01)
+        vega = price2 - price1
+        return vega
+    def rho(self, spot_price, implied_vol):
         option = self.Option.option_ql
-        process = evaluation.get_bsmprocess_cnstvol(rf, spot_price, implied_vol)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
         rho = option.rho()
         return rho
 
-
-    def gamma(self, evaluation, rf, spot_price, option_price, engineType,
-              implied_vol):
+    def gamma(self, spot_price, implied_vol):
         option = self.Option.option_ql
-        process = evaluation.get_bsmprocess_cnstvol(rf, spot_price, implied_vol)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
         gamma = option.gamma()
         return gamma
 
-    def vomma(self, evaluation, rf, spot_price, option_price, engineType,
-              implied_vol):
+    def vomma(self, spot_price, implied_vol):
         option = self.Option.option_ql
-        process = evaluation.get_bsmprocess_cnstvol(rf, spot_price, implied_vol)
-        engine = util.get_engine(process, engineType)
+        process = self.evaluation.get_bsmprocess_cnstvol(self.rf, spot_price, implied_vol)
+        engine = util.get_engine(process, self.engineType)
         option.setPricingEngine(engine)
         vomma = option.vomma()
         return vomma

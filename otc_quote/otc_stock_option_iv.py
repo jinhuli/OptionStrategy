@@ -1,7 +1,6 @@
 import datetime
 import QuantLib as ql
-import pandas as pd
-# from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
+
 
 #######################################################################################
 evalDate = datetime.date(2018, 4, 12)
@@ -13,7 +12,7 @@ rf = 0.03
 dividend_rate = 0.0
 # strike = spot_price
 strike = spot_price
-quote =  7.33/100
+quote = 7.33/100
 option_price = quote*spot_price
 print('=' * 100)
 

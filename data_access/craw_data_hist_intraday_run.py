@@ -4,8 +4,8 @@ from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
 from WindPy import w
 from data_access.db_data_collection import DataCollection
-from back_test.data_option import get_50option_mktdata
-from back_test.bkt_option_set import BktOptionSet
+from data_access.get_data import get_50option_mktdata
+from back_test.BktOptionSet import BktOptionSet
 
 w.start()
 
