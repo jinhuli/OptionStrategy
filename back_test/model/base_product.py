@@ -122,7 +122,7 @@ class BaseProduct(AbstractBaseProduct):
         # TODO
         return True
 
-    def execute_order(self, order: Order) -> bool:
+    def execute_order(self, order: Order):
         raise NotImplementedError("Child class not implement method execute_order.")
     """
     getters

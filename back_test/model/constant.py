@@ -278,7 +278,10 @@ class Util:
     CASH = 'cash'
     TRADE_MARGIN_CAPITAL = 'trade_margin_capital'
     TRADE_MARKET_VALUE = 'trade_market_value'  # 头寸市值
-    TRADE_POSITION_SIZE = 'trade_position_size'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
+    TRADE_BOOK_VALUE = 'trade_book_value'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
+    TRADE_LONG_SHORT = 'long_short'
+    AVERAGE_HOLDING_COST = 'average_holding_cost' # 包含正负号
+    TRADE_REALIZED_PNL = 'realized_pnl'
     DICT_FUTURE_MARGIN_RATE = { # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,

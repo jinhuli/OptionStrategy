@@ -5,25 +5,28 @@ from enum import Enum
 from back_test.model.constant import TradeType, LongShort, Util
 from typing import Union
 
+
 class OrderStatus(Enum):
     INITIAL = 0
     PROCESSING = 1
     COMPLETE = 2
 
+
 class Trade():
     def __init__(self):
         self.pending_orders = []
 
-    def add_pending_order(self,order):
+    def add_pending_order(self, order):
         if order.status == OrderStatus.PROCESSING:
             self.pending_orders.append(order)
             order.trade_unit = order.pending_unit
             order.trade_price = None
             order.time_signal = None
 
+
 class Order(object):
     def __init__(self, dt_trade: datetime.date, id_instrument: str,
-                 trade_type: TradeType, trade_unit: int, trade_price: Union[float,None],
+                 trade_type: TradeType, trade_unit: int, trade_price: Union[float, None],
                  time_signal: Union[datetime.datetime, None], long_short=None):
         super().__init__()
         if trade_unit <= 0:
@@ -50,7 +53,6 @@ class Order(object):
     @property
     def long_short(self) -> LongShort:
         return self._long_short
-
 
     @property
     def dt_trade(self) -> datetime.date:
@@ -128,7 +130,6 @@ class Order(object):
             executed_units = self.trade_unit
             self.status = OrderStatus.COMPLETE
             self.pending_unit = 0.0
-            self.pending_order = None
         else:
             executed_units = max_volume
             self.status = OrderStatus.PROCESSING
@@ -138,12 +139,13 @@ class Order(object):
 
         name_code = self.id_instrument.split("_")[0]
         # buy at slippage tick size higher and sell lower.
-        executed_price = self.trade_price + self._long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+        executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
         excution_res = pd.Series(
             {
                 Util.UUID: uuid.uuid4(),
                 Util.DT_TRADE: self.dt_trade,
                 Util.ID_INSTRUMENT: self.id_instrument,
+                Util.TRADE_LONG_SHORT: self.long_short,
                 Util.TRADE_UNIT: executed_units,
                 Util.TRADE_PRICE: executed_price,
                 Util.TRADE_TYPE: self.trade_type,

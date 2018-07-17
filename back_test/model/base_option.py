@@ -238,5 +238,4 @@ class BaseOption(BaseProduct):
 
     def execute_order(self, order: Order):
         ret: pd.Series =order.trade_with_current_volume(int(self.trading_volume()))
-        print(ret)
 
