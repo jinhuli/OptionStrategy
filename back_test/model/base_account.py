@@ -8,7 +8,7 @@ class BaseAccount():
     def __init__(self, init_fund, leverage=1.0, fee_rate=3.0 / 10000.0, rf=0.03):
         # super().__init__()
         self.df_records = pd.DataFrame()
-        self.list_records = [pd.Series]
+        self.list_records = []
         self.account = pd.DataFrame()
         self.init_fund = init_fund
         self.leverage = leverage
@@ -24,7 +24,7 @@ class BaseAccount():
                                     Util.DT_TRADE: [dt_trade],
                                     Util.TRADE_TYPE: [trade_type],
                                     Util.TRADE_PRICE: [trade_price],
-                                    Util.TRADE_COST: [trade_cost],
+                                    Util.TRANSACTION_COST: [trade_cost],
                                     Util.TRADE_UNIT: [trade_unit],  # 多空体现在unit正负号
                                     Util.TRADE_MARGIN_CAPITAL: [trade_margin_capital]
                                     })

@@ -3,26 +3,25 @@ import uuid
 import pandas as pd
 from enum import Enum
 from back_test.model.constant import TradeType, LongShort, Util
-
+from typing import Union
 
 class OrderStatus(Enum):
     INITIAL = 0
     PROCESSING = 1
     COMPLETE = 2
 
+class Trade():
+    def __init__(self):
+        self.pending_orders = []
 
-class OrderUtil:
-    TICK_SIZE_DICT = {
-        "50etf": 0.0001,
-        "m": 1,
-        "sr": 0.5,
-    }
-
+    def add_pending_order(self,order):
+        if Order is not None:
+            self.pending_orders.append(order)
 
 class Order(object):
     def __init__(self, dt_trade: datetime.date, id_instrument: str,
-                 trade_type: TradeType, trade_unit: int, trade_price: float,
-                 time_signal: datetime.datetime, long_short=None):
+                 trade_type: TradeType, trade_unit: int, trade_price: Union[float,None],
+                 time_signal: Union[datetime.datetime, None], long_short=None):
         super().__init__()
         if trade_unit <= 0:
             print('Order has zero or negative unit.')
@@ -43,6 +42,7 @@ class Order(object):
                 self._long_short = LongShort.SHORT
         else:
             self._long_short = long_short
+        self.execution_res = None
 
     @property
     def long_short(self) -> LongShort:
@@ -120,21 +120,22 @@ class Order(object):
 
     def trade_with_current_volume(self,
                                   max_volume: int,
-                                  multiplier: int,
-                                  transaction_fee_rate: float,
-                                  slippage: int = 1) -> pd.Series:
+                                  slippage: int = 1) -> None:
         if self.trade_unit < max_volume:
             executed_units = self.trade_unit
             self.status = OrderStatus.COMPLETE
+            self.pending_order = None
         else:
             self.pending_unit = self.trade_unit - max_volume
             executed_units = max_volume
             self.status = OrderStatus.PROCESSING
+            self.pending_order = Order(self.dt_trade,self.id_instrument,self.trade_type,
+                                       self.pending_unit,None,None)
+
         name_code = self.id_instrument.split("_")[0]
         # buy at slippage tick size higher and sell lower.
         executed_price = self.trade_price + self._long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
-
-        return pd.Series(
+        excution_res = pd.Series(
             {
                 Util.UUID: uuid.uuid4(),
                 Util.DT_TRADE: self.dt_trade,
@@ -145,3 +146,5 @@ class Order(object):
                 Util.TIME_SIGNAL: self.time_signal,
             }
         )
+
+        self.execution_res = excution_res
