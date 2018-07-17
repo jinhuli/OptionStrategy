@@ -2,7 +2,7 @@ import datetime
 import uuid
 import pandas as pd
 from enum import Enum
-from back_test.model.constant import TradeType
+from back_test.model.constant import TradeType, LongShort, Util
 
 
 class OrderStatus(Enum):
@@ -20,11 +20,13 @@ class OrderUtil:
 
 
 class Order(object):
-
     def __init__(self, dt_trade: datetime.date, id_instrument: str,
                  trade_type: TradeType, trade_unit: int, trade_price: float,
-                 time_signal: datetime.datetime):
+                 time_signal: datetime.datetime, long_short=None):
         super().__init__()
+        if trade_unit <= 0:
+            print('Order has zero or negative unit.')
+            self._trade_unit = abs(trade_unit)
         self._dt_trade: datetime = dt_trade
         self._id_instrument = id_instrument
         self._trade_type = trade_type
@@ -34,6 +36,18 @@ class Order(object):
         self._status = OrderStatus.INITIAL
         self._pending_unit = 0
         self._uuid = uuid.uuid4()
+        if long_short is None:
+            if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:
+                self._long_short = LongShort.LONG
+            else:
+                self._long_short = LongShort.SHORT
+        else:
+            self._long_short = long_short
+
+    @property
+    def long_short(self) -> LongShort:
+        return self._long_short
+
 
     @property
     def dt_trade(self) -> datetime.date:
@@ -104,24 +118,30 @@ class Order(object):
     def uuid(self) -> uuid:
         return self._uuid
 
-    def trade_with_current_volume(self, max_volume: float, slippage: int = 1) -> pd.Series:
+    def trade_with_current_volume(self,
+                                  max_volume: int,
+                                  multiplier: int,
+                                  transaction_fee_rate: float,
+                                  slippage: int = 1) -> pd.Series:
         if self.trade_unit < max_volume:
-            trading_volume = self.trade_unit
+            executed_units = self.trade_unit
             self.status = OrderStatus.COMPLETE
         else:
             self.pending_unit = self.trade_unit - max_volume
-            trading_volume = max_volume
+            executed_units = max_volume
             self.status = OrderStatus.PROCESSING
         name_code = self.id_instrument.split("_")[0]
-        price = self.trade_price + slippage * OrderUtil.TICK_SIZE_DICT[name_code]
+        # buy at slippage tick size higher and sell lower.
+        executed_price = self.trade_price + self._long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+
         return pd.Series(
             {
-                'uuid': uuid.uuid4(),
-                'id_instrumet': self.id_instrument,
-                'unit': trading_volume,
-                'price': price,
-                'type': self.trade_type,
-                'date': self.dt_trade,
-                'signal': self.time_signal,
+                Util.UUID: uuid.uuid4(),
+                Util.DT_TRADE: self.dt_trade,
+                Util.ID_INSTRUMENT: self.id_instrument,
+                Util.TRADE_UNIT: executed_units,
+                Util.TRADE_PRICE: executed_price,
+                Util.TRADE_TYPE: self.trade_type,
+                Util.TIME_SIGNAL: self.time_signal,
             }
         )

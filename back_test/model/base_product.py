@@ -25,6 +25,7 @@ class BaseProduct(AbstractBaseProduct):
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.eval_date: datetime.date = None
+        self.eval_datetime: datetime.datetime = None
         self.current_state: pd.Series = None
         self.current_daily_state: pd.Series = None
         self.rf = rf
@@ -39,17 +40,24 @@ class BaseProduct(AbstractBaseProduct):
             # overwrite date col based on data in datetime col.
             self.df_data[Util.DT_DATE] = self.df_data[Util.DT_DATETIME].apply(lambda x: x.date())
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
+            self.eval_datetime: datetime.datetime  = self.df_data.loc[0][Util.DT_DATETIME]
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
             # TODO: preprocess df_daily
         else:
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
-
+            self.eval_datetime: datetime.datetime  = datetime.datetime(self.eval_date.year,
+                                                                       self.eval_date.month,
+                                                                       self.eval_date.day,
+                                                                       0,0,0)
         self._generate_required_columns_if_missing()
         self.validate_data()
 
     def validate_data(self) -> None:
         return
+
+    def _generate_required_columns_if_missing(self) -> None:
+        return None
 
     def next(self) -> None:
         if not self.has_next():
@@ -64,7 +72,13 @@ class BaseProduct(AbstractBaseProduct):
         self.current_index += 1
         self.current_state = self.df_data.loc[self.current_index]
         self.eval_date = self.current_state[Util.DT_DATE]
-
+        if self.frequency not in Util.LOW_FREQUENT:
+            self.eval_datetime = self.current_state[Util.DT_DATETIME]
+        else:
+            self.eval_datetime: datetime.datetime = datetime.datetime(self.eval_date.year,
+                                                                      self.eval_date.month,
+                                                                      self.eval_date.day,
+                                                                      0, 0, 0)
     # TODO: Is daily state necessary in high freq data?
     def update_current_daily_state(self) -> None:
         if self.df_daily_data is None:
@@ -80,14 +94,6 @@ class BaseProduct(AbstractBaseProduct):
     def get_current_dayly_state(self) -> pd.Series:
         return self.current_daily_state
 
-    def _generate_required_columns_if_missing(self) -> None:
-        required_column_list = Util.PRODUCT_COLUMN_LIST
-        columns = self.df_data.columns
-        for column in required_column_list:
-            if column not in columns:
-                # if not columns.contains(column):
-                print("{} missing column {}", self.__repr__(), column)
-                self.df_data[column] = None
 
     def __repr__(self) -> str:
         return 'BaseProduct(id_instrument: {0},eval_date: {1},frequency: {2})' \

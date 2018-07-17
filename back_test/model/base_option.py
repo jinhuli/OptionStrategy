@@ -239,23 +239,4 @@ class BaseOption(BaseProduct):
     def execute_order(self, order: Order):
         ret: pd.Series =order.trade_with_current_volume(int(self.trading_volume()))
         print(ret)
-        """
-        update multiplier adjustment.
-        """
-    #
-    # # TODO: ask my queen for detail
-    # def update_multiplier_adjustment(self):
-    #     if self.name_code() == '50etf':
-    #         self.df_data[Util.AMT_ADJ_STRIKE] = \
-    #             round(self.df_data[Util.AMT_STRIKE] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
-    #         self.df_data[Util.AMT_ADJ_OPTION_PRICE] = \
-    #             round(self.df_data[Util.AMT_SETTLEMENT] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
-    #     else:
-    #         self.df_data[Util.AMT_ADJ_STRIKE] = self.df_data[Util.AMT_STRIKE]
-    #         self.df_data[Util.AMT_ADJ_OPTION_PRICE] = self.df_data[Util.AMT_SETTLEMENT]
-    #
-    # # TODO: ask my queen for reason of doing nothing for non-50etf
-    # def update_applicable_strikes(self):
-    #     if self.name_code() == '50etf':
-    #         self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(ETF.fun_applicable_strikes, axis=1)
-    #         self.df_data[Util.AMT_APPLICABLE_MULTIPLIER] = self.df_data.apply(ETF.fun_applicable_multiplier, axis=1)
+
