@@ -5,9 +5,9 @@ from back_test.model.constant import FrequentType, Util
 from back_test.model.base_product import BaseProduct
 
 
-class BaseFuture(BaseProduct):
+class BaseFutureCoutinuous(BaseProduct):
     """
-    BaseFuture: For Independent Future.
+    BaseFuture: For Independent Future or Future Continuous.
     """
 
     def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
@@ -21,30 +21,28 @@ class BaseFuture(BaseProduct):
 
     """ getters """
 
-    def contract_month(self) -> Union[str, None]:
-        return self.current_state[Util.NAME_CONTRACT_MONTH]
-
     def get_margin(self) -> Union[float,None]:
         margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
         pre_settle_price = self.mktprice_last_settlement()
         margin = pre_settle_price * margin_rate * self.multiplier
         return margin
 
-    def maturitydt(self) -> Union[datetime.date,None]:
-        return self.current_state[Util.DT_MATURITY]
-
     def multiplier(self) -> Union[int,None]:
         return self.multiplier
 
+    """ 与base_product里不同，主力连续价格系列中id_instrument会变 """
+    def id_instrument(self) -> Union[str,None]:
+        return self.current_state[Util.ID_INSTRUMENT]
 
-    def is_core(self) -> Union[bool,None]:
-        core_months = Util.DICT_FUTURE_CORE_CONTRACT[self.name_code()]
-        if core_months == Util.STR_ALL:
-            return True
+    """ Intraday Weighted Average Price """
+    def volume_weigted_average_price(self) -> Union[float,None]:
+        if self.frequency in Util.LOW_FREQUENT:
+            return self.mktprice_close()
         else:
-            month = int(self.contract_month()[-2:])
-            if month in core_months:
-                return True
-            else:
-                return False
+            df_today = self.df_data[self.df_data[Util.DT_DATE]==self.eval_date]
+            df_today.loc[:,'volume_price'] = df_today[Util.AMT_TRADING_VOLUME]*df_today[Util.AMT_CLOSE]
+            vwap = df_today['volume_price'].sum()/df_today[Util.AMT_TRADING_VOLUME].sum()
+            return vwap
+
+    # TODO: 主力连续的仓换月周/日；移仓换月成本
 
