@@ -32,6 +32,7 @@ class BaseAccount():
 
     def add_record(self, order: Order):
         self.list_records.append(order)
+        # TODO : 及时计算账户资产、现金、保证金、杠杆等基本要素
 
     def get_investable_market_value(self):
         return self.cash * self.leverage

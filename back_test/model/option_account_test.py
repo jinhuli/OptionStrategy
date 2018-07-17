@@ -6,7 +6,7 @@ from back_test.model.base_account import BaseAccount
 from data_access.get_data import get_50option_mktdata, get_index_mktdata, get_dzqh_cf_minute
 import datetime
 from back_test.model.trade import Order, Trade
-from back_test.model.constant import TradeType
+from back_test.model.constant import TradeType,Util,FrequentType
 
 start_date = datetime.date(2017, 10, 1)
 end_date = datetime.date(2017, 11, 21)
@@ -17,7 +17,7 @@ end_date = datetime.date(2017, 11, 21)
 # option_set.init()
 # index = BaseInstrument(df_index_metrics)
 df_cf_minute = get_dzqh_cf_minute(start_date, end_date, 'if')
-future = BaseFutureCoutinuous(df_cf_minute)
+future = BaseFutureCoutinuous(df_cf_minute,frequency=FrequentType.MINUTE)
 future.init()
 account = BaseAccount(100000.0)
 trading_desk = Trade()
@@ -26,12 +26,12 @@ while future.has_next():
     order = Order(future.eval_date,
                   future.id_instrument(),
                   TradeType.OPEN_LONG,
-                  1,
+                  1000,
                   future.mktprice_close(),
                   future.eval_datetime)
-    future.execute_order(order)
-    account.add_record(order.execution_res)
-    trading_desk.add_pending_order(order.pending_order)
+    execution_res = future.execute_order(order)
+    account.add_record(execution_res)
+    trading_desk.add_pending_order(order)
     future.next()
 
 

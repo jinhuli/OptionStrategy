@@ -15,8 +15,11 @@ class Trade():
         self.pending_orders = []
 
     def add_pending_order(self,order):
-        if Order is not None:
+        if order.status == OrderStatus.PROCESSING:
             self.pending_orders.append(order)
+            order.trade_unit = order.pending_unit
+            order.trade_price = None
+            order.time_signal = None
 
 class Order(object):
     def __init__(self, dt_trade: datetime.date, id_instrument: str,
@@ -124,13 +127,14 @@ class Order(object):
         if self.trade_unit < max_volume:
             executed_units = self.trade_unit
             self.status = OrderStatus.COMPLETE
+            self.pending_unit = 0.0
             self.pending_order = None
         else:
-            self.pending_unit = self.trade_unit - max_volume
             executed_units = max_volume
             self.status = OrderStatus.PROCESSING
-            self.pending_order = Order(self.dt_trade,self.id_instrument,self.trade_type,
-                                       self.pending_unit,None,None)
+            self.pending_unit = self.trade_unit - max_volume
+            # self.pending_order = Order(self.dt_trade,self.id_instrument,self.trade_type,
+            #                            self.pending_unit,None,None)
 
         name_code = self.id_instrument.split("_")[0]
         # buy at slippage tick size higher and sell lower.
