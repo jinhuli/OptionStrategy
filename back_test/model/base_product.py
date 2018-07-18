@@ -236,3 +236,4 @@ class BaseProduct(AbstractBaseProduct):
                 return self.current_state[Util.AMT_OPEN]
             return self.df_data.loc[self.current_index - 1][Util.AMT_CLOSE]
         return ret
+
