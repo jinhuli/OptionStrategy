@@ -16,6 +16,7 @@ class Trade():
     def __init__(self):
         self.pending_orders = []
 
+
     def add_pending_order(self, order):
         if order.status == OrderStatus.PROCESSING:
             self.pending_orders.append(order)

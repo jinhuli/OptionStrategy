@@ -272,7 +272,7 @@ class Util:
     TRADE_TYPE = 'trade_type'
     TRADE_PRICE = 'trade_price'
     TRANSACTION_COST = 'transaction_cost'
-    TRADE_UNIT = 'trade_unit'
+    TRADE_UNIT = 'trade_unit' # 绝对值
     TIME_SIGNAL = 'time_signal'
     OPTION_PREMIIUM = 'option_premium'
     CASH = 'cash'
@@ -280,8 +280,11 @@ class Util:
     TRADE_MARKET_VALUE = 'trade_market_value'  # 头寸市值
     TRADE_BOOK_VALUE = 'trade_book_value'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
     TRADE_LONG_SHORT = 'long_short'
-    AVERAGE_HOLDING_COST = 'average_holding_cost' # 包含正负号
+    AVERAGE_POSITION_COST = 'average_position_cost' # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
     TRADE_REALIZED_PNL = 'realized_pnl'
+    LAST_PRICE = 'last_price'
+    TRADE_BOOK_COLUMN_LIST = [TRADE_LONG_SHORT, TRADE_UNIT, LAST_PRICE, TRADE_MARGIN_CAPITAL,
+                              TRADE_BOOK_VALUE, AVERAGE_POSITION_COST, TRADE_REALIZED_PNL] # ID_INSTRUMENR是df的index
     DICT_FUTURE_MARGIN_RATE = { # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,

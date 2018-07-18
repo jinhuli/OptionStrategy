@@ -55,7 +55,8 @@ class BaseFutureCoutinuous(BaseProduct):
     # TODO: 主力连续的仓换月周/日；移仓换月成本
 
 
-    def execute_order(self, order: Order) -> pd.Series:
+    def execute_order(self, order: Order):
+        if order is None : return
         order.trade_with_current_volume(int(self.trading_volume()), self.fee_rate)
         execution_record: pd.Series = order.execution_res
         # calculate margin requirement
@@ -74,6 +75,6 @@ class BaseFutureCoutinuous(BaseProduct):
         execution_record[
             Util.TRADE_BOOK_VALUE] = position_size  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
         execution_record[Util.TRADE_MARGIN_CAPITAL] = margin_requirement
-        execution_record[
-            Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
+        # execution_record[
+        #     Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
         return execution_record
