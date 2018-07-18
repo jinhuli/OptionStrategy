@@ -60,7 +60,8 @@ order = account.create_trade_order(future.eval_date,
                                    future.id_instrument(),
                                    TradeType.CLOSE_SHORT,
                                    future.mktprice_close(),
-                                   future.eval_datetime
+                                   future.eval_datetime,
+                                   future.multiplier(),
                                    )
 execution_res = future.execute_order(order)
 account.add_record(execution_res, future)
