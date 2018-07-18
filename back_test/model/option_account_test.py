@@ -19,46 +19,49 @@ end_date = datetime.date(2017, 11, 21)
 df_cf_minute = get_dzqh_cf_minute(start_date, end_date, 'if')
 future = BaseFutureCoutinuous(df_cf_minute, frequency=FrequentType.MINUTE)
 future.init()
-account = BaseAccount(10000000.0)
+account = BaseAccount(Util.BILLION)
 trading_desk = Trade()
 # while future.has_next():
 # for option in option_set.eligible_options:
 order = account.create_trade_order(future.eval_date,
-                                  future.id_instrument(),
-                                  TradeType.OPEN_LONG,
-                                  future.mktprice_close(),
-                                  future.eval_datetime,
-                                  10)
+                                   future.id_instrument(),
+                                   TradeType.OPEN_LONG,
+                                   future.mktprice_close(),
+                                   future.eval_datetime,
+                                   future.multiplier(),
+                                   10)
 execution_res = future.execute_order(order)
-account.add_record(execution_res,future)
+account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
 order = account.create_trade_order(future.eval_date,
-                                  future.id_instrument(),
-                                  TradeType.OPEN_SHORT,
-                                  future.mktprice_close(),
-                                  future.eval_datetime,
-                                  5)
+                                   future.id_instrument(),
+                                   TradeType.OPEN_SHORT,
+                                   future.mktprice_close(),
+                                   future.eval_datetime,
+                                   future.multiplier(),
+                                   5)
 execution_res = future.execute_order(order)
-account.add_record(execution_res)
+account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
 order = account.create_trade_order(future.eval_date,
-                                  future.id_instrument(),
-                                  TradeType.OPEN_SHORT,
-                                  future.mktprice_close(),
-                                  future.eval_datetime,
-                                  10)
+                                   future.id_instrument(),
+                                   TradeType.OPEN_SHORT,
+                                   future.mktprice_close(),
+                                   future.eval_datetime,
+                                   future.multiplier(),
+                                   10)
 execution_res = future.execute_order(order)
-account.add_record(execution_res)
+account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
 order = account.create_trade_order(future.eval_date,
-                                  future.id_instrument(),
-                                  TradeType.CLOSE_SHORT,
-                                  future.mktprice_close(),
-                                  future.eval_datetime
-                                  )
+                                   future.id_instrument(),
+                                   TradeType.CLOSE_SHORT,
+                                   future.mktprice_close(),
+                                   future.eval_datetime
+                                   )
 execution_res = future.execute_order(order)
-account.add_record(execution_res)
+account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)

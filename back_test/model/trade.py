@@ -141,6 +141,8 @@ class Order(object):
         name_code = self.id_instrument.split("_")[0]
         # buy at slippage tick size higher and sell lower.
         executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+        # transaction cost will be added in base_product
+        slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
         excution_res = pd.Series(
             {
                 Util.UUID: uuid.uuid4(),
@@ -151,6 +153,7 @@ class Order(object):
                 Util.TRADE_PRICE: executed_price,
                 Util.TRADE_TYPE: self.trade_type,
                 Util.TIME_SIGNAL: self.time_signal,
+                Util.TRANSACTION_COST: slippage_cost
             }
         )
 

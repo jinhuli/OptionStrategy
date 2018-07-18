@@ -44,8 +44,6 @@ class BaseAccount():
         if base_product.id_instrument() not in self.dict_holding.keys():
             self.dict_holding.update({base_product.id_instrument():base_product})
 
-
-    # TODO : MULTIPLIER
     def add_record(self, execution_record: pd.Series, base_product: BaseProduct):
         if execution_record is None: return
         self.list_records.append(execution_record)
@@ -58,7 +56,7 @@ class BaseAccount():
                 if book_series[Util.TRADE_UNIT] == execution_record[Util.TRADE_UNIT]:
                     self.dict_holding.pop(id_instrument, None)
                     book_series[Util.TRADE_UNIT] = 0
-                    book_series[Util.TRADE_REALIZED_PNL] += self.dict_holding[id_instrument].multiplier()*\
+                    book_series[Util.TRADE_REALIZED_PNL] += book_series[Util.NBR_MULTIPLIER]*\
                         execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_LONG_SHORT] * \
                         (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     book_series[Util.TRADE_BOOK_VALUE] = 0.0
@@ -73,7 +71,7 @@ class BaseAccount():
                     margin_released = book_series[Util.TRADE_MARGIN_CAPITAL] * ratio
                     book_series[Util.TRADE_MARGIN_CAPITAL] -= margin_released
                     book_series[Util.TRADE_BOOK_VALUE] = book_series[Util.TRADE_BOOK_VALUE] * (1 - ratio)
-                    realized_pnl = self.dict_holding[id_instrument].multiplier()*\
+                    realized_pnl = book_series[Util.NBR_MULTIPLIER]*\
                                    execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_LONG_SHORT].value * \
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     book_series[Util.TRADE_REALIZED_PNL] += realized_pnl
@@ -90,7 +88,7 @@ class BaseAccount():
                     book_series[Util.TRADE_BOOK_VALUE] = execution_record[Util.TRADE_LONG_SHORT] * book_series[
                         Util.TRADE_UNIT] * execution_record[Util.TRADE_PRICE]
                     book_series[Util.AVERAGE_POSITION_COST] = execution_record[Util.TRADE_PRICE]
-                    realized_pnl = self.dict_holding[id_instrument].multiplier() * book_series[Util.TRADE_UNIT] * \
+                    realized_pnl = book_series[Util.NBR_MULTIPLIER] * book_series[Util.TRADE_UNIT] * \
                                    book_series[Util.TRADE_LONG_SHORT] * \
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     book_series[Util.TRADE_REALIZED_PNL] += realized_pnl
@@ -112,21 +110,23 @@ class BaseAccount():
                 Util.TRADE_BOOK_VALUE: execution_record[Util.TRADE_BOOK_VALUE],
                 Util.TRADE_LONG_SHORT: execution_record[Util.TRADE_LONG_SHORT],
                 Util.AVERAGE_POSITION_COST: execution_record[Util.TRADE_PRICE],
-                Util.TRADE_REALIZED_PNL: 0.0
+                Util.TRADE_REALIZED_PNL: 0.0,
+                Util.NBR_MULTIPLIER: base_product.multiplier()
             })
             self.trade_book.loc[id_instrument] = book_series
             self.cash -= execution_record[Util.TRADE_MARGIN_CAPITAL]
         self.update_account_status()
 
     def update_account_status(self):
-        total_mtm_position = (self.trade_book.loc[:, Util.TRADE_UNIT] * self.trade_book.loc[:, Util.LAST_PRICE]).sum()
+        total_mtm_position = (self.trade_book.loc[:, Util.TRADE_UNIT] * self.trade_book.loc[:, Util.LAST_PRICE]
+                              * self.trade_book[Util.NBR_MULTIPLIER]).sum()
         total_margin = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
         self.actual_leverage = total_mtm_position / (self.cash + total_margin)
         self.total_mtm_position = total_mtm_position
 
     def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,
                           trade_type: TradeType, trade_price: Union[float, None],
-                          time_signal: Union[datetime.datetime, None],
+                          time_signal: Union[datetime.datetime, None], multiplier: float,
                           trade_unit: int = None, long_short=None):
         if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
             book_series = self.trade_book.loc[id_instrument]
@@ -138,7 +138,7 @@ class BaseAccount():
             order = Order(dt_trade, id_instrument, trade_type, trade_unit, trade_price,
                           time_signal, long_short)
             return order
-        max_unit = np.floor(self.get_investable_market_value() / trade_price)
+        max_unit = np.floor(self.get_investable_market_value() / (trade_price * multiplier))
         if max_unit < 1:
             return
         else:

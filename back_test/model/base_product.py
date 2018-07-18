@@ -128,6 +128,9 @@ class BaseProduct(AbstractBaseProduct):
     getters
     """
 
+    def multiplier(self) -> int:
+        return 1
+
     def name_code(self) -> str:
         return self._name_code
 
