@@ -45,7 +45,7 @@ class BaseAccount():
             self.dict_holding.update({base_product.id_instrument():base_product})
 
 
-    # TODO : 及时计算账户资产、现金、保证金、杠杆等基本要素
+    # TODO : MULTIPLIER
     def add_record(self, execution_record: pd.Series, base_product: BaseProduct):
         if execution_record is None: return
         self.list_records.append(execution_record)
@@ -58,7 +58,7 @@ class BaseAccount():
                 if book_series[Util.TRADE_UNIT] == execution_record[Util.TRADE_UNIT]:
                     self.dict_holding.pop(id_instrument, None)
                     book_series[Util.TRADE_UNIT] = 0
-                    book_series[Util.TRADE_REALIZED_PNL] += \
+                    book_series[Util.TRADE_REALIZED_PNL] += self.dict_holding[id_instrument].multiplier()*\
                         execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_LONG_SHORT] * \
                         (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     book_series[Util.TRADE_BOOK_VALUE] = 0.0
@@ -67,14 +67,14 @@ class BaseAccount():
                     self.cash += book_series[Util.TRADE_REALIZED_PNL]
                 # """ close partial """
                 elif book_series[Util.TRADE_UNIT] > execution_record[Util.TRADE_UNIT]:
-                    closed_ratio = (book_series[Util.TRADE_UNIT] - execution_record[Util.TRADE_UNIT]) / book_series[
-                        Util.TRADE_UNIT]
+                    ratio = execution_record[Util.TRADE_UNIT]/ book_series[Util.TRADE_UNIT]
                     book_series[Util.TRADE_UNIT] -= execution_record[Util.TRADE_UNIT]
                     book_series[Util.LAST_PRICE] = execution_record[Util.TRADE_PRICE]
-                    margin_released = book_series[Util.TRADE_MARGIN_CAPITAL] * closed_ratio
+                    margin_released = book_series[Util.TRADE_MARGIN_CAPITAL] * ratio
                     book_series[Util.TRADE_MARGIN_CAPITAL] -= margin_released
-                    book_series[Util.TRADE_BOOK_VALUE] = book_series[Util.TRADE_BOOK_VALUE] * closed_ratio
-                    realized_pnl = execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_LONG_SHORT].value * \
+                    book_series[Util.TRADE_BOOK_VALUE] = book_series[Util.TRADE_BOOK_VALUE] * (1 - ratio)
+                    realized_pnl = self.dict_holding[id_instrument].multiplier()*\
+                                   execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_LONG_SHORT].value * \
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     book_series[Util.TRADE_REALIZED_PNL] += realized_pnl
                     self.cash += realized_pnl + margin_released
@@ -84,15 +84,14 @@ class BaseAccount():
                     book_series[Util.TRADE_UNIT] = execution_record[Util.TRADE_UNIT] - book_series[Util.TRADE_UNIT]
                     book_series[Util.LAST_PRICE] = execution_record[Util.TRADE_PRICE]
                     actual_margin_required = execution_record[Util.TRADE_MARGIN_CAPITAL] * \
-                                             (
-                                                 book_series[Util.TRADE_UNIT] / execution_record[
-                                                     Util.TRADE_MARGIN_CAPITAL])
+                                             (1 - book_series[Util.TRADE_UNIT] / execution_record[Util.TRADE_UNIT])
                     margin_released = book_series[Util.TRADE_MARGIN_CAPITAL]
                     book_series[Util.TRADE_MARGIN_CAPITAL] = actual_margin_required
                     book_series[Util.TRADE_BOOK_VALUE] = execution_record[Util.TRADE_LONG_SHORT] * book_series[
                         Util.TRADE_UNIT] * execution_record[Util.TRADE_PRICE]
                     book_series[Util.AVERAGE_POSITION_COST] = execution_record[Util.TRADE_PRICE]
-                    realized_pnl = book_series[Util.TRADE_UNIT] * book_series[Util.TRADE_LONG_SHORT] * \
+                    realized_pnl = self.dict_holding[id_instrument].multiplier() * book_series[Util.TRADE_UNIT] * \
+                                   book_series[Util.TRADE_LONG_SHORT] * \
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     book_series[Util.TRADE_REALIZED_PNL] += realized_pnl
                     self.cash += realized_pnl - actual_margin_required + margin_released
