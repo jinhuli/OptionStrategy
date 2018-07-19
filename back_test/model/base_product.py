@@ -43,7 +43,6 @@ class BaseProduct(AbstractBaseProduct):
             self.eval_datetime: datetime.datetime  = self.df_data.loc[0][Util.DT_DATETIME]
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
-            # TODO: preprocess df_daily
         else:
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
             self.eval_datetime: datetime.datetime  = datetime.datetime(self.eval_date.year,
@@ -57,13 +56,27 @@ class BaseProduct(AbstractBaseProduct):
         return
 
     def _generate_required_columns_if_missing(self) -> None:
-        return None
+        required_column_list = Util.PRODUCT_COLUMN_LIST
+        columns = self.df_data.columns
+        for column in required_column_list:
+            if column not in columns:
+                self.df_data[column] = None
+        if self.df_daily_data.empty:
+            for column in required_column_list:
+                self.df_daily_data[column] = None
+        else:
+            columns2 = self.df_daily_data.columns
+            for column in required_column_list:
+                if column not in columns2:
+                    self.df_daily_data[column] = None
 
     def next(self) -> None:
         if not self.has_next():
             return None
         self.update_current_state()
         self.update_current_daily_state()
+
+    #TODO: ADD NEXT DAY METHOD
 
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
@@ -83,7 +96,7 @@ class BaseProduct(AbstractBaseProduct):
     def update_current_daily_state(self) -> None:
         if self.df_daily_data is None:
             return
-        if self.current_daily_state[Util.DT_DATE] == self.current_state[Util.DT_DATE]:
+        if self.current_daily_state is not None and self.current_daily_state[Util.DT_DATE] == self.current_state[Util.DT_DATE]:
             return
         self.current_daily_index += 1
         self.current_daily_state = self.df_daily_data.loc[self.current_daily_index]
@@ -127,6 +140,10 @@ class BaseProduct(AbstractBaseProduct):
     """
     getters
     """
+
+    """ 用于计算杠杆率 ：基础证券交易不包含保证金current value为当前价格 """
+    def get_current_value(self):
+        return self.mktprice_close()
 
     def multiplier(self) -> int:
         return 1
@@ -218,12 +235,12 @@ class BaseProduct(AbstractBaseProduct):
         if self.frequency in Util.LOW_FREQUENT:
             ret = self.current_state[Util.AMT_LAST_SETTLEMENT]
             if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
-                return None if self.current_index == 0 \
+                return self.mktprice_close() if self.current_index == 0 \
                     else self.df_data.loc[self.current_index - 1][Util.AMT_SETTLEMENT]
         else:
             ret = self.current_daily_state[Util.AMT_LAST_SETTLEMENT]
             if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
-                return None if self.current_daily_index == 0 \
+                return self.mktprice_close() if self.current_daily_index == 0 \
                     else self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
         return ret
 
@@ -237,3 +254,8 @@ class BaseProduct(AbstractBaseProduct):
             return self.df_data.loc[self.current_index - 1][Util.AMT_CLOSE]
         return ret
 
+    def get_initial_margin(self) -> float:
+        return 0.0
+
+    def get_maintain_margin(self) -> float:
+        return 0.0

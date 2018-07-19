@@ -3,7 +3,7 @@ from back_test.model.base_option_set import BaseOptionSet
 from back_test.model.base_instrument import BaseInstrument
 from back_test.model.base_future_coutinuous import BaseFutureCoutinuous
 from back_test.model.base_account import BaseAccount
-from data_access.get_data import get_50option_mktdata, get_index_mktdata, get_dzqh_cf_minute
+from data_access.get_data import get_50option_mktdata, get_index_mktdata, get_dzqh_cf_minute,get_dzqh_cf_daily
 import datetime
 from back_test.model.trade import Order, Trade
 from back_test.model.constant import TradeType, Util, FrequentType
@@ -17,12 +17,14 @@ end_date = datetime.date(2017, 11, 21)
 # option_set.init()
 # index = BaseInstrument(df_index_metrics)
 df_cf_minute = get_dzqh_cf_minute(start_date, end_date, 'if')
-future = BaseFutureCoutinuous(df_cf_minute, frequency=FrequentType.MINUTE)
+df_cf = get_dzqh_cf_daily(start_date, end_date, 'if')
+future = BaseFutureCoutinuous(df_cf_minute, df_cf, frequency=FrequentType.MINUTE)
 future.init()
 account = BaseAccount(Util.BILLION)
 trading_desk = Trade()
 # while future.has_next():
 # for option in option_set.eligible_options:
+# TODO: Create and execute order could be implemented in base_product class.
 order = account.create_trade_order(future.eval_date,
                                    future.id_instrument(),
                                    TradeType.OPEN_LONG,
@@ -56,6 +58,9 @@ execution_res = future.execute_order(order)
 account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
+
+account.daily_accounting()
+
 order = account.create_trade_order(future.eval_date,
                                    future.id_instrument(),
                                    TradeType.CLOSE_SHORT,

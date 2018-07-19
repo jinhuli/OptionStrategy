@@ -17,7 +17,7 @@ class BaseFutureCoutinuous(BaseProduct):
         self._multiplier = Util.DICT_CONTRACT_MULTIPLIER[self.name_code()]
         self.fee_rate = Util.DICT_TRANSACTION_FEE_RATE[self.name_code()]
         self.fee_per_unit = Util.DICT_TRANSACTION_FEE[self.name_code()]
-        self.margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
+        self._margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
 
     def __repr__(self) -> str:
         return 'BaseInstrument(id_instrument: {0},eval_date: {1},frequency: {2})' \
@@ -25,10 +25,16 @@ class BaseFutureCoutinuous(BaseProduct):
 
     """ getters """
 
-    def get_margin(self) -> Union[float, None]:
-        margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
+    def margin_rate(self) -> Union[float,None]:
+        return self._margin_rate
+
+    def get_initial_margin(self) -> Union[float,None]:
         pre_settle_price = self.mktprice_last_settlement()
-        margin = pre_settle_price * margin_rate * self._multiplier
+        margin = pre_settle_price * self._margin_rate * self._multiplier
+        return margin
+
+    def get_maintain_margin(self) -> Union[float, None]:
+        margin = self.mktprice_close() * self._margin_rate * self._multiplier
         return margin
 
     """ 期货合约既定name_code的multiplier为固定值,不需要到current state里找 """
@@ -41,8 +47,12 @@ class BaseFutureCoutinuous(BaseProduct):
     def id_instrument(self) -> Union[str, None]:
         return self.current_state[Util.ID_INSTRUMENT]
 
-    """ Intraday Weighted Average Price """
+    """ 用于计算杠杆率 ：保证金交易，current value为零 """
+    def get_current_value(self):
+        return 0.0
 
+
+    """ Intraday Weighted Average Price """
     def volume_weigted_average_price(self) -> Union[float, None]:
         if self.frequency in Util.LOW_FREQUENT:
             return self.mktprice_close()
@@ -60,9 +70,7 @@ class BaseFutureCoutinuous(BaseProduct):
         order.trade_with_current_volume(int(self.trading_volume()), slippage)
         execution_record: pd.Series = order.execution_res
         # calculate margin requirement
-        margin_requirement = self.margin_rate * execution_record[Util.TRADE_PRICE] * execution_record[
-            Util.TRADE_UNIT] * self._multiplier
-
+        margin_requirement = self.get_initial_margin() * execution_record[Util.TRADE_UNIT]
         if self.fee_per_unit is None:
             # 百分比手续费
             transaction_fee = execution_record[Util.TRADE_PRICE] * self.fee_rate * execution_record[

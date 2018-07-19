@@ -6,7 +6,7 @@ from back_test.model.trade import Order
 
 class BaseInstrument(BaseProduct):
     """
-    BaseInstrument: base class for financial product like instrument.
+    BaseInstrument: STOCK/ETF/INDEX
     """
 
     def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
@@ -20,3 +20,7 @@ class BaseInstrument(BaseProduct):
 
     def execute_order(self, order: Order):
         return True
+
+    """ 用于计算杠杆率 ：基础证券交易不包含保证金current value为当前价格 """
+    def get_current_value(self):
+        return self.mktprice_close()

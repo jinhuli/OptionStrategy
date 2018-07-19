@@ -293,7 +293,7 @@ class BktUtil():
 
     def get_futures_daily_c1(self, df):
         df = df.sort_values(by=[self.dt_date, self.col_trading_volume], ascending=False)
-        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True)
+        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True).reset_index(drop=True)
         return df_rs
 
     """ Get 2nd contract based on highest trading volume """

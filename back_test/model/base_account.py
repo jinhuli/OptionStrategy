@@ -117,28 +117,43 @@ class BaseAccount():
             self.trade_book.loc[id_instrument, Util.TRADE_BOOK_VALUE] = trade_book_value
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] = trade_margin_capital
         else:
+            trade_unit = execution_record[Util.TRADE_UNIT]
+            trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
+            average_position_cost = execution_record[Util.TRADE_PRICE]
             book_series = pd.Series({
-                Util.TRADE_UNIT: execution_record[Util.TRADE_UNIT],
+                Util.TRADE_UNIT: trade_unit,
                 Util.LAST_PRICE: execution_record[Util.TRADE_PRICE],
                 Util.TRADE_MARGIN_CAPITAL: execution_record[Util.TRADE_MARGIN_CAPITAL],
                 Util.TRADE_BOOK_VALUE: execution_record[Util.TRADE_BOOK_VALUE],
-                Util.TRADE_LONG_SHORT: execution_record[Util.TRADE_LONG_SHORT],
-                Util.AVERAGE_POSITION_COST: execution_record[Util.TRADE_PRICE],
+                Util.TRADE_LONG_SHORT: trade_long_short,
+                Util.AVERAGE_POSITION_COST: average_position_cost,
                 Util.TRADE_REALIZED_PNL: 0.0,
                 Util.NBR_MULTIPLIER: base_product.multiplier()
             })
             self.trade_book.loc[id_instrument] = book_series
             self.cash -= execution_record[Util.TRADE_MARGIN_CAPITAL]
+        position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value, average_position_cost)
+        self.trade_book.loc[id_instrument,Util.POSITION_CURRENT_VALUE] = position_current_value
         self.update_account_status()
 
+    # TODO: 股票与购买期权杠杆率计算方法不一样：base_product加入current value(不包含保证金)？？
+    # TODO: 保证金交易的future、期权卖方为零，股票、ETF、期权买方为当前MTM value
     def update_account_status(self):
         total_mtm_position = (self.trade_book.loc[:, Util.TRADE_UNIT] * self.trade_book.loc[:, Util.LAST_PRICE]
                               * self.trade_book[Util.NBR_MULTIPLIER]).sum()
         total_margin = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
-        # TODO: 股票与购买期权杠杆率计算方法不一样：base_product加入current value(不包含保证金)？？
-        # 保证金交易的future、期权卖方为零，股票、ETF、期权买方为当前MTM value
-        self.actual_leverage = total_mtm_position / (self.cash + total_margin)
+        total_current_value = self.trade_book[Util.POSITION_CURRENT_VALUE].sum()
+        self.actual_leverage = total_mtm_position / (self.cash + total_margin + total_current_value)
         self.total_mtm_position = total_mtm_position
+
+    def get_position_current_value(self,id_instrument, trade_unit, long_short, average_position_cost):
+        base_product = self.dict_holding[id_instrument]
+        if base_product.current_value() == 0.0:
+            # 对于保证金交易，持仓市值为未实现损益（unrealized pnl）
+            position_current_value = trade_unit * long_short * (base_product.mktprice_close() - average_position_cost)
+        else:
+            position_current_value = base_product.current_value() * trade_unit * base_product.multiplier()
+        return position_current_value
 
     def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,
                            trade_type: TradeType, trade_price: Union[float, None],
@@ -166,10 +181,27 @@ class BaseAccount():
     def get_investable_market_value(self):
         return self.cash * self.max_leverage
 
+    # TODO : trigger end of day
     def daily_accounting(self):
-        # TODO : recalculate margin requirements in a daily basis.
+        total_position_value = 0.0
+        for (id_instrument,row) in self.trade_book.iterrows():
+            if row[Util.TRADE_UNIT] == 0.0 : continue
+            base_product = self.dict_holding[id_instrument]
+            trade_unit = row[Util.TRADE_UNIT]
+            trade_long_short = row[Util.TRADE_LONG_SHORT]
+            average_position_cost = row[Util.AVERAGE_POSITION_COST]
+            # calculate margin capital
+            trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[Util.TRADE_MARGIN_CAPITAL]
+            self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] += trade_margin_capital_add
+            self.cash -= trade_margin_capital_add
+            # Calculate NPV
+            position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value, average_position_cost)
+            self.trade_book.loc[id_instrument,Util.POSITION_CURRENT_VALUE] = position_current_value
+            total_position_value += position_current_value
+        total_margin = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
+        portfolio_mtm_value = self.cash + total_margin + total_position_value
+        npv = portfolio_mtm_value/self.init_fund
 
-        return self.account
 
         # def open_long(self, dt_trade, id_instrument, trade_price, trade_unit, name_code):
         #     trade_type = TradeType.OPEN_LONG
@@ -177,3 +209,18 @@ class BaseAccount():
         #     # TODO: get trade margin capital by product code.
         #     trade_margin_capital = 0.0
         #     self.add_record(dt_trade, id_instrument, trade_type, trade_price, trade_cost, trade_unit, trade_margin_capital)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
