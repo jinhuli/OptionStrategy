@@ -684,6 +684,75 @@ class BktOptionSet(object):
         return df
 
 
+    def collect_option_metrics(self, hp=30):
+        res = []
+        df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
+        bktoption_list = self.bktoptionset
+        if len(bktoption_list) == 0: return df
+        # if self.option_code == '50etf':
+        #     df_data = self.util.get_duplicate_strikes_dropped(self.df_daily_state)
+        # else:
+        #     df_data = self.df_daily_state
+        # df_data_call = self.util.get_df_by_type(df_data, self.util.type_call)
+        # df_data_put = self.util.get_df_by_type(df_data, self.util.type_put)
+        # bvs_call = self.get_volsurface_squre(df_data_call)
+        # bvs_put = self.get_volsurface_squre(df_data_put)
+        carry = None
+        for idx, option in enumerate(bktoption_list):
+            if option.option_price() > 0.0:
+                iv = option.get_implied_vol()
+                # if option.option_type == self.util.type_call:
+                #     carry = option.get_carry(bvs_call, hp)
+                # else:
+                #     carry = option.get_carry(bvs_put, hp)
+                theta = option.get_theta()
+                vega = option.get_vega()
+
+                delta = option.get_delta()
+                rho = option.get_rho()
+                gamma = option.get_gamma()
+                if carry == None or np.isnan(carry): carry = -999.0
+                if theta == None or np.isnan(theta): theta = -999.0
+                if vega == None or np.isnan(vega): vega = -999.0
+                if gamma == None or np.isnan(gamma): gamma = -999.0
+                if iv == None or np.isnan(iv): iv = -999.0
+                if delta == None or np.isnan(delta): delta = -999.0
+                if rho == None or np.isnan(rho): rho = -999.0
+            else:
+                iv = option.get_implied_vol()
+                carry = theta = vega = gamma = delta = rho = -999.0
+                if iv == None or np.isnan(iv): iv = -999.0
+            if self.flag_calculate_iv:
+                datasource = 'calculated'
+            else:
+                if self.option_code == 'm':
+                    datasource = 'dce'
+                else:
+                    datasource = 'czce'
+            db_row = {
+                self.util.col_date: self.eval_date,
+                self.util.col_id_instrument: option.id_instrument(),
+                'datasource': datasource,
+                'name_code': self.option_code,
+                'id_underlying': option.id_underlying(),
+                'amt_strike': float(option.strike()),
+                self.util.col_code_instrument: option.code_instrument(),
+                self.util.col_option_type: option.option_type(),
+                self.util.col_maturitydt: option.maturitydt(),
+                self.util.col_implied_vol: float(iv),
+                self.util.col_adj_strike: float(option.adj_strike()),
+                self.util.col_option_price: float(option.option_price()),
+                'amt_delta': float(delta),
+                self.util.col_vega: float(vega),
+                self.util.col_theta: float(theta),
+                'amt_rho': float(rho),
+                'amt_gamma': float(gamma),
+                'amt_carry_1M': float(carry),
+                'timestamp': datetime.datetime.today()
+            }
+            res.append(db_row)
+        return res
+        
         # def collect_option_metrics(self, hp=30):
         #     res = []
         #     df = pd.DataFrame(columns=[self.util.col_date, self.util.col_carry, self.util.bktoption])
