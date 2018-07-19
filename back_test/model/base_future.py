@@ -40,7 +40,7 @@ class BaseFuture(BaseProduct):
         return self._multiplier
 
     """ 用于计算杠杆率 ：保证金交易，current value为零 """
-    def get_current_value(self):
+    def get_current_value(self, long_short):
         return 0.0
 
     def is_core(self) -> Union[bool,None]:

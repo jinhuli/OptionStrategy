@@ -1,8 +1,8 @@
 import math
 from scipy.stats import norm
-from OptionStrategyLib.Util import PricingUtil
+from PricingLibrary.Util import PricingUtil
 from back_test.model.constant import *
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
+from PricingLibrary.BlackCalculator import BlackCalculator
 
 """  
      Approximated Black 1976 implied standard deviation, i.e.

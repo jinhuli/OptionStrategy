@@ -4,8 +4,8 @@ import numpy as np
 from typing import Union
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType
 from back_test.model.base_product import BaseProduct
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
-from OptionStrategyLib.OptionPricing.BlackFormular import BlackFormula
+from PricingLibrary.BlackCalculator import BlackCalculator
+from PricingLibrary.BlackFormular import BlackFormula
 from back_test.model.trade import Order
 
 
@@ -187,8 +187,11 @@ class BaseOption(BaseProduct):
         return
 
     """ 用于计算杠杆率 ：option，买方具有current value为当前的权利金，期权卖方为保证金交易，current value为零 """
-    def get_current_value(self):
-        return self.mktprice_close()
+    def get_current_value(self,long_short):
+        if long_short == Util.LONG:
+            return self.mktprice_close()
+        else:
+            return 0.0
 
     """ init_margin(初始保证金):用于开仓一天，且只有期权卖方收取 """
 
