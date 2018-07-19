@@ -5,8 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 from back_test.BktUtil import BktUtil
-from OptionStrategyLib.Util import PricingUtil
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator, EuropeanOption
+from PricingLibrary.Util import PricingUtil
+from PricingLibrary.BlackCalculator import BlackCalculator
+from PricingLibrary.Options import EuropeanOption
+
 
 
 class Replication():
