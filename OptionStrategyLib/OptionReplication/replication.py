@@ -1,21 +1,19 @@
 import datetime
 import pandas as pd
+import math
 import numpy as np
-from back_test.BktUtil import BktUtil
-from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
-from OptionStrategyLib.OptionPricing.OptionMetrics import OptionMetrics
-from data_access.get_data import get_future_mktdata, get_index_mktdata, get_index_intraday, get_dzqh_cf_daily, \
-    get_dzqh_cf_minute
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
+from back_test.BktUtil import BktUtil
 from OptionStrategyLib.Util import PricingUtil
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator, EuropeanOption
-from Utilities.calculate import calculate_histvol
+from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
+from OptionStrategyLib.OptionPricing.Options import EuropeanOption
+
 
 
 class Replication():
     def __init__(self, strike, dt_issue, dt_maturity, vol=0.2, rf=0.03,
-                 multiplier=1, fee=5.0 / 10000.0, margin_rate=0.1):
+                 multiplier=1, fee=2 / 10000.0, margin_rate=0.15, slippage=0.6):
         self.utl = BktUtil()
         self.pricing_utl = PricingUtil()
         self.strike = strike
@@ -24,6 +22,7 @@ class Replication():
         self.vol = vol
         self.rf = rf
         self.fee = fee
+        self.slippage = slippage
         self.margin_rate = margin_rate
         self.multiplier = multiplier
         self.pricing = None
@@ -33,195 +32,227 @@ class Replication():
         self.margin = 0
         # self.df_vix = df_vix
 
-    # def synsetic_payoff(self, df_data, df_vol):
-    #     strikes = np.arange(self.strike * 0.8, self.strike * 1.2, 100.0)
-    #     option_payoffs = []
-    #     replicate_payoffs = []
-    #     for k in strikes:
-    #         self.strike = k
-    #         c, option, replicate = self.replicate_put(df_data, df_vol)
-    #         option_payoffs.append(option)
-    #         replicate_payoffs.append(replicate)
-    #     return strikes, option_payoffs, replicate_payoffs
-
     def get_vol(self, dt_date, df_data):
         if isinstance(df_data, float):
             return df_data
-        df_today = df_data[df_data[self.utl.col_date] == dt_date]
-        if df_today.empty:
-            df_today = df_data[df_data[self.utl.col_date] <= dt_date].iloc[0]
-        try:
-            vix = df_today[self.utl.col_close].values[0]
-        except:
-            print('get_vol')
-            return
+        vix = df_data[df_data[self.utl.col_date] <= dt_date][self.utl.col_close].values[-1]
         return vix
 
-    def calculate_hist_vol(self, cd_period, df_data):
-        if cd_period == '1M':
-            dt_start = self.dt_issue - datetime.timedelta(days=50)
-            df = df_data[df_data[self.utl.col_date] >= dt_start]
-            histvol = calculate_histvol(df[self.utl.col_close], 20)
-            df[self.utl.col_close] = histvol
-            df = df[[self.utl.col_date, self.utl.col_close]].dropna()
-        else:
-            return
-        return df
-
-    def replicate_put(self, df_data, df_vol):
+    def replicate_put(self, df_data, df_vol, df_underlying=None):
         self.cash = cash = 0
         self.dela = 0
         self.margin = 0
+        total_change_pnl = 0.0
         res = []
         df_data[self.utl.col_date] = df_data[self.utl.col_datetime].apply(
             lambda x: datetime.date(x.year, x.month, x.day))
         dt_date = self.dt_issue  # Use Close price of option issue date to start replication.
         Option = EuropeanOption(self.strike, self.dt_maturity, self.utl.type_put)
-        # tmp = df_data[df_data[self.utl.col_date] == dt_date][[self.utl.col_datetime, self.utl.col_close]]
         spot = df_data[df_data[self.utl.col_date] == dt_date][self.utl.col_close].values[-1]
+        # spot = self.strike
         vol = self.get_vol(dt_date, df_vol)
-        black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
+        # black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
+        black = BlackCalculator(dt_date,Option.dt_maturity,Option.strike,Option.option_type,spot,vol,self.rf)
         option0 = black.NPV()
-        # cash = black.Cash()
-        delta0 = black.Delta(spot)
+        delta0 = black.Delta()
         asset = delta0 * spot
         replicate0 = cash + asset
         margin = abs(delta0) * spot * self.margin_rate
-        unit = -delta0
-        transaction_fee = abs(delta0) * spot * self.fee
-        res.append({'dt': dt_date, 'spot': spot,
+        transaction_fee = abs(delta0) * (spot * self.fee + self.slippage)
+        pct_cost = transaction_fee / option0
+        res.append({'dt': datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 15, 0, 0), 'spot': spot,
                     'port cash': cash, 'port asset': delta0 * spot,
                     'delta': delta0, 'margin': margin,
                     'value option': option0, 'value replicate': replicate0,
                     'replication cost': transaction_fee,
                     'transaction fee': transaction_fee, 'pnl option': 0,
-                    'pnl replicate': 0
+                    'pnl replicate': 0, 'pct cost': pct_cost, 'change_pnl': 0, 'replicate error': 0
                     })
-        delta = 0.0  # Unit of underlyings/futures in replicate portfolio
+        delta = delta0  # Unit of underlyings/futures in replicate portfolio
         dt_last = dt_date
         df_data = df_data[(df_data[self.utl.col_date] > self.dt_issue) & (
             df_data[self.utl.col_date] <= self.dt_maturity)]  # cut useful data
-        dt_times = df_data[self.utl.col_datetime]
-
-        # print('-' * 150)
-        # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-        #       ('日期', 'Spot', 'Delta', 'Cashflow A', 'Unit', 'replicate', 'option', 'total fee'))
-        # print('-' * 150)
-        # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-        #       (dt_date, spot, round(delta0, 2), round(cash, 1), round(unit, 2), round(replicate0, 0),
-        #        round(option0, 0), round(transaction_fee, 0)))
-        for (i, dt_time) in enumerate(dt_times):
-            dt_time = pd.to_datetime(dt_time)
-            # if dt_time.date() != dt_last:
-            #     interest = cash * self.rf * self.pricing_utl.get_ttm(dt_last, dt_time.date())
-            #     # cash = black.Cash() + interest
-            #     cash += interest
-            #     dt_last = dt_time.date()
+        df_data = df_data.reset_index(drop=True)
+        for (i, row) in df_data.iterrows():
+            dt_time = pd.to_datetime(row[self.utl.col_datetime])
             if dt_time.time() < datetime.time(9, 30, 0) or dt_time.time() > datetime.time(15, 0, 0): continue
             if dt_time.minute % 5 != 0: continue  # 5min调整一次delta
-            spot = df_data[df_data[self.utl.col_datetime] == dt_time][self.utl.col_close].values[0]
+            spot = row[self.utl.col_close]
             if dt_time.date() == self.dt_maturity:
-                # replicate = cash + delta * spot
                 delta, option_price = self.pricing_utl.get_maturity_metrics(dt_date, spot, Option)
-                d_asset = (delta - delta0) * spot
-                asset += d_asset
-                transaction_fee += abs(delta - delta0) * spot * self.fee
-                replicate = cash + asset
-                replicate_pnl = delta * spot - replicate - transaction_fee
-                option_pnl = option_price - option0
-                replicate_cost = -replicate_pnl + option_pnl
-                margin = abs(delta) * spot * self.margin_rate
-                delta0 = delta
-                res.append({'dt': dt_time, 'spot': spot,
-                            'port cash': cash, 'port asset': delta * spot,
-                            'delta': delta, 'margin': margin,
-                            'value option': option_price, 'value replicate': replicate,
-                            'replication cost': replicate_cost,
-                            'transaction fee': transaction_fee, 'pnl option': option_pnl,
-                            'pnl replicate': replicate_pnl
-                            })
             else:
                 vol = self.get_vol(dt_time.date(), df_vol)
                 black = self.pricing_utl.get_blackcalculator(dt_time.date(), spot, Option, self.rf, vol)
-                # cash = black.Cash()
-                delta = black.Delta(spot)
+                delta = black.Delta()
                 option_price = black.NPV()
-                # unit = -delta
-                d_asset = (delta - delta0) * spot
-                asset += d_asset
-                transaction_fee += abs(delta - delta0) * spot * self.fee
-                replicate = cash + asset
-                replicate_pnl = delta * spot - replicate - transaction_fee
-                option_pnl = option_price - option0
-                replicate_cost = -replicate_pnl + option_pnl
-                margin = abs(delta) * spot * self.margin_rate
-                delta0 = delta
-                res.append({'dt': dt_time, 'spot': spot,
-                            'port cash': cash, 'port asset': delta * spot,
-                            'delta': delta, 'margin': margin,
-                            'value option': option_price, 'value replicate': replicate,
-                            'replication cost': replicate_cost,
-                            'transaction fee': transaction_fee, 'pnl option': option_pnl,
-                            'pnl replicate': replicate_pnl
-                            })
-                # print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-                #       (dt_time, spot, round(delta, 2), round(cash, 1), round(unit, 2), round(replicate, 0),
-                #        round(option_price, 0), round(transaction_fee, 2)))
-        # print('-' * 150)
-        # print('init option : ', option0)
-        # print('init replication : ', replicate0)
-        # print('terminal option value : ', option_price)
-        # print('terminal replicate value : ', replicate)
-        # print(self.dt_issue,' replication cost : ', pct_replication_cost * 100, '%')
-        # print('-' * 150)
+            change_pnl = 0.0
+            date = dt_time.date()
+            if i > 10 and date != dt_last:
+                id_current = row[self.utl.id_instrument]
+                id_last = df_data.loc[i - 1, self.utl.id_instrument]
+                spot_last = df_data.loc[i - 1, self.utl.col_close]
+                if id_current != id_last:
+                    transaction_fee += abs(delta) * (spot_last + spot) * self.fee  # 移仓换月成本
+                    change_pnl = delta * (spot_last - spot)
+                    total_change_pnl += change_pnl
+                dt_last = date
+            elif date != dt_last:
+                dt_last = date
+            d_asset = (delta - delta0) * spot
+            asset += d_asset
+            transaction_fee += abs(delta - delta0) * (spot * self.fee + self.slippage)
+            replicate = cash + asset
+            replicate_pnl = delta * spot - replicate - transaction_fee + change_pnl
+            option_pnl = option_price - option0
+            replicate_cost = -replicate_pnl + option_pnl
+            replicate_error = -replicate_pnl + max(0, self.strike - spot)  # Mark to option payoff at maturity
+            margin = abs(delta) * spot * self.margin_rate
+            delta0 = delta
+            pct_cost = replicate_cost / option0
+            res.append({'dt': dt_time, 'spot': spot,
+                        'port cash': cash, 'port asset': delta * spot,
+                        'delta': delta, 'margin': margin,
+                        'value option': option_price, 'value replicate': replicate,
+                        'replication cost': replicate_cost,
+                        'transaction fee': transaction_fee, 'pnl option': option_pnl,
+                        'pnl replicate': replicate_pnl, 'pct cost': pct_cost,
+                        'change_pnl': total_change_pnl, 'replicate error': replicate_error
+                        })
         self.cash = cash
         self.delta = delta
         self.margin = abs(delta * spot) * self.margin_rate
         df_res = pd.DataFrame(res)
         result = df_res.iloc[-1]
-
         return df_res
 
-        # def replicate_put_daily(self, dt_date, df_data):
-        #     option = Options.OptionPlainEuropean(self.strike, self.maturitydt, ql.Option.Put)
-        #     pricing = OptionMetrics(option, self.rf, self.engineType)
-        #     spot = df_data[df_data[utl.dt_date] == dt_date][utl.col_close].values[0]
-        #     delta_init, option_init = self.get_delta(dt_date, spot, option, pricing)
-        #     replication_init = - delta_init * spot
-        #     dt_list = list(df_data[(df_data[self.utl.dt_date] <= self.dt_maturity) &
-        #                            (df_data[self.utl.dt_date] >= self.dt_issue)][self.utl.dt_date])
-        #     delta0 = 0.0
-        #     cashflowA = 0.0
-        #     transaction_fee = 0.0
-        #     replicate_value = 0.0
-        #     option_value = 0.0
-        #
-        #     print('-' * 150)
-        #     print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-        #           ('日期', 'Spot', 'Delta', 'Cashflow A', 'Unit', 'replicate', 'option', 'transaction fee A'))
-        #     print('-' * 150)
-        #     for (i, dt) in enumerate(dt_list):
-        #         spot = df_index[df_index[utl.dt_date] == dt][utl.col_close].values[0]
-        #         delta, option_value = self.get_delta(dt, spot, option, pricing)
-        #         unit = -delta
-        #         unit_chg = (delta - delta0)
-        #         cashflow = - unit_chg * spot
-        #         cashflowA += cashflow
-        #         delta0 = delta
-        #         transaction_fee += fee * cashflow
-        #         replicate_value = cashflowA + delta * spot - transaction_fee
-        #         replicate_pnl = unit * spot - replication_init
-        #         option_pnl = option_value - option_init
-        #         print("%10s %20s %20s %20s %20s %20s %20s %20s" %
-        #               (dt, spot, round(delta * 100, 2), round(cashflowA, 1), round(cashflowA, 0), round(replicate_value, 0),
-        #                round(option_value, 0), round(transaction_fee, 0)))
-        #     print('-' * 150)
-        #     print('init option : ', option_init)
-        #     print('init replication : ', replication_init)
-        #     print('terminal option value : ', option_value)
-        #     print('terminal replicate value : ', replicate_value)
-        #     print('replication cost (replicate_value - option_value) : ', replicate_value - option_value)
-        #     print('-' * 150)
+    def replicate_delta_bounds(self, df_data, df_vol):
+        cash = 0
+        self.dela = 0
+        self.margin = 0
+        total_change_pnl = 0.0
+        res = []
+        df_data[self.utl.col_date] = df_data[self.utl.col_datetime].apply(
+            lambda x: datetime.date(x.year, x.month, x.day))
+        dt_date = self.dt_issue  # Use Close price of option issue date to start replication.
+        Option = EuropeanOption(self.strike, self.dt_maturity, self.utl.type_put)
+        spot = df_data[df_data[self.utl.col_date] == dt_date][self.utl.col_close].values[-1]
+        vol = self.get_vol(dt_date, df_vol)
+        black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
+        option0 = black.NPV()
+        delta0 = black.Delta()
+        asset = delta0 * spot
+        replicate0 = cash + asset
+        margin = abs(delta0) * spot * self.margin_rate
+        transaction_fee = abs(delta0) * (spot * self.fee + self.slippage)
+        pct_cost = transaction_fee / option0
+        res.append({'dt': datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 15, 0, 0), 'spot': spot,
+                    'port cash': cash, 'port asset': delta0 * spot,
+                    'delta': delta0, 'margin': margin,
+                    'value option': option0, 'value replicate': replicate0,
+                    'replication cost': transaction_fee,
+                    'transaction fee': transaction_fee, 'pnl option': 0,
+                    'pnl replicate': 0, 'pct cost': pct_cost, 'change_pnl': 0, 'replicate error': 0
+                    })
+        delta = delta0  # Unit of underlyings/futures in replicate portfolio
+        dt_last = dt_date
+        df_data = df_data[(df_data[self.utl.col_date] > self.dt_issue) & (
+            df_data[self.utl.col_date] <= self.dt_maturity)]  # cut useful data
+        df_data = df_data.reset_index(drop=True)
+        for (i, row) in df_data.iterrows():
+            dt_time = pd.to_datetime(row[self.utl.col_datetime])
+            if dt_time.time() < datetime.time(9, 30, 0) or dt_time.time() > datetime.time(15, 0, 0): continue
+            if dt_time.minute % 5 != 0: continue  # 5min调整一次delta
+            spot = row[self.utl.col_close]
+            if dt_time.date() == self.dt_maturity:
+                delta, option_price = self.pricing_utl.get_maturity_metrics(dt_date, spot, Option)
+            else:
+                vol = self.get_vol(dt_time.date(), df_vol)
+                black = self.pricing_utl.get_blackcalculator(dt_time.date(), spot, Option, self.rf, vol)
+                delta = black.Delta()
+                option_price = black.NPV()
+            change_pnl = 0.0
+            date = dt_time.date()
+            if i > 10 and date != dt_last:
+                id_current = row[self.utl.id_instrument]
+                id_last = df_data.loc[i - 1, self.utl.id_instrument]
+                spot_last = df_data.loc[i - 1, self.utl.col_close]
+                if id_current != id_last:
+                    transaction_fee += abs(delta) * (spot_last + spot) * self.fee  # 移仓换月成本
+                    change_pnl = delta * (spot_last - spot)
+                    total_change_pnl += change_pnl
+                dt_last = date
+            elif date != dt_last:
+                dt_last = date
+            gamma = black.Gamma()
+            H = self.whalley_wilmott(dt_time.date(), Option, gamma, vol, spot, rho=1)
+            if abs(delta - delta0) >= H:
+                d_asset = (delta - delta0) * spot
+                transaction_fee += abs(delta - delta0) * (spot * self.fee + self.slippage)
+                delta0 = delta
+            else:
+                d_asset = 0.0  # delta变化在一定范围内则不选择对冲。
+            asset += d_asset
+            replicate = cash + asset
+            replicate_pnl = delta * spot - replicate - transaction_fee + change_pnl
+            option_pnl = option_price - option0
+            replicate_cost = -replicate_pnl + option_pnl
+            replicate_error = -replicate_pnl + max(0, self.strike - spot)  # Mark to option payoff at maturity
+            margin = abs(delta) * spot * self.margin_rate
+            pct_cost = replicate_cost / option0
+            res.append({'dt': dt_time, 'spot': spot,
+                        'port cash': cash, 'port asset': delta * spot,
+                        'delta': delta, 'margin': margin,
+                        'value option': option_price, 'value replicate': replicate,
+                        'replication cost': replicate_cost,
+                        'transaction fee': transaction_fee, 'pnl option': option_pnl,
+                        'pnl replicate': replicate_pnl, 'pct cost': pct_cost,
+                        'change_pnl': total_change_pnl, 'replicate error': replicate_error
+                        })
+        self.delta = delta
+        self.margin = abs(delta * spot) * self.margin_rate
+        df_res = pd.DataFrame(res)
+        result = df_res.iloc[-1]
+        return df_res
+
+
+    # def hedge_constant_ttm(self):
+
+    """ Delta Bounds"""
+
+    def whalley_wilmott(self, eval_date, option, gamma, vol, spot, rho=1, fee=5.0 / 10000.0):
+        ttm = self.pricing_utl.get_ttm(eval_date, option.dt_maturity)
+        H = (1.5 * math.exp(-self.rf * ttm) * fee * spot * (gamma ** 2) / rho) ** (1 / 3)
+        return H
+
+
+# plot_utl = PlotUtil()
+# utl = BktUtil()
+# dt_issue = datetime.date(2018, 3, 1)
+# dt_maturity = datetime.date(2018, 4, 13)
+# strike = 4000
+# Option = EuropeanOption(strike, dt_maturity, utl.type_put)
+# replication = Replication(strike, dt_issue, dt_maturity)
+# vol = 0.2
+# f = 5.0 / 10000.0
+# H1_list = []
+# H2_list = []
+# delta_list = []
+# spot_list = np.arange(3500, 4500, 10)
+# for spot in spot_list:
+#     black = replication.pricing_utl.get_blackcalculator(dt_issue, spot, Option, replication.rf, vol)
+#     gamma = black.Gamma()
+#     delta = black.Delta()
+#     h = replication.whalley_wilmott(dt_issue, Option, gamma, vol, spot, 5, f)
+#     H1 = delta + h
+#     H2 = delta - h
+#     H1_list.append(H1)
+#     H2_list.append(H2)
+#     delta_list.append(delta)
+#
+# plot_utl.plot_line_chart(delta_list, [H1_list, H2_list], ['对冲带上限', '对冲带下限'], 'delta')
+# # plot_utl.plot_line_chart(spot_list, [H1_list, H2_list], ['对冲带上限', '对冲带下限'], '标的价格')
+# plt.show()
+
 
 # plot_utl = PlotUtil()
 # utl = BktUtil()
