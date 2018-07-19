@@ -142,7 +142,7 @@ class BaseProduct(AbstractBaseProduct):
     """
 
     """ 用于计算杠杆率 ：基础证券交易不包含保证金current value为当前价格 """
-    def get_current_value(self):
+    def get_current_value(self, long_short):
         return self.mktprice_close()
 
     def multiplier(self) -> int:

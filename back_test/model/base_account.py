@@ -148,12 +148,13 @@ class BaseAccount():
 
     def get_position_current_value(self,id_instrument, trade_unit, long_short, average_position_cost):
         base_product = self.dict_holding[id_instrument]
-        if base_product.current_value() == 0.0:
+        # Option write position current value is unrealized pnl, option buy position is the premium.
+        if base_product.get_current_value(long_short) == 0.0:
             # 对于保证金交易，持仓市值为未实现损益（unrealized pnl）
             position_current_value = trade_unit * long_short * (base_product.mktprice_close() - average_position_cost)
         else:
-            #TODO:OPTION
-            position_current_value = base_product.current_value() * trade_unit * base_product.multiplier()
+
+            position_current_value = base_product.get_current_value(long_short) * trade_unit * base_product.multiplier()
         return position_current_value
 
     def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,

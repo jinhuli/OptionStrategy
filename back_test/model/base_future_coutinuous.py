@@ -48,7 +48,7 @@ class BaseFutureCoutinuous(BaseProduct):
         return self.current_state[Util.ID_INSTRUMENT]
 
     """ 用于计算杠杆率 ：保证金交易，current value为零 """
-    def get_current_value(self):
+    def get_current_value(self, long_short):
         return 0.0
 
 
