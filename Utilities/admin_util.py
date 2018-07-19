@@ -10,11 +10,11 @@ engine_intraday = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.1
 # conn_intraday = engine_intraday.connect()
 metadata_intraday = MetaData(engine_intraday)
 
-engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
+engine_metrics = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/metrics', echo=False)
 # conn_metrics = engine_metrics.connect()
 metadata_metrics = MetaData(engine_metrics)
 
-engine_dzqh = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/dzqh', echo=False)
+engine_dzqh = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/dzqh', echo=False)
 
 metadata_dzqh = MetaData(engine_dzqh)
 
@@ -69,10 +69,6 @@ def table_stocks_mktdata():
 
 def table_events():
     return Table('events', metadata, autoload=True)
-
-def table_interest_rates():
-    return Table('interest_rates', metadata, autoload=True)
-
 
 def table_index_mktdata_intraday():
     return Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
