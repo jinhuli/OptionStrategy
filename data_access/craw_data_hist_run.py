@@ -26,8 +26,9 @@ index_daily = admin.table_indexes_mktdata()
 
 dc = DataCollection()
 #####################################################################################
-# beg_date = datetime.date(2004, 1, 1)
-# end_date = datetime.date(2004, 12, 31)
+beg_date = datetime.date(2002, 1, 1)
+end_date = datetime.date(2002, 12, 31)
+
 
 ################################### 低频宏观经济指标 ##################################################
 macro_dict = {
@@ -57,8 +58,9 @@ macro_dict = {
     "M0017129" : ["china_pmi_new_orders_export", "PMI新出口订单"],
     "M0000138" : ["caixin_pmi", "财新中国PMI"],
     "M0061603" : ["caixin_pmi_services", "财新中国服务业PMI：经营活动指数"],
-
 }
+
+
 
 res = w.edb("M5792266,M0061571,M0000545,M0000011,M0041963,M0041964,M9003295,"
             "M0000272,M0000273,M0061572,M5207654,M5207655,M0001384,M0001385,"
@@ -80,6 +82,7 @@ for i, code in enumerate(res.Codes):
     df_res = pd.concat([df_res, df], axis=0, ignore_index=True)
 
 df_res.to_sql('macro', con=admin.engine, if_exists='append', index=False)
+
 
 
 
@@ -319,7 +322,7 @@ df_res.to_sql('macro', con=admin.engine, if_exists='append', index=False)
 # except Exception as e:
 #     print(e)
 #
-#
+
 # windcode = "000016.SH"
 # id_instrument = 'index_50sh'
 # db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
@@ -330,7 +333,7 @@ df_res.to_sql('macro', con=admin.engine, if_exists='append', index=False)
 # except Exception as e:
 #     print(e)
 #
-#
+
 # windcode = "000300.SH"
 # id_instrument = 'index_300sh'
 # db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)
@@ -341,7 +344,7 @@ df_res.to_sql('macro', con=admin.engine, if_exists='append', index=False)
 # except Exception as e:
 #     print(e)
 #
-#
+
 # windcode = "000905.SH"
 # id_instrument = 'index_500sh'
 # db_data = dc.table_index().wind_data_index_hist(windcode, beg_date,end_date, id_instrument)

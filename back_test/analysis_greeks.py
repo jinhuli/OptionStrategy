@@ -31,36 +31,6 @@ daycounter = ql.ActualActual()
 evalDate = ql.Date(eval_date.day, eval_date.month, eval_date.year)
 evaluation = Evaluation(evalDate, daycounter, calendar)
 
-# calendar = ql.China()
-# daycounter = ql.ActualActual()
-# evalDate = ql.Date(eval_date.day, eval_date.month, eval_date.year)
-# maturitydt = ql.Date(mdt.day, mdt.month, mdt.year)
-# evaluation = Evaluation(evalDate, daycounter, calendar)
-#
-# option_call = OptionPlainEuropean(strike, maturitydt, ql.Option.Call)
-#
-# option_put = OptionPlainEuropean(strike, maturitydt, ql.Option.Put)
-# option_call2 = OptionPlainEuropean(strike2, maturitydt, ql.Option.Call)
-# metrics = OptionMetrics(option_call2, rf, engineType).set_evaluation(evaluation)
-# iv = metrics.implied_vol(spot, option_price)
-# vega = metrics.vega(spot, vol)
-# vega2 = metrics.vega_effective(spot,vol)
-# rho = metrics.rho(spot,vol)
-# print(vega,vega2,rho)
-# theta = metrics.theta(spot, iv)
-#
-# yield_curve = ql.FlatForward(evalDate,
-#                              rf,
-#                              daycounter)
-# T = yield_curve.dayCounter().yearFraction(evalDate,
-#                                           maturitydt)
-# discount = yield_curve.discount(T)
-# strikepayoff = ql.PlainVanillaPayoff(ql.Option.Call, strike)
-# stddev = vol * math.sqrt(T)
-# black = ql.BlackCalculator(strikepayoff, spot, stddev, discount)
-# theta2 = black.theta(spot,T)/252
-# print(iv, vega, theta,theta2)
-
 yield_curve = ql.FlatForward(evalDate,
                              rf,
                              daycounter)
@@ -97,5 +67,6 @@ while evalDate < maturitydt:
     metricscall3.set_evaluation(evaluation)
     # t += 1
 df_thetas = pd.DataFrame({'t':x,'theta-atm':prices,'theta-otm':prices2,'theta-itm':prices3}).sort_values(by='t')
+print(df_thetas)
 df_thetas.to_csv('../save_results/df_thetas.csv')
 

@@ -12,6 +12,7 @@ class BlackCalculator:
         self.spot = spot
         D1 = None
         D2 = None
+        
         if stdDev > 0.0:
             if strike == 0.0:
                 n_d1 = 0.0
@@ -101,11 +102,13 @@ class BlackCalculator:
 
         return self.alpha
 
+
     # Replicate portfolio -- component shares of borrowing/lending,
     # -N(d2) for call / N(-d2) for put
     def Beta(self):
 
         return self.beta
+
 
 
 class EuropeanOption:
