@@ -1,9 +1,22 @@
 import pandas as pd
 
-a = pd.DataFrame(data=[{'a':1,'b':3},{'a':2,'b':4}])
+a = pd.DataFrame([
+    {
+        'a': 1,
+        'b': 2
+    },
+    {
+        'a': 1.5,
+        'b': 2.5
+    }
+],index=["c","d"])
 print(a)
-if 'c' in a.columns:
-    print("t")
 
-a.reset_index(drop=True)
+s = a.loc['c']
+
+s['a'] = 2
+s['b'] = 3
+# print(s)
+# a.loc['c'] = s
+print('-------')
 print(a)

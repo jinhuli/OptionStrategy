@@ -1,25 +1,28 @@
 import datetime
 import math
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
+# from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 from back_test.BktUtil import BktUtil
 
 
-class PricingUtil(object):
+class PricingUtil:
 
-
-    def get_blackcalculator_std(self, dt_eval, dt_maturity, annualized_vol):
-        stdDev = annualized_vol * math.sqrt(self.get_ttm(dt_eval,dt_maturity))
-        return stdDev
-
-    def get_discount(self, dt_eval, dt_maturity, rf):
-        discount = math.exp(-rf * self.get_ttm(dt_eval,dt_maturity))
-        return discount
-
-    def get_ttm(self, dt_eval, dt_maturity):
+    @staticmethod
+    def get_ttm(dt_eval, dt_maturity):
         N = (dt_maturity - dt_eval).total_seconds() / 60.0
         N365 = 365 * 1440.0
-        ttm = N/N365
+        ttm = N / N365
         return ttm
+
+    @staticmethod
+    def get_std(dt_eval, dt_maturity, annualized_vol):
+        stdDev = annualized_vol * math.sqrt(PricingUtil.get_ttm(dt_eval, dt_maturity))
+        return stdDev
+
+    @staticmethod
+    def get_discount(dt_eval, dt_maturity, rf):
+        discount = math.exp(-rf * PricingUtil.get_ttm(dt_eval, dt_maturity))
+        return discount
+
 
     def get_blackcalculator(self, dt_date, spot, option, rf, vol):
         stdDev = self.get_blackcalculator_std(dt_date, option.dt_maturity, vol)
@@ -30,6 +33,7 @@ class PricingUtil(object):
         # alpha is component shares of stock, N(d1) for call / -N(-d1) for put
         # beta id component shares of borrowing/lending -N(d2) for call / N(-d2) for put
         return black
+
 
     def get_maturity_metrics(self, dt_date, spot, option):
         strike = option.strike
@@ -54,7 +58,7 @@ class PricingUtil(object):
         return delta, option_price
 
 
-class Calendar(object):
+class Calendar:
     def leepDates(self, dt1, dt2):
         # swap dt1 and dt2 if dt1 is earlier than dt2
         if (dt1 - dt2).days < 0:

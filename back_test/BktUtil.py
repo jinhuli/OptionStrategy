@@ -1,8 +1,8 @@
 import datetime
-import QuantLib as ql
+# import QuantLib as ql
 import hashlib
 import pandas as pd
-
+from back_test.model.constant import FrequentType
 
 class BktUtil():
     def __init__(self):
@@ -20,7 +20,7 @@ class BktUtil():
         self.method_2 = 1
         self.cd_frequency_low = ['daily', 'weekly', 'monthly', 'yearly']
         self.cd_frequency_intraday = ['1min', '5min']
-
+        self.frequent_type_low = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]
         """database column names"""
 
         self.col_date = 'dt_date'
@@ -293,8 +293,15 @@ class BktUtil():
 
     def get_futures_daily_c1(self, df):
         df = df.sort_values(by=[self.dt_date, self.col_trading_volume], ascending=False)
-        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True)
+        df_rs = df.drop_duplicates(subset=[self.dt_date]).sort_values(by=self.dt_date, ascending=True).reset_index(drop=True)
         return df_rs
+
+    """ Get 2nd contract based on highest trading volume """
+
+    def get_futures_daily_c2(self, df):
+        # TODO:
+        return
+
 
     def get_futures_minute_c1(self, df):
         tmp = df.groupby([self.dt_date,self.id_instrument]).sum()[self.col_trading_volume].to_frame()

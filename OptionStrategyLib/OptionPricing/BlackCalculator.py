@@ -1,9 +1,29 @@
 import math
 from scipy.stats import norm
+from OptionStrategyLib.Util import PricingUtil
+from back_test.model.constant import *
+
+""" European Option Pricing and Metrics """
 
 
-class BlackCalculator:
-    def __init__(self, strike, spot, stdDev, discount, iscall):
+class BlackCalculator(object):
+
+    def __init__(self,
+                 dt_eval: datetime.date,
+                 dt_maturity: datetime.date,
+                 strike: float,
+                 type: OptionType,
+                 spot: float,
+                 vol: float,
+                 rf: float = 0.03):
+        if type == OptionType.CALL:
+            self.iscall = True
+        else:
+            self.iscall = False
+        stdDev = PricingUtil.get_std(dt_eval, dt_maturity, vol)
+        discount = PricingUtil.get_discount(dt_eval, dt_maturity, rf)
+        self.dt_eval = dt_eval
+        self.dt_maturity = dt_maturity
         self.strike = strike
         self.forward = spot / discount
         self.stdDev = stdDev
@@ -12,21 +32,26 @@ class BlackCalculator:
         self.spot = spot
         D1 = None
         D2 = None
+
         if stdDev > 0.0:
-            if strike == 0.0:
+            if self.strike == 0.0:
                 n_d1 = 0.0
                 n_d2 = 0.0
                 cum_d1 = 1.0
                 cum_d2 = 1.0
+                D1 = None
+                D2 = None
             else:
-                D1 = math.log(self.forward / strike, math.e) / stdDev + 0.5 * stdDev
+                D1 = math.log(self.forward / self.strike, math.e) / stdDev + 0.5 * stdDev
                 D2 = D1 - stdDev
                 cum_d1 = norm.cdf(D1)
                 cum_d2 = norm.cdf(D2)
                 n_d1 = norm.pdf(D1)
                 n_d2 = norm.pdf(D2)
+            self.D1 = D1
+            self.D2 = D2
         else:
-            if self.forward > strike:
+            if self.forward > self.strike:
                 cum_d1 = 1.0
                 cum_d2 = 1.0
             else:
@@ -35,7 +60,7 @@ class BlackCalculator:
             n_d1 = 0.0
             n_d2 = 0.0
 
-        if iscall:
+        if self.iscall:
             alpha = cum_d1  ## N(d1)
             dAlpha_dD1 = n_d1  ## n(d1)
             beta = -cum_d2  ## -N(d2)
@@ -51,7 +76,7 @@ class BlackCalculator:
         self.dAlpha_dD1 = dAlpha_dD1
         self.beta = beta
         self.dBeta_dD2 = dBeta_dD2
-        self.x = strike
+        self.x = self.strike
         self.dX_dS = 0.0
 
     def NPV(self):
@@ -64,20 +89,37 @@ class BlackCalculator:
         spot = self.spot
         if spot <= 0.0:
             return
+        elif self.dt_eval == self.dt_maturity:
+            if self.iscall:
+                if self.strike < self.spot:
+                    delta = 1.0
+                elif self.strike > self.spot:
+                    delta = 0.0
+                else:
+                    delta = 0.5
+            else:
+                if self.strike > self.spot:
+                    delta = -1.0
+                elif self.strike < self.spot:
+                    delta = 0.0
+                else:
+                    delta = -0.5
         else:
-            DforwardDs = self.forward / spot
-            temp = self.stdDev * spot
+            DforwardDs = self.forward / self.spot
+            temp = self.stdDev * self.spot
             DalphaDs = self.dAlpha_dD1 / temp
             DbetaDs = self.dBeta_dD2 / temp
             temp2 = DalphaDs * self.forward + self.alpha * DforwardDs + DbetaDs * self.x \
                     + self.beta * self.dX_dS
             delta = self.discount * temp2
-            return delta
+        return delta
 
     def Gamma(self):
         spot = self.spot
         if spot <= 0.0:
             return
+        if self.dt_eval == self.dt_maturity:
+            return 0.0
         DforwardDs = self.forward / spot
         temp = self.stdDev * spot
         DalphaDs = self.dAlpha_dD1 / temp
@@ -95,6 +137,7 @@ class BlackCalculator:
         delta = self.Delta()
         return delta + delta * dSigma_dK
 
+
     # Replicate portfolio -- component shares of stock,
     # N(d1) for call / -N(-d1) for put
     def Alpha(self):
@@ -108,9 +151,18 @@ class BlackCalculator:
         return self.beta
 
 
-class EuropeanOption:
-    def __init__(self, strike, dt_maturity, optionType, dt_issue=None, init_price=None):
-        self.strike = strike
-        self.dt_maturity = dt_maturity
-        self.option_type = optionType
-        self.init_price = init_price
+# class EuropeanOption:
+#     def __init__(self, strike, dt_maturity, optionType, dt_issue=None, init_price=None):
+#         self.strike = strike
+#         self.dt_maturity = dt_maturity
+#         self.option_type = optionType
+#         self.init_price = init_price
+
+# dt_eval = datetime.date(2018, 1, 1)
+# dt_maturity = datetime.date(2018, 1, 1)
+# strike = 3050
+# spot = 3000
+# vol = 0.2
+# type = OptionType.PUT
+# black = BlackCalculator(dt_eval, dt_maturity, strike, type, spot, vol)
+# print(black.Gamma())
