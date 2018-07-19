@@ -13,9 +13,9 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from data_access.db_tables import DataBaseTables as dbt
 from OptionStrategyLib.calibration import SVICalibration
-from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
-from OptionStrategyLib.OptionPricing.OptionMetrics import OptionMetrics
-from OptionStrategyLib.OptionPricing.Options import OptionPlainEuropean
+from PricingLibrary.Evaluation import Evaluation
+from PricingLibrary.OptionMetrics import OptionMetrics
+from PricingLibrary.Options import OptionPlainEuropean
 w.start()
 
 ##################################################################################################

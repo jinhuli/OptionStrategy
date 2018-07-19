@@ -1,6 +1,8 @@
 import datetime
 import QuantLib as ql
-from Utilities.svi_read_data import get_curve_treasury_bond
+import pandas as pd
+import numpy as np
+import os
 
 def to_dt_dates(ql_dates):
     datetime_dates = []
@@ -23,6 +25,26 @@ def to_ql_date(datetime_date):
 def to_dt_date(ql_date):
     dt = datetime.date(ql_date.year(), ql_date.month(), ql_date.dayOfMonth())
     return dt
+
+def get_curve_treasury_bond(evalDate, daycounter):
+    datestr = str(evalDate.year()) + "-" + str(evalDate.month()) + "-" + str(evalDate.dayOfMonth())
+    try:
+        curvedata = pd.read_json(os.path.abspath('..') + '\marketdata\curvedata_tb_' + datestr + '.json')
+        rates = curvedata.values[0]
+        calendar = ql.China()
+        dates = [evalDate,
+                 calendar.advance(evalDate, ql.Period(1, ql.Months)),
+                 calendar.advance(evalDate, ql.Period(3, ql.Months)),
+                 calendar.advance(evalDate, ql.Period(6, ql.Months)),
+                 calendar.advance(evalDate, ql.Period(9, ql.Months)),
+                 calendar.advance(evalDate, ql.Period(1, ql.Years))]
+        krates = np.divide(rates, 100)
+        curve = ql.ForwardCurve(dates, krates, daycounter)
+    except Exception as e:
+        print(e)
+        print('Error def -- get_curve_treasury_bond in \'svi_read_data\' on date : ', evalDate)
+        return
+    return curve
 
 def get_mdate_by_contractid(commodityType,contractId,calendar):
     maturity_date = 0

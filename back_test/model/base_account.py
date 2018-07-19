@@ -22,23 +22,7 @@ class BaseAccount():
         self.rf = rf
         self.cash = init_fund  # 现金账户：初始资金为现金
         self.actual_leverage = 0.0
-        self.total_mtm_position = 0.0  # 总多空持仓市值加总
-
-        # self.total_asset = init_fund # 投资组合总市值：初始状态只有现金; 每日收盘更新浮盈浮亏；
-        # self.total_invest_position_long = 0.0 # 总多头持仓市值：每日收盘计算
-        # self.total_invest_posiion_short = 0.0 # 总空头持仓市值：每日收盘计算
-
-    # def add_record_1(self, dt_trade, id_instrument, trade_type, trade_price, trade_cost, trade_unit,
-    #                  trade_margin_capital=0.0):
-    #     record = pd.DataFrame(data={Util.ID_INSTRUMENT: [id_instrument],
-    #                                 Util.DT_TRADE: [dt_trade],
-    #                                 Util.TRADE_TYPE: [trade_type],
-    #                                 Util.TRADE_PRICE: [trade_price],
-    #                                 Util.TRANSACTION_COST: [trade_cost],
-    #                                 Util.TRADE_UNIT: [trade_unit],  # 多空体现在unit正负号
-    #                                 Util.TRADE_MARGIN_CAPITAL: [trade_margin_capital]
-    #                                 })
-    #     self.df_trading_records = self.df_trading_records.append(record, ignore_index=True)
+        self.total_mtm_position = 0.0  # 总多空持仓市值(abs value)加总
 
     def add_holding(self, base_product: BaseProduct):
         if base_product.id_instrument() not in self.dict_holding.keys():
@@ -55,18 +39,22 @@ class BaseAccount():
             if book_series[Util.TRADE_LONG_SHORT] != execution_record[Util.TRADE_LONG_SHORT]:
                 # """ close out """
                 if book_series[Util.TRADE_UNIT] == execution_record[Util.TRADE_UNIT]:
-                    self.dict_holding.pop(id_instrument, None)
                     trade_long_short = book_series[Util.TRADE_LONG_SHORT]
                     trade_unit = 0
-                    last_price = execution_record[Util.LAST_PRICE]
+                    last_price = execution_record[Util.TRADE_PRICE]
                     trade_margin_capital = 0.0
                     trade_book_value = 0.0
                     average_position_cost = 0.0
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + book_series[Util.NBR_MULTIPLIER] * \
-                                         execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_LONG_SHORT] * \
+                                         execution_record[Util.TRADE_UNIT] * execution_record[
+                                             Util.TRADE_LONG_SHORT].value * \
                                          (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     self.cash += execution_record[Util.TRADE_MARGIN_CAPITAL]
                     self.cash += book_series[Util.TRADE_REALIZED_PNL]
+                    position_current_value = self.get_position_current_value(id_instrument, trade_unit,
+                                                                             trade_long_short.value,
+                                                                             average_position_cost)
+                    self.dict_holding.pop(id_instrument, None)
                 # """ close partial """
                 elif book_series[Util.TRADE_UNIT] > execution_record[Util.TRADE_UNIT]:
                     ratio = execution_record[Util.TRADE_UNIT] / book_series[Util.TRADE_UNIT]
@@ -82,15 +70,19 @@ class BaseAccount():
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
                     self.cash += realized_pnl + margin_released
+                    position_current_value = self.get_position_current_value(id_instrument, trade_unit,
+                                                                             trade_long_short.value,
+                                                                             average_position_cost)
+
                 # """ open opposite :平仓加反向开仓 """
                 else:
                     trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
                     trade_unit = execution_record[Util.TRADE_UNIT] - book_series[Util.TRADE_UNIT]
                     last_price = execution_record[Util.TRADE_PRICE]
                     trade_margin_capital = execution_record[Util.TRADE_MARGIN_CAPITAL] * \
-                                             (1 - book_series[Util.TRADE_UNIT] / execution_record[Util.TRADE_UNIT])
+                                           (1 - book_series[Util.TRADE_UNIT] / execution_record[Util.TRADE_UNIT])
                     margin_released = book_series[Util.TRADE_MARGIN_CAPITAL]
-                    trade_book_value = book_series[Util.NBR_MULTIPLIER]*execution_record[Util.TRADE_LONG_SHORT].value \
+                    trade_book_value = book_series[Util.NBR_MULTIPLIER] * execution_record[Util.TRADE_LONG_SHORT].value \
                                        * trade_unit * last_price
                     average_position_cost = last_price
                     realized_pnl = book_series[Util.NBR_MULTIPLIER] * book_series[Util.TRADE_UNIT] * \
@@ -98,17 +90,23 @@ class BaseAccount():
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
                     self.cash += realized_pnl - trade_margin_capital + margin_released
+                    position_current_value = self.get_position_current_value(id_instrument, trade_unit,
+                                                                             trade_long_short.value,
+                                                                             average_position_cost)
 
             # """ New record has the same direction : add position """"
             else:
                 trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
                 trade_unit = book_series[Util.TRADE_UNIT] + execution_record[Util.TRADE_UNIT]
                 last_price = execution_record[Util.TRADE_PRICE]
-                trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] + execution_record[Util.TRADE_MARGIN_CAPITAL]
+                trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] + execution_record[
+                    Util.TRADE_MARGIN_CAPITAL]
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
                 average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / book_series[Util.TRADE_UNIT]
-                trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] # No added realized pnl
+                trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
                 self.cash -= trade_margin_capital
+                position_current_value = self.get_position_current_value(id_instrument, trade_unit,
+                                                                         trade_long_short.value, average_position_cost)
             self.trade_book.loc[id_instrument, Util.TRADE_LONG_SHORT] = trade_long_short
             self.trade_book.loc[id_instrument, Util.LAST_PRICE] = last_price
             self.trade_book.loc[id_instrument, Util.TRADE_UNIT] = trade_unit
@@ -132,12 +130,13 @@ class BaseAccount():
             })
             self.trade_book.loc[id_instrument] = book_series
             self.cash -= execution_record[Util.TRADE_MARGIN_CAPITAL]
-        position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value, average_position_cost)
-        self.trade_book.loc[id_instrument,Util.POSITION_CURRENT_VALUE] = position_current_value
+            position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value,
+                                                                     average_position_cost)
+        self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
         self.update_account_status()
 
-    # TODO: 股票与购买期权杠杆率计算方法不一样：base_product加入current value(不包含保证金)？？
-    # TODO: 保证金交易的future、期权卖方为零，股票、ETF、期权买方为当前MTM value
+    # 股票与购买期权杠杆率计算方法不一样：base_product加入current value(不包含保证金)？？
+    # 保证金交易的future、期权卖方为零，股票、ETF、期权买方为当前MTM value
     def update_account_status(self):
         total_mtm_position = (self.trade_book.loc[:, Util.TRADE_UNIT] * self.trade_book.loc[:, Util.LAST_PRICE]
                               * self.trade_book[Util.NBR_MULTIPLIER]).sum()
@@ -146,13 +145,15 @@ class BaseAccount():
         self.actual_leverage = total_mtm_position / (self.cash + total_margin + total_current_value)
         self.total_mtm_position = total_mtm_position
 
-    def get_position_current_value(self,id_instrument, trade_unit, long_short, average_position_cost):
+    def get_position_current_value(self, id_instrument, trade_unit, long_short, average_position_cost):
         base_product = self.dict_holding[id_instrument]
-        if base_product.current_value() == 0.0:
+        # Option write position current value is unrealized pnl, option buy position is the premium.
+        if base_product.get_current_value(long_short) == 0.0:
             # 对于保证金交易，持仓市值为未实现损益（unrealized pnl）
             position_current_value = trade_unit * long_short * (base_product.mktprice_close() - average_position_cost)
         else:
-            position_current_value = base_product.current_value() * trade_unit * base_product.multiplier()
+
+            position_current_value = base_product.get_current_value(long_short) * trade_unit * base_product.multiplier()
         return position_current_value
 
     def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,
@@ -184,43 +185,23 @@ class BaseAccount():
     # TODO : trigger end of day
     def daily_accounting(self):
         total_position_value = 0.0
-        for (id_instrument,row) in self.trade_book.iterrows():
-            if row[Util.TRADE_UNIT] == 0.0 : continue
+        for (id_instrument, row) in self.trade_book.iterrows():
+            if row[Util.TRADE_UNIT] == 0.0: continue
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
             trade_long_short = row[Util.TRADE_LONG_SHORT]
             average_position_cost = row[Util.AVERAGE_POSITION_COST]
             # calculate margin capital
-            trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[Util.TRADE_MARGIN_CAPITAL]
+            trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[
+                Util.TRADE_MARGIN_CAPITAL]
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] += trade_margin_capital_add
             self.cash -= trade_margin_capital_add
             # Calculate NPV
-            position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value, average_position_cost)
-            self.trade_book.loc[id_instrument,Util.POSITION_CURRENT_VALUE] = position_current_value
+            position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value,
+                                                                     average_position_cost)
+            self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
             total_position_value += position_current_value
         total_margin = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
         portfolio_mtm_value = self.cash + total_margin + total_position_value
-        npv = portfolio_mtm_value/self.init_fund
-
-
-        # def open_long(self, dt_trade, id_instrument, trade_price, trade_unit, name_code):
-        #     trade_type = TradeType.OPEN_LONG
-        #     trade_cost = trade_price * trade_unit * self.fee_rate
-        #     # TODO: get trade margin capital by product code.
-        #     trade_margin_capital = 0.0
-        #     self.add_record(dt_trade, id_instrument, trade_type, trade_price, trade_cost, trade_unit, trade_margin_capital)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        npv = portfolio_mtm_value / self.init_fund
+        self.update_account_status()

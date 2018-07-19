@@ -5,8 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Utilities.PlotUtil import PlotUtil
 from back_test.BktUtil import BktUtil
-from OptionStrategyLib.Util import PricingUtil
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator, EuropeanOption
+from PricingLibrary.Util import PricingUtil
+from PricingLibrary.BlackCalculator import BlackCalculator
+from PricingLibrary.Options import EuropeanOption
+
 
 
 class Replication():
@@ -49,7 +51,8 @@ class Replication():
         spot = df_data[df_data[self.utl.col_date] == dt_date][self.utl.col_close].values[-1]
         # spot = self.strike
         vol = self.get_vol(dt_date, df_vol)
-        black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
+        # black = self.pricing_utl.get_blackcalculator(dt_date, spot, Option, self.rf, vol)
+        black = BlackCalculator(dt_date,Option.dt_maturity,Option.strike,Option.option_type,spot,vol,self.rf)
         option0 = black.NPV()
         delta0 = black.Delta()
         asset = delta0 * spot
