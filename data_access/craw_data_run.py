@@ -7,10 +7,11 @@ from data_access import spider_api_sfe as sfe
 from data_access import spider_api_czce as czce
 from data_access.db_data_collection import DataCollection
 from Utilities import admin_write_util as admin
-import pandas as pd
+
 w.start()
 
-date = datetime.date(2018, 7, 12)
+date = datetime.date(2018, 7, 13)
+
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
 
