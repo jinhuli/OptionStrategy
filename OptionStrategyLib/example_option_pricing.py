@@ -1,8 +1,8 @@
 import datetime
 import QuantLib as ql
-from OptionStrategyLib.OptionPricing.OptionMetrics import OptionMetrics
-from OptionStrategyLib.OptionPricing.Options import OptionPlainEuropean
-from OptionStrategyLib.OptionPricing.Evaluation import Evaluation
+from PricingLibrary.OptionMetrics import OptionMetrics
+from PricingLibrary.Options import OptionPlainEuropean
+from PricingLibrary.Evaluation import Evaluation
 
 
 ##################################################################################################

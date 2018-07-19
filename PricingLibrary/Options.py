@@ -7,18 +7,19 @@ class EuropeanOption(object):
         self.init_price = init_price
 
 
-# class OptionPlainEuropean(object):
-#     def __init__(self, strike, maturitydt, optionType, init_price=None):
-#         self.strike = strike
-#         self.maturitydt = maturitydt
-#         self.optionType = optionType
-#         exercise = ql.EuropeanExercise(maturitydt)
-#         payoff = ql.PlainVanillaPayoff(optionType, strike)
-#         option = ql.EuropeanOption(payoff, exercise)
-#         self.exercise = exercise
-#         self.payoff = payoff
-#         self.option_ql = option
-#         self.init_price = init_price
+import QuantLib as ql
+class OptionPlainEuropean(object):
+    def __init__(self, strike, maturitydt, optionType, init_price=None):
+        self.strike = strike
+        self.maturitydt = maturitydt
+        self.optionType = optionType
+        exercise = ql.EuropeanExercise(maturitydt)
+        payoff = ql.PlainVanillaPayoff(optionType, strike)
+        option = ql.EuropeanOption(payoff, exercise)
+        self.exercise = exercise
+        self.payoff = payoff
+        self.option_ql = option
+        self.init_price = init_price
 #
 #
 # class OptionPlainAmerican:
