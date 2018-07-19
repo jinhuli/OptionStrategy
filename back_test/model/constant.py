@@ -271,30 +271,72 @@ class Util:
     DT_TRADE = 'dt_trade'
     TRADE_TYPE = 'trade_type'
     TRADE_PRICE = 'trade_price'
-    TRADE_COST = 'trade_cost'
-    TRADE_UNIT = 'trade_unit'
+    TRANSACTION_COST = 'transaction_cost'
+    TRADE_UNIT = 'trade_unit' # 绝对值
+    TIME_SIGNAL = 'time_signal'
     OPTION_PREMIIUM = 'option_premium'
     CASH = 'cash'
     TRADE_MARGIN_CAPITAL = 'trade_margin_capital'
-
-    DICT_FUTURE_MARGIN_RATE = {'m': 0.05}  # 合约价值的百分比
-    DICT_FUTURE_FEE = {'m': 3.0}  # 元/手
-    DICT_FUTURE_CONTRACT_MULTIPLIER = {'m': 10}  # 合约乘数
-    DICT_FUTURE_CORE_CONTRACT = {'m': [1, 5, 9],
-                                 'sr': [1, 5, 6],
-                                 STR_50ETF: STR_ALL}
+    TRADE_MARKET_VALUE = 'trade_market_value'  # 头寸市值
+    TRADE_BOOK_VALUE = 'trade_book_value'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
+    TRADE_LONG_SHORT = 'long_short'
+    AVERAGE_POSITION_COST = 'average_position_cost' # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
+    TRADE_REALIZED_PNL = 'realized_pnl'
+    LAST_PRICE = 'last_price'
+    POSITION_CURRENT_VALUE = 'position_current_value' # 用于计算杠杆率，保证金交易的current value为零
+    BILLION = 1000000000.0
+    TRADE_BOOK_COLUMN_LIST = [TRADE_LONG_SHORT, TRADE_UNIT,
+                              LAST_PRICE, TRADE_MARGIN_CAPITAL,
+                              TRADE_BOOK_VALUE, AVERAGE_POSITION_COST,
+                              TRADE_REALIZED_PNL,NBR_MULTIPLIER,
+                              POSITION_CURRENT_VALUE] # ID_INSTRUMENR是df的index
+    DICT_FUTURE_MARGIN_RATE = { # 合约价值的百分比
+        'm': 0.05,
+        'if': 0.15,
+        'ih': 0.15,
+        'ic': 0.15,
+    }
+    DICT_TRANSACTION_FEE = { # 元/手
+        'm': 3.0,
+        'if': None,
+        'ih': None,
+        'ic': None,
+    }
+    DICT_TRANSACTION_FEE_RATE = { # 百分比
+        'if': 6.9 / 10000.0,
+        'ih': 6.9 / 10000.0,
+        'ic': 6.9 / 10000.0,
+    }
+    DICT_CONTRACT_MULTIPLIER = { # 合约乘数
+        'm': 10,
+        'if': 300,
+        'ih': 300,
+        'ic': 200,
+    }
+    DICT_FUTURE_CORE_CONTRACT = {
+        'm': [1, 5, 9],
+        'sr': [1, 5, 6],
+        STR_50ETF: STR_ALL}
+    DICT_TICK_SIZE = {
+        "50etf": 0.0001,
+        "m": 1,
+        "sr": 0.5,
+        'if': 0.2,
+        'ih': 0.2,
+        'ic': 0.2
+    }
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
         cur_date = x[Util.DT_DATE]
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-                x[
-                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                           00):
+                        x[
+                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
+                                                                   00):
             return True
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-                x[
-                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                           00):
+                        x[
+                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
+                                                                   00):
             return True
         return False

@@ -110,9 +110,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                     TradeType.OPEN_SHORT,
                     1000,
                     11.1,
-                    datetime.date(2017, 1, 1),
-                )
-            )
+                    datetime.datetime(2017, 1, 1,9,45,0),
+                ))
 
     def __repr__(self) -> str:
         return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \

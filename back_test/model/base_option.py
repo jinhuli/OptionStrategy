@@ -186,13 +186,17 @@ class BaseOption(BaseProduct):
         # TODO
         return
 
+    """ 用于计算杠杆率 ：option，买方具有current value为当前的权利金，期权卖方为保证金交易，current value为零 """
+    def get_current_value(self):
+        return self.mktprice_close()
+
     """ init_margin(初始保证金):用于开仓一天，且只有期权卖方收取 """
 
     # 认购期权义务仓开仓保证金＝[合约前结算价+Max（12%×合约标的前收盘价-认购期权虚值，
     #                           7%×合约标的前收盘价)]×合约单位
     # 认沽期权义务仓开仓保证金＝Min[合约前结算价 + Max（12 %×合约标的前收盘价 - 认沽期权虚值，
     #                               7 %×行权价格），行权价格] ×合约单位
-    def get_init_margin(self) -> float:
+    def get_initial_margin(self) -> float:
         amt_last_settle = self.mktprice_last_settlement()
         amt_underlying_last_close = self.underlying_last_close()
         if self.option_type() == OptionType.CALL:
@@ -214,7 +218,6 @@ class BaseOption(BaseProduct):
     # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
     #                               行权价格]×合约单位
     def get_maintain_margin(self):
-
         amt_settle = self.mktprice_settlement()
         if amt_settle is None or amt_settle == np.nan:
             amt_settle = self.mktprice_close()
@@ -236,26 +239,7 @@ class BaseOption(BaseProduct):
             return int(self.id_underlying()[-2, :]) in Util.MAIN_CONTRACT_159
         return True
 
+    # TODO:
     def execute_order(self, order: Order):
         ret: pd.Series =order.trade_with_current_volume(int(self.trading_volume()))
-        print(ret)
-        """
-        update multiplier adjustment.
-        """
-    #
-    # # TODO: ask my queen for detail
-    # def update_multiplier_adjustment(self):
-    #     if self.name_code() == '50etf':
-    #         self.df_data[Util.AMT_ADJ_STRIKE] = \
-    #             round(self.df_data[Util.AMT_STRIKE] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
-    #         self.df_data[Util.AMT_ADJ_OPTION_PRICE] = \
-    #             round(self.df_data[Util.AMT_SETTLEMENT] * self.df_data[Util.NBR_MULTIPLIER] / 10000.0, 2)
-    #     else:
-    #         self.df_data[Util.AMT_ADJ_STRIKE] = self.df_data[Util.AMT_STRIKE]
-    #         self.df_data[Util.AMT_ADJ_OPTION_PRICE] = self.df_data[Util.AMT_SETTLEMENT]
-    #
-    # # TODO: ask my queen for reason of doing nothing for non-50etf
-    # def update_applicable_strikes(self):
-    #     if self.name_code() == '50etf':
-    #         self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(ETF.fun_applicable_strikes, axis=1)
-    #         self.df_data[Util.AMT_APPLICABLE_MULTIPLIER] = self.df_data.apply(ETF.fun_applicable_multiplier, axis=1)
+
