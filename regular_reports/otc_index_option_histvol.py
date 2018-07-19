@@ -29,7 +29,7 @@ EquityIndexIntraday = dbt.EquityIndexIntraday
 IndexMkt = dbt.IndexMkt
 ############################################################################################
 # Eval Settings
-evalDate = datetime.date(2018, 5, 18)
+evalDate = datetime.date(2018, 6, 30)
 startDate = datetime.date(2017, 1, 1)
 hist_date = datetime.date(2015 ,6, 1)
 index_ids = ['index_300sh','index_50sh','index_500sh','index_50etf']
