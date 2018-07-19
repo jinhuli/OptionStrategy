@@ -70,10 +70,6 @@ def table_stocks_mktdata():
 def table_events():
     return Table('events', metadata, autoload=True)
 
-def table_interest_rates():
-    return Table('interest_rates', metadata, autoload=True)
-
-
 def table_index_mktdata_intraday():
     return Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
 
