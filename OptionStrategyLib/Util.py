@@ -1,6 +1,6 @@
 import datetime
 import math
-# from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
+from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 from back_test.BktUtil import BktUtil
 
 
@@ -23,16 +23,7 @@ class PricingUtil:
         discount = math.exp(-rf * PricingUtil.get_ttm(dt_eval, dt_maturity))
         return discount
 
-
-
-    # def get_blackcalculator(self, dt_date, spot, option, rf, vol, iscall):
-    #     stdDev = self.get_blackcalculator_std(dt_date, option.dt_maturity, vol)
-    #     discount = self.get_discount(dt_date, option.dt_maturity, rf)
-    #     black = BlackCalculator(option.strike, spot, stdDev, discount, iscall)
-    #     # alpha is component shares of stock, N(d1) for call / -N(-d1) for put
-    #     # beta id component shares of borrowing/lending -N(d2) for call / N(-d2) for put
-    #     return black
-
+    @staticmethod
     def get_maturity_metrics(self, dt_date, spot, option):
         strike = option.strike
         if option.option_type == BktUtil().type_put:
