@@ -32,20 +32,30 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.flag_calculate_iv: bool = flag_calculate_iv
         self.option_dict: Dict[datetime.date, List(BaseOption)] = {}
         self.rf: float = rf
-        self.dt_list: List[datetime.date] = sorted(self.df_data[Util.DT_DATE].unique())
-        self.nbr_index = len(self.dt_list)
         self.size: int = 0
         self.eval_date: datetime.date = None
-        self.current_date_index = -1
+        self.eval_datetime: datetime.datetime = None
+        self.current_index = -1
         self.eligible_options = deque()
         # self.eligible_option_dict: Dict[datetime.date, List(BaseOption)] = {}
         # self.eligible_maturities: List(datetime.date) = None
 
     def init(self) -> None:
+        print('start preprosess ', datetime.datetime.now())
         self.pre_process()
+        print('end preprosess ', datetime.datetime.now())
         self.next()
 
     def pre_process(self) -> None:
+        if self.frequency in Util.LOW_FREQUENT:
+            self.date_list: List[datetime.date] = sorted(self.df_data[Util.DT_DATE].unique())
+            self.nbr_index = len(self.date_list)
+        else:
+            self.datetime_list: List[datetime.datetime] = sorted(self.df_data[Util.DT_DATETIME].unique())
+            self.nbr_index = len(self.datetime_list)
+            if self.df_daily_data is None:
+                #TODO: Rise error if no daily data in high frequency senario.
+                return
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         if self.df_daily_data is not None:
             groups_daily = self.df_daily_data.groupby([Util.ID_INSTRUMENT])
@@ -54,6 +64,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         for key in groups.groups.keys():
             # manage minute data and daily data.
             df_option = groups.get_group(key).reset_index(drop=True)
+            # print(key, ' , ', len(df_option),' , ',datetime.datetime.now())
             if self.df_daily_data is not None:
                 df_option_daily = groups_daily.get_group(key).reset_index(drop=True)
             else:
@@ -68,9 +79,53 @@ class BaseOptionSet(AbstractBaseProductSet):
             l.append(option)
             self.size += 1
 
+
     def next(self) -> None:
-        self.current_date_index += 1
-        self.eval_date = self.dt_list[self.current_date_index]
+        if not self.has_next():
+            return None
+        start = datetime.datetime.now()
+        self.current_index += 1
+        if self.frequency in Util.LOW_FREQUENT:
+            self.eval_date = self.date_list[self.current_index]
+            # Update existing deque
+            size = len(self.eligible_options)
+            for i in range(size):
+                option = self.eligible_options.popleft()
+                if not option.has_next():
+                    continue
+                option.next()
+                if option.is_valid_option():
+                    self.add_option(option)
+            for option in self.option_dict.pop(self.eval_date, []):
+                if option.is_valid_option():
+                    self.add_option(option)
+        else:
+            self.eval_datetime = self.datetime_list[self.current_index]
+            # Update existing deque
+            if len(self.eligible_options) == 0 or self.eval_date is None or self.eval_date != self.eval_datetime.date():
+                self.eval_date = self.eval_datetime.date()
+                size = len(self.eligible_options)
+                for option in range(size):
+                    option = self.eligible_options.popleft()
+                    if not option.has_next():
+                        continue
+                    option.next()
+                    if option.is_valid_option():
+                        self.add_option(option)
+                for option in self.option_dict.pop(self.eval_date, []):
+                    if option.is_valid_option():
+                        self.add_option(option)
+            else:
+                for option in self.eligible_options:
+                    if not option.has_next():
+                        continue
+                    option.next()
+        end = datetime.datetime.now()
+        print("OptionSet.Next: iter {0}, option_set length: {1}, time cost: {2} s".format(self.eval_date,
+                                                                                      len(self.eligible_options),
+                                                                                      (end - start).total_seconds()))
+
+    def next2(self) -> None:
         start = datetime.datetime.now()
         # Update existing deque
         size = len(self.eligible_options)
@@ -81,13 +136,26 @@ class BaseOptionSet(AbstractBaseProductSet):
             option.next()
             if option.is_valid_option():
                 self.add_option(option)
-        for option in self.option_dict.get(self.eval_date, []):
+        for option in self.option_dict.pop(self.eval_date, []):
             if option.is_valid_option():
                 self.add_option(option)
+        # Update index and time, check option data quality.
+        self.current_index += 1
+        if self.frequency in Util.LOW_FREQUENT:
+            self.eval_date = self.date_list[self.current_index]
+        else:
+            self.eval_datetime = self.datetime_list[self.current_index]
+            self.eval_date = self.eval_datetime.date()
+            for option in self.eligible_options:
+                if self.eval_datetime != option.eval_datetime:
+                    print("Option datetime does not match, id : {0}, dt:{1}".format(
+                        option.id_instrument(), self.eval_datetime))
         end = datetime.datetime.now()
         print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
                                                                      (end - start).total_seconds()))
         return None
+
+
 
     """
     Operation for eligible option on each iter.
@@ -99,7 +167,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.eligible_options.append(option)
 
     def has_next(self) -> bool:
-        return self.current_date_index < self.nbr_index - 1
+        return self.current_index < self.nbr_index - 1
 
     def scan(self) -> None:
         for option in self.eligible_options:
@@ -161,10 +229,14 @@ class BaseOptionSet(AbstractBaseProductSet):
     def get_maturities_option_dict(self) -> \
             Tuple[
                 Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
+        if self.frequency not in Util.LOW_FREQUENT \
+                and self.dict_maturities_call is not None \
+                and self.dict_maturities_put is not None:
+            return  self.dict_maturities_call, self.dict_maturities_put
         call_ret = {}
         put_ret = {}
         for option in self.eligible_options:
-            if option.option_type() == Util.TYPE_CALL:
+            if option.option_type() == OptionType.CALL:
                 ret = call_ret
             else:
                 ret = put_ret
@@ -177,6 +249,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                 l = []
                 d.update({option.nearest_strike(): l})
             l.append(option)
+        self.dict_maturities_call= call_ret
+        self.dict_maturities_put = put_ret
         return call_ret, put_ret
 
     # TODO: change type to enum in future

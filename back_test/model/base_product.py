@@ -22,6 +22,7 @@ class BaseProduct(AbstractBaseProduct):
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
         self._name_code: str = self._id_instrument.split('_')[0]
+        #TODO: 起始日期最好从数据的第二天开始。
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.eval_date: datetime.date = None
@@ -33,6 +34,12 @@ class BaseProduct(AbstractBaseProduct):
     def init(self) -> None:
         self.pre_process()
         self.next()
+
+    def next(self) -> None:
+        if not self.has_next():
+            return None
+        self.update_current_state()
+        self.update_current_daily_state()
 
     def pre_process(self) -> None:
         if self.frequency not in Util.LOW_FREQUENT:
@@ -70,11 +77,6 @@ class BaseProduct(AbstractBaseProduct):
                 if column not in columns2:
                     self.df_daily_data[column] = None
 
-    def next(self) -> None:
-        if not self.has_next():
-            return None
-        self.update_current_state()
-        self.update_current_daily_state()
 
     #TODO: ADD NEXT DAY METHOD
 
