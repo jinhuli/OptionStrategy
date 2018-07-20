@@ -79,6 +79,38 @@ class BaseOptionSet(AbstractBaseProductSet):
             l.append(option)
             self.size += 1
 
+    def next(self) -> None:
+        start = datetime.datetime.now()
+        # Update index and time,
+        self.current_index += 1
+        if self.frequency in Util.LOW_FREQUENT:
+            self.eval_date = self.date_list[self.current_index]
+        else:
+            self.eval_datetime = pd.to_datetime(self.datetime_list[self.current_index])
+            self.eval_date = self.eval_datetime.date()
+        # Update existing deque
+        size = len(self.eligible_options)
+        for i in range(size):
+            option = self.eligible_options.popleft()
+            if not option.has_next():
+                continue
+            option.next()
+            if option.is_valid_option():
+                self.add_option(option)
+        for option in self.option_dict.pop(self.eval_date, []):
+            if option.is_valid_option():
+                self.add_option(option)
+        # Check option data quality.
+        if self.frequency not in Util.LOW_FREQUENT:
+            for option in self.eligible_options:
+                if self.eval_datetime != option.eval_datetime:
+                    print("Option datetime does not match, id : {0}, dt:{1}".format(
+                        option.id_instrument(), self.eval_datetime))
+        end = datetime.datetime.now()
+        print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
+                                                                     (end - start).total_seconds()))
+        return None
+
 
     # def next(self) -> None:
     #     if not self.has_next():
@@ -124,39 +156,6 @@ class BaseOptionSet(AbstractBaseProductSet):
     #     print("OptionSet.Next: iter {0}, option_set length: {1}, time cost: {2} s".format(self.eval_date,
     #                                                                                   len(self.eligible_options),
     #                                                                                   (end - start).total_seconds()))
-
-    def next(self) -> None:
-        start = datetime.datetime.now()
-        # Update index and time,
-        self.current_index += 1
-        if self.frequency in Util.LOW_FREQUENT:
-            self.eval_date = self.date_list[self.current_index]
-        else:
-            self.eval_datetime = pd.to_datetime(self.datetime_list[self.current_index])
-            self.eval_date = self.eval_datetime.date()
-        # Update existing deque
-        size = len(self.eligible_options)
-        for i in range(size):
-            option = self.eligible_options.popleft()
-            if not option.has_next():
-                continue
-            option.next()
-            if option.is_valid_option():
-                self.add_option(option)
-        for option in self.option_dict.pop(self.eval_date, []):
-            if option.is_valid_option():
-                self.add_option(option)
-        # Check option data quality.
-        if self.frequency not in Util.LOW_FREQUENT:
-            for option in self.eligible_options:
-                if self.eval_datetime != option.eval_datetime:
-                    print("Option datetime does not match, id : {0}, dt:{1}".format(
-                        option.id_instrument(), self.eval_datetime))
-        end = datetime.datetime.now()
-        print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
-                                                                     (end - start).total_seconds()))
-        return None
-
 
 
     """

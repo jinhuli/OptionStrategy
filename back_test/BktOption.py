@@ -2,7 +2,7 @@ import numpy as np
 from back_test.BktInstrument import BktInstrument
 from back_test.BktUtil import BktUtil
 from PricingLibrary.Options import EuropeanOption
-from OptionStrategyLib.Util import PricingUtil
+from PricingLibrary.Util import PricingUtil
 
 
 class BktOption(BktInstrument):
