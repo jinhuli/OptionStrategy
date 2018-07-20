@@ -1,4 +1,3 @@
-from back_test.model.option_account import OptionAccount
 from back_test.model.base_option_set import BaseOptionSet
 from back_test.model.base_instrument import BaseInstrument
 from back_test.model.base_future_coutinuous import BaseFutureCoutinuous

@@ -64,7 +64,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         for key in groups.groups.keys():
             # manage minute data and daily data.
             df_option = groups.get_group(key).reset_index(drop=True)
-            # print(key, ' , ', len(df_option),' , ',datetime.datetime.now())
+            print(key, ' , ', len(df_option),' , ',datetime.datetime.now())
             if self.df_daily_data is not None:
                 df_option_daily = groups_daily.get_group(key).reset_index(drop=True)
             else:
@@ -132,7 +132,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         if self.frequency in Util.LOW_FREQUENT:
             self.eval_date = self.date_list[self.current_index]
         else:
-            self.eval_datetime = self.datetime_list[self.current_index]
+            self.eval_datetime = pd.to_datetime(self.datetime_list[self.current_index])
             self.eval_date = self.eval_datetime.date()
         # Update existing deque
         size = len(self.eligible_options)
@@ -147,10 +147,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             if option.is_valid_option():
                 self.add_option(option)
         # Check option data quality.
-        self.current_index += 1
         if self.frequency not in Util.LOW_FREQUENT:
-            self.eval_datetime = self.datetime_list[self.current_index]
-            self.eval_date = self.eval_datetime.date()
             for option in self.eligible_options:
                 if self.eval_datetime != option.eval_datetime:
                     print("Option datetime does not match, id : {0}, dt:{1}".format(
