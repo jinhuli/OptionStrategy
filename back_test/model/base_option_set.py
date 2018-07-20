@@ -80,53 +80,60 @@ class BaseOptionSet(AbstractBaseProductSet):
             self.size += 1
 
 
+    # def next(self) -> None:
+    #     if not self.has_next():
+    #         return None
+    #     start = datetime.datetime.now()
+    #     self.current_index += 1
+    #     if self.frequency in Util.LOW_FREQUENT:
+    #         self.eval_date = self.date_list[self.current_index]
+    #         # Update existing deque
+    #         size = len(self.eligible_options)
+    #         for i in range(size):
+    #             option = self.eligible_options.popleft()
+    #             if not option.has_next():
+    #                 continue
+    #             option.next()
+    #             if option.is_valid_option():
+    #                 self.add_option(option)
+    #         for option in self.option_dict.pop(self.eval_date, []):
+    #             if option.is_valid_option():
+    #                 self.add_option(option)
+    #     else:
+    #         self.eval_datetime = self.datetime_list[self.current_index]
+    #         # Update existing deque
+    #         if len(self.eligible_options) == 0 or self.eval_date is None or self.eval_date != self.eval_datetime.date():
+    #             self.eval_date = self.eval_datetime.date()
+    #             size = len(self.eligible_options)
+    #             for option in range(size):
+    #                 option = self.eligible_options.popleft()
+    #                 if not option.has_next():
+    #                     continue
+    #                 option.next()
+    #                 if option.is_valid_option():
+    #                     self.add_option(option)
+    #             for option in self.option_dict.pop(self.eval_date, []):
+    #                 if option.is_valid_option():
+    #                     self.add_option(option)
+    #         else:
+    #             for option in self.eligible_options:
+    #                 if not option.has_next():
+    #                     continue
+    #                 option.next()
+    #     end = datetime.datetime.now()
+    #     print("OptionSet.Next: iter {0}, option_set length: {1}, time cost: {2} s".format(self.eval_date,
+    #                                                                                   len(self.eligible_options),
+    #                                                                                   (end - start).total_seconds()))
+
     def next(self) -> None:
-        if not self.has_next():
-            return None
         start = datetime.datetime.now()
+        # Update index and time,
         self.current_index += 1
         if self.frequency in Util.LOW_FREQUENT:
             self.eval_date = self.date_list[self.current_index]
-            # Update existing deque
-            size = len(self.eligible_options)
-            for i in range(size):
-                option = self.eligible_options.popleft()
-                if not option.has_next():
-                    continue
-                option.next()
-                if option.is_valid_option():
-                    self.add_option(option)
-            for option in self.option_dict.pop(self.eval_date, []):
-                if option.is_valid_option():
-                    self.add_option(option)
         else:
             self.eval_datetime = self.datetime_list[self.current_index]
-            # Update existing deque
-            if len(self.eligible_options) == 0 or self.eval_date is None or self.eval_date != self.eval_datetime.date():
-                self.eval_date = self.eval_datetime.date()
-                size = len(self.eligible_options)
-                for option in range(size):
-                    option = self.eligible_options.popleft()
-                    if not option.has_next():
-                        continue
-                    option.next()
-                    if option.is_valid_option():
-                        self.add_option(option)
-                for option in self.option_dict.pop(self.eval_date, []):
-                    if option.is_valid_option():
-                        self.add_option(option)
-            else:
-                for option in self.eligible_options:
-                    if not option.has_next():
-                        continue
-                    option.next()
-        end = datetime.datetime.now()
-        print("OptionSet.Next: iter {0}, option_set length: {1}, time cost: {2} s".format(self.eval_date,
-                                                                                      len(self.eligible_options),
-                                                                                      (end - start).total_seconds()))
-
-    def next2(self) -> None:
-        start = datetime.datetime.now()
+            self.eval_date = self.eval_datetime.date()
         # Update existing deque
         size = len(self.eligible_options)
         for i in range(size):
@@ -139,11 +146,9 @@ class BaseOptionSet(AbstractBaseProductSet):
         for option in self.option_dict.pop(self.eval_date, []):
             if option.is_valid_option():
                 self.add_option(option)
-        # Update index and time, check option data quality.
+        # Check option data quality.
         self.current_index += 1
-        if self.frequency in Util.LOW_FREQUENT:
-            self.eval_date = self.date_list[self.current_index]
-        else:
+        if self.frequency not in Util.LOW_FREQUENT:
             self.eval_datetime = self.datetime_list[self.current_index]
             self.eval_date = self.eval_datetime.date()
             for option in self.eligible_options:

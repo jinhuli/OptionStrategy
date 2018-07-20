@@ -22,6 +22,8 @@ print(df_option_intraday.iloc[-1])
 option_set = BaseOptionSet(df_data=df_option_intraday, df_daily_data=df_option, df_underlying=df_index,
                            frequency=FrequentType.MINUTE)
 option_set.init()
+option_set.next()
+
 print(len(option_set.eligible_options))
 while option_set.has_next():
     print()
