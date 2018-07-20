@@ -8,7 +8,7 @@ from PricingLibrary.OptionMetrics import OptionMetrics
 from PricingLibrary.Evaluation import Evaluation
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
-from back_test.analysis_volatility_strategies import PortfolioStraddle
+from OptionStrategyLib.OptionStrategy.analysis_volatility_strategies import PortfolioStraddle
 
 pu = PlotUtil()
 eval_date = datetime.date(2018, 3, 1)

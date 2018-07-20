@@ -135,8 +135,9 @@ class BaseProduct(AbstractBaseProduct):
         # TODO
         return True
 
-    def execute_order(self, order: Order):
+    def execute_order(self, order: Order, slippage=0):
         raise NotImplementedError("Child class not implement method execute_order.")
+
     """
     getters
     """
@@ -259,3 +260,4 @@ class BaseProduct(AbstractBaseProduct):
 
     def get_maintain_margin(self) -> float:
         return 0.0
+

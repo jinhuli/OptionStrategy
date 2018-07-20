@@ -77,7 +77,7 @@ class BaseFutureCoutinuous(BaseProduct):
                 Util.TRADE_UNIT] * self._multiplier
         else:
             # 每手手续费
-            transaction_fee = self.fee_per_unit * execution_record[Util.TRADE_UNIT] * self._multiplier
+            transaction_fee = self.fee_per_unit * execution_record[Util.TRADE_UNIT]
         execution_record[Util.TRANSACTION_COST] += transaction_fee
         transaction_fee_add_to_price = transaction_fee/(execution_record[Util.TRADE_UNIT]*self._multiplier)
         execution_record[Util.TRADE_PRICE] += execution_record[Util.TRADE_LONG_SHORT].value*transaction_fee_add_to_price
@@ -85,6 +85,9 @@ class BaseFutureCoutinuous(BaseProduct):
             Util.TRADE_UNIT] * self._multiplier
         execution_record[Util.TRADE_BOOK_VALUE] = position_size  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
         execution_record[Util.TRADE_MARGIN_CAPITAL] = margin_requirement
-        # execution_record[
-        #     Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
+        execution_record[Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
         return execution_record
+
+
+
+

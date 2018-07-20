@@ -26,9 +26,14 @@ class Trade():
 
 
 class Order(object):
-    def __init__(self, dt_trade: datetime.date, id_instrument: str,
-                 trade_type: TradeType, trade_unit: int, trade_price: Union[float, None],
-                 time_signal: Union[datetime.datetime, None], long_short=None):
+    def __init__(self,
+                 dt_trade: datetime.date,
+                 id_instrument: str,
+                 trade_type: TradeType,
+                 trade_unit: int,
+                 trade_price: Union[float, None],
+                 time_signal: Union[datetime.datetime, None],
+                 long_short=None):
         super().__init__()
         if trade_unit <= 0:
             print('Order has zero or negative unit.')

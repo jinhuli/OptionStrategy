@@ -45,11 +45,13 @@ class BaseAccount():
                     trade_margin_capital = 0.0
                     trade_book_value = 0.0
                     average_position_cost = 0.0
-                    trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + book_series[Util.NBR_MULTIPLIER] * \
+                    trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + \
+                                         book_series[Util.NBR_MULTIPLIER] * \
                                          execution_record[Util.TRADE_UNIT] * execution_record[
                                              Util.TRADE_LONG_SHORT].value * \
-                                         (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
-                    self.cash += execution_record[Util.TRADE_MARGIN_CAPITAL]
+                                         (execution_record[Util.TRADE_PRICE] -
+                                          book_series[Util.AVERAGE_POSITION_COST])
+                    self.cash += book_series[Util.TRADE_MARGIN_CAPITAL]
                     self.cash += book_series[Util.TRADE_REALIZED_PNL]
                     position_current_value = self.get_position_current_value(id_instrument, trade_unit,
                                                                              trade_long_short.value,
@@ -115,6 +117,7 @@ class BaseAccount():
             self.trade_book.loc[id_instrument, Util.TRADE_BOOK_VALUE] = trade_book_value
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] = trade_margin_capital
         else:
+            # """ Open a new position """
             trade_unit = execution_record[Util.TRADE_UNIT]
             trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
             average_position_cost = execution_record[Util.TRADE_PRICE]
@@ -132,6 +135,7 @@ class BaseAccount():
             self.cash -= execution_record[Util.TRADE_MARGIN_CAPITAL]
             position_current_value = self.get_position_current_value(id_instrument, trade_unit, trade_long_short.value,
                                                                      average_position_cost)
+        self.cash -= execution_record[Util.TRADE_MARKET_VALUE] # 无保证金交易（期权买方、股票等）的头寸市值从现金账户中全部扣除
         self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
         self.update_account_status()
 

@@ -1,7 +1,7 @@
 import numpy as np
 from back_test.BktInstrument import BktInstrument
 from back_test.BktUtil import BktUtil
-from OptionStrategyLib.OptionPricing.Options import EuropeanOption
+from PricingLibrary.Options import EuropeanOption
 from OptionStrategyLib.Util import PricingUtil
 
 

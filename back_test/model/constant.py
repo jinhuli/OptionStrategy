@@ -302,6 +302,16 @@ class Util:
         'ih': None,
         'ic': None,
     }
+    DICT_OPTION_TRANSACTION_FEE_RATE = { # 百分比
+        "50etf": 0.0,
+        "m": 0.0,
+        "sr": 0.0,
+    }
+    DICT_OPTION_TRANSACTION_FEE = { # 元/手
+        "50etf": 0.0,
+        "m": 0.0,
+        "sr": 0.0,
+    }
     DICT_TRANSACTION_FEE_RATE = { # 百分比
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
@@ -317,6 +327,7 @@ class Util:
         'm': [1, 5, 9],
         'sr': [1, 5, 6],
         STR_50ETF: STR_ALL}
+
     DICT_TICK_SIZE = {
         "50etf": 0.0001,
         "m": 1,
