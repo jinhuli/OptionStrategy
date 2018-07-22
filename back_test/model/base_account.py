@@ -172,7 +172,7 @@ class BaseAccount():
         return portfolio_margin_trade_scale
 
     # For calculate MAX trade unit before execute order.
-    def get_investable_market_value(self):
+    def get_investable_cash(self):
         portfolio_margin_trade_scale = self.get_portfolio_margin_trade_scale()
         total_margin_capital = self.get_portfolio_margin_capital()
         investable_cash = max(0.0,
@@ -180,10 +180,18 @@ class BaseAccount():
                               portfolio_margin_trade_scale / self.max_leverage)
         return investable_cash * self.max_leverage
 
-    def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,
-                           trade_type: TradeType, trade_price: Union[float, None],
-                           time_signal: Union[datetime.datetime, None], multiplier: float,
-                           trade_unit: int = None, long_short=None):
+    def create_trade_order(self, base_product,
+                           trade_type: TradeType,
+                           trade_unit: int = None,
+                           trade_price: float = None,
+                           ):
+        dt_trade = base_product.eval_date
+        id_instrument = base_product.id_instrument()
+        if trade_price is None:
+            trade_price = base_product.mktprice_close()
+        time_signal = base_product.eval_datetime
+        multiplier = base_product.multiplier()
+        long_short = self.get_long_short(trade_type)
         if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
             book_series = self.trade_book.loc[id_instrument]
             trade_unit = book_series[Util.TRADE_UNIT]
@@ -194,7 +202,13 @@ class BaseAccount():
             order = Order(dt_trade, id_instrument, trade_type, trade_unit, trade_price,
                           time_signal, long_short)
             return order
-        max_unit = np.floor(self.get_investable_market_value() / (trade_price * multiplier))
+        if trade_unit is None:
+            raise ValueError("trade_unit is None when opening position !")
+        if base_product.base_product.get_current_value(long_short) == 0.0:
+            investable_market_value = self.get_investable_cash()
+        else:
+            investable_market_value = self.get_investable_cash() * self.max_leverage
+        max_unit = np.floor(investable_market_value / (trade_price * multiplier))
         if max_unit < 1:
             return
         else:
@@ -244,7 +258,15 @@ class BaseAccount():
         self.account.append(account_today)
         # REMOVE CLEARED TRADES FROM TRADING BOOK
         self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
+
     """ getters from trade book """
+
+    def get_long_short(self, trade_type):
+        if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:
+            long_short = LongShort.LONG
+        else:
+            long_short = LongShort.SHORT
+        return long_short
 
     # 投资组合总保证金金额
     def get_portfolio_margin_capital(self):

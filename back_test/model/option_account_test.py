@@ -35,37 +35,25 @@ execution_res = future.execute_order(order)
 account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
-order = account.create_trade_order(future.eval_date,
-                                   future.id_instrument(),
+order = account.create_trade_order(future,
                                    TradeType.OPEN_SHORT,
-                                   future.mktprice_close(),
-                                   future.eval_datetime,
-                                   future.multiplier(),
                                    5)
 execution_res = future.execute_order(order)
 account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
-order = account.create_trade_order(future.eval_date,
-                                   future.id_instrument(),
+order = account.create_trade_order(future,
                                    TradeType.OPEN_SHORT,
-                                   future.mktprice_close(),
-                                   future.eval_datetime,
-                                   future.multiplier(),
                                    10)
 execution_res = future.execute_order(order)
 account.add_record(execution_res, future)
 trading_desk.add_pending_order(order)
 future.next()
 
-account.daily_accounting()
+account.daily_accounting(future.eval_date)
 
-order = account.create_trade_order(future.eval_date,
-                                   future.id_instrument(),
+order = account.create_trade_order(future,
                                    TradeType.CLOSE_SHORT,
-                                   future.mktprice_close(),
-                                   future.eval_datetime,
-                                   future.multiplier(),
                                    )
 execution_res = future.execute_order(order)
 account.add_record(execution_res, future)
