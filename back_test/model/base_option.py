@@ -99,7 +99,7 @@ class BaseOption(BaseProduct):
         return self.current_state[Util.AMT_APPLICABLE_STRIKE]
 
     # """ 如果close price为空，使用settlement price作为option price """
-    def option_price(self) -> Union[float, None]:
+    def mktprice_close(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_OPTION_PRICE]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
             return

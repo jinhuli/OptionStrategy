@@ -280,17 +280,25 @@ class Util:
     TRADE_MARKET_VALUE = 'trade_market_value'  # 头寸市值
     TRADE_BOOK_VALUE = 'trade_book_value'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
     TRADE_LONG_SHORT = 'long_short'
-    AVERAGE_POSITION_COST = 'average_position_cost' # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
+    AVERAGE_POSITION_COST = 'average_position_cost'  # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
     TRADE_REALIZED_PNL = 'realized_pnl'
     LAST_PRICE = 'last_price'
-    POSITION_CURRENT_VALUE = 'position_current_value' # 用于计算杠杆率，保证金交易的current value为零
+    POSITION_CURRENT_VALUE = 'position_current_value'  # 用于计算杠杆率，保证金交易的current value为零
+    PORTFOLIO_MARGIN_CAPITAL = 'portfolio_margin_capital'
+    PORTFOLIO_MARGIN_TRADE_SCALE = 'portfolio_margin_trade_scale'
+    PORTFOLIO_TOTAL_SCALE = 'portfolio_total_scale'
+    PORTFOLIO_TRADES_VALUE = 'portfolio_trades_value'
+    PORTFOLIO_VALUE = 'portfolio_value'
+    PORTFOLIO_NPV = 'npv'
+    PORTFOLIO_LEVERAGE = 'portfolio_leverage'
+
     BILLION = 1000000000.0
     TRADE_BOOK_COLUMN_LIST = [TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
                               TRADE_BOOK_VALUE, AVERAGE_POSITION_COST,
                               TRADE_REALIZED_PNL,NBR_MULTIPLIER,
                               POSITION_CURRENT_VALUE] # ID_INSTRUMENR是df的index
-    DICT_FUTURE_MARGIN_RATE = { # 合约价值的百分比
+    DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,
         'ih': 0.15,
