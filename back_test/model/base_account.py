@@ -96,13 +96,12 @@ class BaseAccount():
                                                                              trade_long_short.value,
                                                                              average_position_cost)
 
-            # """ New record has the same direction : add position """"
+            # """ add position : New record has the same direction """"
             else:
                 trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
                 trade_unit = book_series[Util.TRADE_UNIT] + execution_record[Util.TRADE_UNIT]
                 last_price = execution_record[Util.TRADE_PRICE]
-                trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] + execution_record[
-                    Util.TRADE_MARGIN_CAPITAL]
+                trade_margin_capital = execution_record[Util.TRADE_MARGIN_CAPITAL]
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
                 average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / book_series[Util.TRADE_UNIT]
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
