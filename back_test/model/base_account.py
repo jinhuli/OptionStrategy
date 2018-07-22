@@ -23,6 +23,7 @@ class BaseAccount():
         self.cash = init_fund  # 现金账户：初始资金为现金
         self.actual_leverage = 0.0
         self.total_mtm_position = 0.0  # 总多空持仓市值(abs value)加总
+        self.total_margin_trade_mtm_position = 0.0 # 总保证金交易的市值，多空绝对市值相加，用于仓位控制
 
     def add_holding(self, base_product: BaseProduct):
         if base_product.id_instrument() not in self.dict_holding.keys():
@@ -148,16 +149,34 @@ class BaseAccount():
         self.actual_leverage = total_mtm_position / (self.cash + total_margin + total_current_value)
         self.total_mtm_position = total_mtm_position
 
+    # Option write position current value is unrealized pnl, option buy position is the premium.
     def get_position_current_value(self, id_instrument, trade_unit, long_short, average_position_cost):
         base_product = self.dict_holding[id_instrument]
-        # Option write position current value is unrealized pnl, option buy position is the premium.
         if base_product.get_current_value(long_short) == 0.0:
-            # 对于保证金交易，持仓市值为未实现损益（unrealized pnl）
-            position_current_value = trade_unit * long_short * (base_product.mktprice_close() - average_position_cost)
+            # 对于保证金交易，头寸价值为未实现损益（unrealized pnl）：每日净额结算后，将浮盈浮亏入账，用average_position_cost计算有问题
+            # position_current_value = trade_unit * long_short * (base_product.mktprice_close() - average_position_cost)
+            # 暂定：保证金交易头寸价值为零，暂不考虑日内的浮动盈亏。
+            position_current_value = 0.0
         else:
-
+            # 对于购买股票/期权买方等，头寸价值为当前市值
             position_current_value = base_product.get_current_value(long_short) * trade_unit * base_product.multiplier()
         return position_current_value
+
+    def get_total_margin_trade_mtm_position(self):
+        total_margin_trade_mtm_position = 0.0
+        for (i,row) in self.trade_book.iteritems():
+            id_instrument = row[Util.ID_INSTRUMENT]
+            long_short = row[Util.TRADE_LONG_SHORT]
+            base_product = self.dict_holding[id_instrument]
+            if base_product.get_current_value(long_short) == 0.0:
+                total_margin_trade_mtm_position += row[Util.TRADE_UNIT]* row[Util.NBR_MULTIPLIER] * row[Util.LAST_PRICE]
+        return total_margin_trade_mtm_position
+
+    # For calculate MAX trade unit before execute order.
+    def get_investable_market_value(self):
+        total_margin_capital = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
+        investable_cash = self.cash + total_margin_capital - self.total_margin_trade_mtm_position / self.max_leverage
+        return investable_cash * self.max_leverage
 
     def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,
                            trade_type: TradeType, trade_price: Union[float, None],
@@ -182,8 +201,6 @@ class BaseAccount():
                           time_signal, long_short)
             return order
 
-    def get_investable_market_value(self):
-        return self.cash * self.max_leverage
 
     # TODO : trigger end of day
     def daily_accounting(self):
