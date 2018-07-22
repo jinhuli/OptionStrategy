@@ -23,7 +23,7 @@ class BaseAccount():
         self.cash = init_fund  # 现金账户：初始资金为现金
         self.actual_leverage = 0.0
         self.total_mtm_position = 0.0  # 总多空持仓市值(abs value)加总
-        self.total_margin_trade_mtm_position = 0.0 # 总保证金交易的市值，多空绝对市值相加，用于仓位控制
+        # self.total_margin_trade_mtm_position = 0.0
 
     def add_holding(self, base_product: BaseProduct):
         if base_product.id_instrument() not in self.dict_holding.keys():
@@ -162,6 +162,7 @@ class BaseAccount():
             position_current_value = base_product.get_current_value(long_short) * trade_unit * base_product.multiplier()
         return position_current_value
 
+    # 总保证金交易的市值（按照last trade price，不考虑日内未实现损益），多空绝对市值相加，用于仓位控制。
     def get_total_margin_trade_mtm_position(self):
         total_margin_trade_mtm_position = 0.0
         for (i,row) in self.trade_book.iteritems():
@@ -169,13 +170,14 @@ class BaseAccount():
             long_short = row[Util.TRADE_LONG_SHORT]
             base_product = self.dict_holding[id_instrument]
             if base_product.get_current_value(long_short) == 0.0:
-                total_margin_trade_mtm_position += row[Util.TRADE_UNIT]* row[Util.NBR_MULTIPLIER] * row[Util.LAST_PRICE]
+                total_margin_trade_mtm_position += row[Util.TRADE_UNIT] * row[Util.NBR_MULTIPLIER] * row[Util.LAST_PRICE]
         return total_margin_trade_mtm_position
 
     # For calculate MAX trade unit before execute order.
     def get_investable_market_value(self):
+        total_margin_trade_mtm_position = self.get_total_margin_trade_mtm_position()
         total_margin_capital = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
-        investable_cash = self.cash + total_margin_capital - self.total_margin_trade_mtm_position / self.max_leverage
+        investable_cash = max(0.0,self.cash + total_margin_capital - total_margin_trade_mtm_position / self.max_leverage)
         return investable_cash * self.max_leverage
 
     def create_trade_order(self, dt_trade: datetime.date, id_instrument: str,
