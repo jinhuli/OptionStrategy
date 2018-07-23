@@ -88,7 +88,6 @@ class BaseOptionSet(AbstractBaseProductSet):
                 self.df_data.loc[:, Util.ID_UNDERLYING] = Util.STR_INDEX_50ETF
             else:
                 self.df_data.loc[:, Util.ID_UNDERLYING] = self._name_code + self.df_data.loc[:, Util.NAME_CONTRACT_MONTH]
-        print('')
 
     def get_id_multiplier_table(self):
         df_id_multiplier = self.df_daily_data.drop_duplicates(
@@ -96,6 +95,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         return df_id_multiplier
 
     def pre_process(self) -> None:
+        mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
+        self.df_data = self.df_data[mask].reset_index(drop=True)
         if self.frequency in Util.LOW_FREQUENT:
             self.date_list: List[datetime.date] = sorted(self.df_data[Util.DT_DATE].unique())
             self.nbr_index = len(self.date_list)
