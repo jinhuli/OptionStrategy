@@ -14,5 +14,10 @@ a = pd.DataFrame([
         'b': 2.5
     }
 ])
-print(a)
-print(a.unique())
+
+b = {
+        'a': 1,
+        'b': 2
+    }
+
+print(b.popitem()[1])

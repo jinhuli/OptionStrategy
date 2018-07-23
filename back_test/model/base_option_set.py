@@ -7,8 +7,6 @@ from back_test.model.constant import FrequentType, Util, PricingType, EngineType
     MoneynessMethod, OptionFilter, OptionType, OptionUtil, TradeType
 from typing import Dict, List, Tuple
 
-from back_test.model.trade import Order
-from typing import Union
 
 
 class BaseOptionSet(AbstractBaseProductSet):
@@ -39,11 +37,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.eval_datetime: datetime.datetime = None
         self.current_index = -1
         self.eligible_options = deque()
-        self.update_contract_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
-        # self.df_total_maturities = None
-        self.eligible_maturities = None
-        # self.eligible_option_dict: Dict[datetime.date, List(BaseOption)] = {}
-        # self.eligible_maturities: List(datetime.date) = None
+        self.update_contract_month_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
+        self.eligible_maturities: List(datetime.date) = None # To be fulled in NEXT() method
 
     def init(self) -> None:
         self._generate_required_columns_if_missing()  # 补充行权价等关键信息（high frequency data就可能没有）
@@ -172,59 +167,6 @@ class BaseOptionSet(AbstractBaseProductSet):
         return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \
             .format(self.eval_date, self.size)
 
-
-
-    # def next(self) -> None:
-    #     if not self.has_next():
-    #         return None
-    #     start = datetime.datetime.now()
-    #     self.current_index += 1
-    #     if self.frequency in Util.LOW_FREQUENT:
-    #         self.eval_date = self.date_list[self.current_index]
-    #         # Update existing deque
-    #         size = len(self.eligible_options)
-    #         for i in range(size):
-    #             option = self.eligible_options.popleft()
-    #             if not option.has_next():
-    #                 continue
-    #             option.next()
-    #             if option.is_valid_option():
-    #                 self.add_option(option)
-    #         for option in self.option_dict.pop(self.eval_date, []):
-    #             if option.is_valid_option():
-    #                 self.add_option(option)
-    #     else:
-    #         self.eval_datetime = self.datetime_list[self.current_index]
-    #         # Update existing deque
-    #         if len(self.eligible_options) == 0 or self.eval_date is None or self.eval_date != self.eval_datetime.date():
-    #             self.eval_date = self.eval_datetime.date()
-    #             size = len(self.eligible_options)
-    #             for option in range(size):
-    #                 option = self.eligible_options.popleft()
-    #                 if not option.has_next():
-    #                     continue
-    #                 option.next()
-    #                 if option.is_valid_option():
-    #                     self.add_option(option)
-    #             for option in self.option_dict.pop(self.eval_date, []):
-    #                 if option.is_valid_option():
-    #                     self.add_option(option)
-    #         else:
-    #             for option in self.eligible_options:
-    #                 if not option.has_next():
-    #                     continue
-    #                 option.next()
-    #     end = datetime.datetime.now()
-    #     print("OptionSet.Next: iter {0}, option_set length: {1}, time cost: {2} s".format(self.eval_date,
-    #                                                                                   len(self.eligible_options),
-    #                                                                                   (end - start).total_seconds()))
-
-    """
-    Operation for eligible option on each iter.
-    eligible_options: eligible option based on is_valid_option check.
-    eligible_option_dict: a <maturity-option> for user to retrieve option by matrurity date.
-    """
-
     def add_option(self, option: BaseOption) -> None:
         self.eligible_options.append(option)
 
@@ -236,11 +178,16 @@ class BaseOptionSet(AbstractBaseProductSet):
         return df_current_state
 
     # 期权到期日与期权和月份的对应关系表
-    def update_contract_maturity_table(self):
+    def update_contract_month_maturity_table(self):
         self.df_maturity_and_contract_months = self.df_daily_data.drop_duplicates(Util.NAME_CONTRACT_MONTH) \
             .sort_values(by=Util.NAME_CONTRACT_MONTH).reset_index(drop=True) \
             [[Util.NAME_CONTRACT_MONTH, Util.DT_MATURITY]]
 
+    """ 
+    Dictionary of options : Orgize Options base on maturity dates or contract months as keys
+    if 'get_orgnized_option_dict_for_moneyness_ranking' is not used, the following 3 methods will be useful.
+    """
+    # get Dictionary <contract month, List[option]>
     def get_dict_options_by_contract_months(self):
         dic = {}
         for option in self.eligible_options:
@@ -250,6 +197,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                 dic.update({option.contract_month(): [option]})
         return dic
 
+    # get Dictionary <maturitydt, List[option]>
     def get_dict_options_by_maturities(self):
         dic = {}
         for option in self.eligible_options:
@@ -259,7 +207,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                 dic.update({option.maturitydt(): [option]})
         return dic
 
-    # 根据到期日或合约月份查找标的价格
+    # 根据到期日或合约月份查找标的价格，需重新计算（暂未用到）
     def get_underlying_close(self, contract_month=None, maturitydt=None):
         # 对于商品期权，underlying要从对应的月份合约中找。
         if contract_month is not None:
@@ -277,11 +225,12 @@ class BaseOptionSet(AbstractBaseProductSet):
                 spot = option_list[0].underlying_close()
         return spot
 
+    # 返回的option放在list里，是因为50ETF option可能有相近行权价的期权同时处于一个nearest strike
     def get_put_by_moneyness(self, moneyness_rank: int, mdt: datetime.date = None, contract_month=None):
-        spot = self.get_underlying_close(mdt, contract_month)
+        # spot = self.get_underlying_close(mdt, contract_month)
         if mdt is None:
             mdt = self.eligible_maturities[0]
-        options = self.get_options_list_by_moneyness_mthd1(spot, moneyness_rank, mdt, OptionType.PUT)
+        options = self.get_options_list_by_moneyness_mthd1(moneyness_rank, mdt, OptionType.PUT)
         return options
 
     def get_maturities_list(self) -> List[datetime.date]:
@@ -293,6 +242,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         return list_maturities
 
     """
+    get_orgnized_option_dict_for_moneyness_ranking : 
+    Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.
     call_mdt_option_dict:
     {
         '2017-05-17':{
@@ -306,7 +257,7 @@ class BaseOptionSet(AbstractBaseProductSet):
     }
     """
 
-    def get_maturities_option_dict(self) -> \
+    def get_orgnized_option_dict_for_moneyness_ranking(self) -> \
             Tuple[
                 Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
         call_ret = {}
@@ -334,7 +285,7 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     def get_options_mdt_dict_by_moneyness_mthd1(
             self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
-        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         res_mdt_dict = {}
         if option_type == OptionType.CALL:
             for mdt in mdt_calls.keys():
@@ -354,16 +305,18 @@ class BaseOptionSet(AbstractBaseProductSet):
         Get options by given moneyness rank and maturity date. """
 
     def get_options_list_by_moneyness_mthd1(
-            self, spot: float, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
+            self, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
             -> List[BaseOption]:
-        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         if option_type == OptionType.CALL:
             mdt_options_dict = mdt_calls.get(maturity)
+            spot = mdt_options_dict.popitem()[1][0].underlying_close()
             idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), option_type)
             res_list = mdt_options_dict.get(idx)
         else:
             mdt_options_dict = mdt_puts.get(maturity)
+            spot = mdt_options_dict.popitem()[1][0].underlying_close()
             idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), option_type)
             res_list = mdt_options_dict.get(idx)
@@ -378,7 +331,7 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     def get_options_mdt_dict_by_moneyness_mthd2(
             self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
-        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         res_mdt_dict = {}
         if option_type == OptionType.CALL:
             for mdt in mdt_calls.keys():
@@ -404,7 +357,7 @@ class BaseOptionSet(AbstractBaseProductSet):
     def get_options_list_by_moneyness_mthd2(
             self, spot: float, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
             -> List[BaseOption]:
-        mdt_calls, mdt_puts = self.get_maturities_option_dict()
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         if option_type == OptionType.CALL:
             mdt_options_dict = mdt_calls.get(maturity)
             idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
