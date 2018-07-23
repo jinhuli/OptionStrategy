@@ -204,7 +204,7 @@ class BaseAccount():
             return order
         if trade_unit is None:
             raise ValueError("trade_unit is None when opening position !")
-        if base_product.base_product.get_current_value(long_short) == 0.0:
+        if base_product.get_current_value(long_short) == 0.0:
             investable_market_value = self.get_investable_cash()
         else:
             investable_market_value = self.get_investable_cash() * self.max_leverage

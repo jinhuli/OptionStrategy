@@ -8,6 +8,7 @@ from back_test.model.constant import FrequentType, Util, PricingType, EngineType
 from typing import Dict, List, Tuple
 
 from back_test.model.trade import Order
+from typing import Union
 
 
 class BaseOptionSet(AbstractBaseProductSet):
@@ -25,9 +26,10 @@ class BaseOptionSet(AbstractBaseProductSet):
                  frequency: FrequentType = FrequentType.DAILY,
                  flag_calculate_iv: bool = True, rf: float = 0.03):
         super().__init__()
+        self._name_code: str = df_data.loc[0, Util.ID_INSTRUMENT].split('_')[0]
         self.df_data: pd.DataFrame = df_data
         self.df_daily_data = df_daily_data
-        self.df_underlying = df_underlying
+        self.df_underlying = df_underlying  # df_underlying should have the same frequency with df_data.
         self.frequency: FrequentType = frequency
         self.flag_calculate_iv: bool = flag_calculate_iv
         self.option_dict: Dict[datetime.date, List(BaseOption)] = {}
@@ -37,14 +39,61 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.eval_datetime: datetime.datetime = None
         self.current_index = -1
         self.eligible_options = deque()
+        self.update_contract_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
+        # self.df_total_maturities = None
+        self.eligible_maturities = None
         # self.eligible_option_dict: Dict[datetime.date, List(BaseOption)] = {}
         # self.eligible_maturities: List(datetime.date) = None
 
     def init(self) -> None:
+        self._generate_required_columns_if_missing()  # 补充行权价等关键信息（high frequency data就可能没有）
         print('start preprosess ', datetime.datetime.now())
         self.pre_process()
         print('end preprosess ', datetime.datetime.now())
         self.next()
+
+    def _generate_required_columns_if_missing(self) -> None:
+        required_column_list = Util.OPTION_COLUMN_LIST
+        columns = self.df_data.columns
+        for column in required_column_list:
+            if column not in columns:
+                # STRIKE
+                if column == Util.AMT_STRIKE:
+                    self.df_data[Util.AMT_STRIKE] = self.df_data[Util.ID_INSTRUMENT].apply(lambda x: float(x.split('_')[3]))
+                # NAME_CONTRACT_MONTH
+                elif column == Util.NAME_CONTRACT_MONTH:
+                    self.df_data[Util.NAME_CONTRACT_MONTH] = self.df_data[Util.ID_INSTRUMENT].apply(
+                        lambda x: x.split('_')[1])
+                # OPTION_TYPE
+                elif column == Util.CD_OPTION_TYPE:
+                    self.df_data[Util.CD_OPTION_TYPE] = self.df_data[Util.ID_INSTRUMENT].apply(
+                        OptionFilter.fun_option_type_split)
+                else:
+                    self.df_data[column] = None
+        # DT_MATURITY : 通过contract month查找
+        if self.df_data.loc[0, Util.DT_MATURITY] is None:
+            self.df_data = self.df_data.drop(Util.DT_MATURITY, axis=1).join(
+                self.df_maturity_and_contract_months.set_index(Util.NAME_CONTRACT_MONTH),
+                how='left', on=Util.NAME_CONTRACT_MONTH
+            )
+        # MULTIPLIER : 50etf期权的multiplier跟id_instrument有关，需补充该列实际值。（商品期权multiplier是固定的）
+        if self._name_code == Util.STR_50ETF and self.df_data.loc[0, Util.NBR_MULTIPLIER] is None:
+            self.df_data = self.df_data.drop(Util.NBR_MULTIPLIER, axis=1).join(
+                self.get_id_multiplier_table().set_index(Util.ID_INSTRUMENT),
+                how='left', on=Util.ID_INSTRUMENT
+            )
+        # ID_UNDERLYING : 通过name code 与 contract month补充
+        if self.df_data.loc[0, Util.ID_UNDERLYING] is None:
+            if self._name_code == Util.STR_50ETF:
+                self.df_data.loc[:, Util.ID_UNDERLYING] = Util.STR_INDEX_50ETF
+            else:
+                self.df_data.loc[:, Util.ID_UNDERLYING] = self._name_code + self.df_data.loc[:, Util.NAME_CONTRACT_MONTH]
+        print('')
+
+    def get_id_multiplier_table(self):
+        df_id_multiplier = self.df_daily_data.drop_duplicates(
+            Util.ID_INSTRUMENT)[[Util.ID_INSTRUMENT, Util.NBR_MULTIPLIER]]
+        return df_id_multiplier
 
     def pre_process(self) -> None:
         if self.frequency in Util.LOW_FREQUENT:
@@ -54,7 +103,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             self.datetime_list: List[datetime.datetime] = sorted(self.df_data[Util.DT_DATETIME].unique())
             self.nbr_index = len(self.datetime_list)
             if self.df_daily_data is None:
-                #TODO: Rise error if no daily data in high frequency senario.
+                # TODO: Rise error if no daily data in high frequency senario.
                 return
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         if self.df_daily_data is not None:
@@ -64,7 +113,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         for key in groups.groups.keys():
             # manage minute data and daily data.
             df_option = groups.get_group(key).reset_index(drop=True)
-            print(key, ' , ', len(df_option),' , ',datetime.datetime.now())
+            # print(key, ' , ', len(df_option), ' , ', datetime.datetime.now())
             if self.df_daily_data is not None:
                 df_option_daily = groups_daily.get_group(key).reset_index(drop=True)
             else:
@@ -87,9 +136,11 @@ class BaseOptionSet(AbstractBaseProductSet):
             self.eval_date = self.date_list[self.current_index]
         else:
             self.eval_datetime = pd.to_datetime(self.datetime_list[self.current_index])
-            self.eval_date = self.eval_datetime.date()
+            if self.eval_date != self.eval_datetime.date():
+                self.eval_date = self.eval_datetime.date()
         # Update existing deque
         size = len(self.eligible_options)
+        eligible_maturities = []
         for i in range(size):
             option = self.eligible_options.popleft()
             if not option.has_next():
@@ -97,19 +148,29 @@ class BaseOptionSet(AbstractBaseProductSet):
             option.next()
             if option.is_valid_option():
                 self.add_option(option)
+                if option.maturitydt() not in eligible_maturities:
+                    eligible_maturities.append(option.maturitydt())
         for option in self.option_dict.pop(self.eval_date, []):
             if option.is_valid_option():
                 self.add_option(option)
+                if option.maturitydt() not in eligible_maturities:
+                    eligible_maturities.append(option.maturitydt())
+        self.eligible_maturities = sorted(eligible_maturities)
         # Check option data quality.
         if self.frequency not in Util.LOW_FREQUENT:
             for option in self.eligible_options:
                 if self.eval_datetime != option.eval_datetime:
-                    print("Option datetime does not match, id : {0}, dt:{1}".format(
-                        option.id_instrument(), self.eval_datetime))
+                    print("Option datetime does not match, id : {0}, dt_optionset:{1}, dt_option:{2}".format(
+                        option.id_instrument(), self.eval_datetime, option.eval_datetime))
         end = datetime.datetime.now()
         print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
                                                                      (end - start).total_seconds()))
         return None
+
+    def __repr__(self) -> str:
+        return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \
+            .format(self.eval_date, self.size)
+
 
 
     # def next(self) -> None:
@@ -157,7 +218,6 @@ class BaseOptionSet(AbstractBaseProductSet):
     #                                                                                   len(self.eligible_options),
     #                                                                                   (end - start).total_seconds()))
 
-
     """
     Operation for eligible option on each iter.
     eligible_options: eligible option based on is_valid_option check.
@@ -170,38 +230,57 @@ class BaseOptionSet(AbstractBaseProductSet):
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
 
-    def scan(self) -> None:
-        for option in self.eligible_options:
-            option.execute_order(
-                Order(
-                    datetime.date(2017, 1, 1),
-                    '50etf_dd',
-                    TradeType.OPEN_SHORT,
-                    1000,
-                    11.1,
-                    datetime.datetime(2017, 1, 1,9,45,0),
-                ))
-
-    def __repr__(self) -> str:
-        return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \
-            .format(self.eval_date, self.size)
-
     def get_current_state(self) -> pd.DataFrame:
         df_current_state = self.df_data[self.df_data[Util.DT_DATE] == self.eval_date].reset_index(drop=True)
         return df_current_state
 
-    # TODO: Should class Optionset contains class underlying?
-    def _underlying_price(self, cd_underlying_price='open'):
-        if cd_underlying_price == 'close':
-            spot = self.eligible_options[0].underlying_close()  # Use underlying OPEN close as spot
+    # 期权到期日与期权和月份的对应关系表
+    def update_contract_maturity_table(self):
+        self.df_maturity_and_contract_months = self.df_daily_data.drop_duplicates(Util.NAME_CONTRACT_MONTH) \
+            .sort_values(by=Util.NAME_CONTRACT_MONTH).reset_index(drop=True) \
+            [[Util.NAME_CONTRACT_MONTH, Util.DT_MATURITY]]
+
+    def get_dict_options_by_contract_months(self):
+        dic = {}
+        for option in self.eligible_options:
+            if option.contract_month() in dic.keys():
+                dic[option.contract_month()].append(option)
+            else:
+                dic.update({option.contract_month(): [option]})
+        return dic
+
+    def get_dict_options_by_maturities(self):
+        dic = {}
+        for option in self.eligible_options:
+            if option.maturitydt() in dic.keys():
+                dic[option.maturitydt()].append(option)
+            else:
+                dic.update({option.maturitydt(): [option]})
+        return dic
+
+    # 根据到期日或合约月份查找标的价格
+    def get_underlying_close(self, contract_month=None, maturitydt=None):
+        # 对于商品期权，underlying要从对应的月份合约中找。
+        if contract_month is not None:
+            option_list = self.get_dict_options_by_contract_months()[contract_month]
+            spot = option_list[0].underlying_close()
+        elif maturitydt is not None:
+            option_list = self.get_dict_options_by_maturities()[maturitydt]
+            spot = option_list[0].underlying_close()
         else:
-            spot = self.eligible_options[0].underlying_open_price()  # Use underlying OPEN close as spot
+            if self._name_code == Util.STR_50ETF:
+                spot = self.eligible_options[0].underlying_close()
+            else:
+                maturitydt = sorted(self.get_dict_options_by_maturities().keys())[0]
+                option_list = self.get_dict_options_by_maturities()[maturitydt]
+                spot = option_list[0].underlying_close()
         return spot
 
-    def get_put(self, moneyness_rank: int, mdt: datetime.date, cd_long_short, cd_underlying_price='open'):
-
-        spot = self._underlying_price(cd_underlying_price)
-        options = self.get_options_list_by_moneyness_mthd1(spot, moneyness_rank, mdt, Util.TYPE_PUT)
+    def get_put_by_moneyness(self, moneyness_rank: int, mdt: datetime.date = None, contract_month=None):
+        spot = self.get_underlying_close(mdt, contract_month)
+        if mdt is None:
+            mdt = self.eligible_maturities[0]
+        options = self.get_options_list_by_moneyness_mthd1(spot, moneyness_rank, mdt, OptionType.PUT)
         return options
 
     def get_maturities_list(self) -> List[datetime.date]:
@@ -226,14 +305,9 @@ class BaseOptionSet(AbstractBaseProductSet):
     }
     """
 
-    # TODO: 对于高频数据，是否先查看当天已经更新过？
     def get_maturities_option_dict(self) -> \
             Tuple[
                 Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
-        if self.frequency not in Util.LOW_FREQUENT \
-                and self.dict_maturities_call is not None \
-                and self.dict_maturities_put is not None:
-            return  self.dict_maturities_call, self.dict_maturities_put
         call_ret = {}
         put_ret = {}
         for option in self.eligible_options:
@@ -250,8 +324,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                 l = []
                 d.update({option.nearest_strike(): l})
             l.append(option)
-        self.dict_maturities_call= call_ret
-        self.dict_maturities_put = put_ret
+        # 返回的option放在list里，是因为可能有相邻行权价的期权同时处于一个nearest strike
         return call_ret, put_ret
 
     # TODO: change type to enum in future

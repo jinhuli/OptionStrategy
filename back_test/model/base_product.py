@@ -1,7 +1,6 @@
 import datetime
 import numpy as np
 import pandas as pd
-from abc import abstractmethod
 from back_test.model.abstract_base_product import AbstractBaseProduct
 from back_test.model.constant import FrequentType, Util, TradeType
 from back_test.model.trade import Order
@@ -32,6 +31,7 @@ class BaseProduct(AbstractBaseProduct):
         self.rf = rf
 
     def init(self) -> None:
+        self.validate_data()
         self.pre_process()
         self.next()
 
@@ -41,7 +41,8 @@ class BaseProduct(AbstractBaseProduct):
         self.update_current_state()
         self.update_current_daily_state()
 
-    def pre_process(self) -> None:
+    def validate_data(self) -> None:
+        # Basic validation appliable for all instruments
         if self.frequency not in Util.LOW_FREQUENT:
             # High Frequency Data:
             # overwrite date col based on data in datetime col.
@@ -56,10 +57,12 @@ class BaseProduct(AbstractBaseProduct):
                                                                        self.eval_date.month,
                                                                        self.eval_date.day,
                                                                        0,0,0)
+        # Product specific validation to be override
         self._generate_required_columns_if_missing()
-        self.validate_data()
+        # Product specific pre_process to be override
+        self.pre_process()
 
-    def validate_data(self) -> None:
+    def pre_process(self) -> None:
         return
 
     def _generate_required_columns_if_missing(self) -> None:
