@@ -82,15 +82,15 @@ def get_50option_minute_with_underlying(start_date, end_date):
     IndexIntra = admin.table_index_mktdata_intraday()
     query = admin.session_intraday().query(IndexIntra.c.dt_datetime,
                                            IndexIntra.c.amt_close) \
-        .filter(IndexIntra.c.dt_datetime >= start_date)\
-        .filter(IndexIntra.c.dt_datetime <= end_date) \
+        .filter(IndexIntra.c.dt_date >= start_date)\
+        .filter(IndexIntra.c.dt_date <= end_date) \
         .filter(IndexIntra.c.id_instrument == 'index_50etf')
+    df_index = pd.read_sql(query.statement, query.session.bind)
     options = dbt.Options
     query_option = admin.session_mktdata().query(options.id_instrument, options.cd_option_type, options.amt_strike,
                                                  options.dt_maturity, options.nbr_multiplier) \
         .filter(and_(options.dt_listed <= end_date, options.dt_maturity >= start_date))
 
-    df_index = pd.read_sql(query.statement, query.session.bind)
     df_index = df_index.rename(columns={'amt_close': util.col_underlying_close})
     df_option = df_option.join(df_index.set_index('dt_datetime'), how='left', on='dt_datetime')
     df_contract = pd.read_sql(query_option.statement, query_option.session.bind)

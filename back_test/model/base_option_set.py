@@ -164,7 +164,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                     print("Option datetime does not match, id : {0}, dt_optionset:{1}, dt_option:{2}".format(
                         option.id_instrument(), self.eval_datetime, option.eval_datetime))
         end = datetime.datetime.now()
-        print("iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
+        print("OptionSet.NEXT iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
                                                                      (end - start).total_seconds()))
         return None
 
