@@ -1,8 +1,9 @@
 from enum import Enum
 import pandas as pd
 import numpy as np
-from typing import List,Union
+from typing import List, Union
 import datetime
+import math
 
 
 class FrequentType(Enum):
@@ -39,6 +40,11 @@ class UnderlyingPriceType(Enum):
 class OptionType(Enum):
     CALL = 1
     PUT = -1
+
+
+class DeltaBound(Enum):
+    WHALLEY_WILLMOTT = 0
+    NONE = -1
 
 
 class TradeType(Enum):
@@ -208,8 +214,18 @@ class OptionFilter:
 class FutureUtil:
 
     @staticmethod
-    def get_contract_shift_cost(c1,c2,long_short:LongShort):
+    def get_contract_shift_cost(c1, c2, long_short: LongShort):
         return
+
+
+class Hedge:
+
+    @staticmethod
+    def whalley_wilmott(self, ttm, gamma, spot, rho=1, fee=5.0 / 10000.0):
+        # ttm = self.pricing_utl.get_ttm(eval_date, option.dt_maturity)
+        H = (1.5 * math.exp(-self.rf * ttm) * fee * spot * (gamma ** 2) / rho) ** (1 / 3)
+        return H
+
 
 class Util:
     """database column names"""
