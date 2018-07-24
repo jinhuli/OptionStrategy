@@ -1,0 +1,28 @@
+from back_test.model.base_option_set import BaseOptionSet
+from data_access.get_data import get_dzqh_cf_daily, get_dzqh_cf_c1_daily, \
+    get_dzqh_cf_c1_minute, get_index_mktdata
+import datetime
+from back_test.model.constant import FrequentType
+from OptionStrategyLib.OptionReplication.synthetic_option import SytheticOption
+
+start_date = datetime.date(2017, 10, 15)
+end_date = datetime.date(2017, 10, 20)
+
+df_future_c1 = get_dzqh_cf_c1_minute(start_date, end_date, 'if')
+df_future_c1_daily = get_dzqh_cf_c1_daily(start_date, end_date, 'if')
+# daily data of all future contracts
+df_future_daily = get_dzqh_cf_daily(start_date, end_date, 'if')
+# daily data of underlying index
+df_index = get_index_mktdata(start_date, end_date, 'index_300sh')
+synthetic_option = SytheticOption(df_c1_minute=df_future_c1,
+                                  df_c1_daily=df_future_c1_daily,
+                                  df_futures_daily=df_future_daily,
+                                  df_index_daily=df_index)
+synthetic_option.init()
+synthetic_option.next()
+
+
+while synthetic_option.has_next():
+    # df = synthetic_option.get_c1_with_start_dates()
+    df = synthetic_option.get_c1_with_end_dates()
+    print()

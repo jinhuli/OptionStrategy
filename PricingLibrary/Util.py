@@ -3,7 +3,7 @@ import math
 from back_test.BktUtil import BktUtil
 
 
-class PricingUtil(object):
+class PricingUtil:
 
     @staticmethod
     def get_ttm(dt_eval, dt_maturity):

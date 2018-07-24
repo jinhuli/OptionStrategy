@@ -4,6 +4,8 @@ import datetime
 from typing import Union
 from back_test.model.abstract_account import AbstractAccount
 from back_test.model.base_product import BaseProduct
+from back_test.model.base_future import BaseFuture
+from back_test.model.base_future_coutinuous import BaseFutureCoutinuous
 from back_test.model.constant import Util, TradeType, LongShort
 from back_test.model.trade import Order
 
@@ -224,12 +226,12 @@ class BaseAccount():
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
             trade_long_short = row[Util.TRADE_LONG_SHORT]
-            # Calculate daily unrealized pnl that added/deducted from margin account.
-            # 在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
             price = base_product.mktprice_close()
-            unrealized_pnl = trade_long_short * (price - row[Util.LAST_PRICE]) * row[Util.TRADE_UNIT] * row[
-                Util.NBR_MULTIPLIER]
-            self.cash += unrealized_pnl
+            # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
+            if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
+                unrealized_pnl = trade_long_short * (price - row[Util.LAST_PRICE]) * row[Util.TRADE_UNIT] * row[
+                    Util.NBR_MULTIPLIER]
+                self.cash += unrealized_pnl
             self.trade_book.loc[id_instrument, Util.LAST_PRICE] = price
             # Calculate margin capital added to/from cash account.
             trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[

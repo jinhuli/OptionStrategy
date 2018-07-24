@@ -186,17 +186,18 @@ def get_future_mktdata(start_date, end_date, name_code):
     return df
 
 
-def cf_minute(start_date, end_date, name_code):
+def get_dzqh_cf_minute(start_date, end_date, name_code):
     table_cf = admin.table_cf_minute_1()
     query = admin.session_dzqh().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
                                        table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
         filter(
         (table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date) & (table_cf.c.name_code == name_code))
     df = pd.read_sql(query.statement, query.session.bind)
+    df = df[df['id_instrument'].str.contains("_")]
     return df
 
 
-def get_dzqh_cf_minute(start_date, end_date, name_code):
+def get_dzqh_cf_c1_minute(start_date, end_date, name_code):
     utl = BktUtil()
     table_cf = admin.table_cf_minute_1()
     query = admin.session_dzqh().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
@@ -208,8 +209,19 @@ def get_dzqh_cf_minute(start_date, end_date, name_code):
     df = utl.get_futures_minute_c1(df)
     return df
 
-
 def get_dzqh_cf_daily(start_date, end_date, name_code):
+    utl = BktUtil()
+    table_cf = admin.table_cf_daily()
+    query = admin.session_dzqh().query(table_cf.c.dt_date, table_cf.c.id_instrument,
+                                       table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
+        filter((table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date)). \
+        filter(table_cf.c.name_code == name_code)
+    df = pd.read_sql(query.statement, query.session.bind)
+    df = df[df['id_instrument'].str.contains("_")]
+    return df
+
+
+def get_dzqh_cf_c1_daily(start_date, end_date, name_code):
     utl = BktUtil()
     table_cf = admin.table_cf_daily()
     query = admin.session_dzqh().query(table_cf.c.dt_date, table_cf.c.id_instrument,

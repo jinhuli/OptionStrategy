@@ -205,6 +205,12 @@ class OptionFilter:
     #         return df[Util.AMT_STRIKE]
 
 
+class FutureUtil:
+
+    @staticmethod
+    def get_contract_shift_cost(c1,c2,long_short:LongShort):
+        return
+
 class Util:
     """database column names"""
     # basic

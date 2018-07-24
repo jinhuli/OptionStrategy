@@ -71,9 +71,10 @@ class BaseProduct(AbstractBaseProduct):
         for column in required_column_list:
             if column not in columns:
                 self.df_data[column] = None
-        if self.df_daily_data.empty:
-            for column in required_column_list:
-                self.df_daily_data[column] = None
+        if self.df_daily_data is None or self.df_daily_data.empty:
+            return
+            # for column in required_column_list:
+            #     self.df_daily_data[column] = None
         else:
             columns2 = self.df_daily_data.columns
             for column in required_column_list:
