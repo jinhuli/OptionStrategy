@@ -60,14 +60,14 @@ class SytheticOption(BaseFutureCoutinuous):
         # hedge_scale : total notional amt to hedge in RMB
         return - self.get_synthetic_unit(delta)
 
-    def sythetic_option_rebalancing(self, delta: float, delta_bound: DeltaBound = DeltaBound.NONE) -> float:
+    def get_sythetic_option_rebalancing_unit(self, delta: float, delta_bound: DeltaBound = DeltaBound.NONE) -> int:
         d_delta = delta - self.synthetic_ratio
         # Apply delta bound filter
         if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
             if abs(d_delta) > delta_bound:
                 trade_unit = np.floor(d_delta * self.notional / self.multiplier())
             else:
-                return 0.0
+                return 0
         else:
             trade_unit = np.floor(d_delta * self.notional / self.multiplier())
         self.synthetic_ratio = delta

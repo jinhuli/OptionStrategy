@@ -3,7 +3,7 @@ import datetime
 from OptionStrategyLib.OptionReplication.synthetic_option import SytheticOption
 from PricingLibrary.Options import EuropeanOption
 from back_test.model.base_account import BaseAccount
-from back_test.model.constant import Util, OptionType, TradeType
+from back_test.model.constant import Util, OptionType, TradeType, LongShort
 from back_test.model.trade import Trade
 from data_access.get_data import get_dzqh_cf_daily, get_dzqh_cf_c1_daily, \
     get_dzqh_cf_c1_minute, get_index_mktdata
@@ -40,8 +40,18 @@ order = account.create_trade_order(synthetic_option,
                                    trade_type,
                                    synthetic_unit)
 execution_record = synthetic_option.execute_order(order, slippage=0)
-account.add_record(execution_record,synthetic_option)
+account.add_record(execution_record, synthetic_option)
 # df = synthetic_option.get_c1_with_end_dates()
 while synthetic_option.has_next():
-
+    # TODO: 移仓换月时计成本，改account里的id_instruemnt
+    delta = synthetic_option.get_black_delta(Option, vol)
+    rebalance_unit = synthetic_option.get_sythetic_option_rebalancing_unit(delta)
+    if rebalance_unit > 0:
+        long_short = LongShort.LONG
+    else:
+        long_short = LongShort.SHORT
+    trade_type = account.get_trade_type(synthetic_option.id_instrument(), rebalance_unit, long_short)
+    order = account.create_trade_order(synthetic_option,
+                                       trade_type,
+                                       rebalance_unit)
     print()

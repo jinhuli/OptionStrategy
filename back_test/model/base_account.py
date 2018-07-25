@@ -264,6 +264,28 @@ class BaseAccount():
 
     """ getters from trade book """
 
+    def get_trade_type(self, id_instrument, trade_unit, long_short):
+        if id_instrument not in self.trade_book.index:
+            if long_short == LongShort.LONG:
+                return TradeType.OPEN_LONG
+            else:
+                return TradeType.OPEN_SHORT
+        else:
+            hold_unit = self.trade_book.loc[id_instrument, Util.TRADE_UNIT]
+            hold_long_short = self.trade_book.loc[id_instrument, Util.TRADE_LONG_SHORT]
+            if hold_long_short != long_short:
+                if trade_unit > hold_unit:  # TODO:反开仓暂时按开仓处理，需检查开仓账户现金充足率
+                    if long_short == LongShort.LONG:
+                        return TradeType.OPEN_LONG
+                    else:
+                        return TradeType.OPEN_SHORT
+                else:
+                    if hold_long_short == LongShort.LONG:
+                        return TradeType.CLOSE_LONG
+                    else:
+                        return TradeType.CLOSE_SHORT
+
+
     def get_long_short(self, trade_type):
         if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:
             long_short = LongShort.LONG
