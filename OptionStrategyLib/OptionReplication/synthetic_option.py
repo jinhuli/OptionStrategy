@@ -17,12 +17,20 @@ class SytheticOption(BaseFutureCoutinuous):
                  df_index_daily=None,
                  rf=0.03,
                  frequency=FrequentType.MINUTE,
-                 hedge_scale=Util.BILLION):
+                 notional=Util.BILLION):
         super().__init__(df_data=df_c1_minute, df_daily_data=df_c1_daily, rf=rf, frequency=frequency)
         self.df_futures_daily = df_futures_daily
-        self.df_underying_index = df_index_daily
-        self.hedge_ratio = 0.0
-        self.hedge_scale = hedge_scale
+        self.df_targe_index = df_index_daily
+        self.idx_target_index = -1
+        self.synthetic_ratio = 0.0
+        self.notional = notional
+        self.target_index_state = None
+
+    def next(self):
+        super().next()
+        if self.target_index_state is None or self.eval_date != self.eval_datetime:
+            self.idx_target_index += 1
+            self.target_index_state = self.df_targe_index.loc[self.idx_target_index]
 
     def get_c1_with_start_dates(self):
         df = self.df_daily_data.drop_duplicates(Util.ID_INSTRUMENT)[[Util.DT_DATE, Util.ID_INSTRUMENT]]
@@ -39,25 +47,30 @@ class SytheticOption(BaseFutureCoutinuous):
         delta = black.Delta()
         return delta
 
-    # Get hedge position in trade unit
-    def create_hedge_position(self, delta):
+    # Get synthetic position in trade unit
+    def get_synthetic_unit(self, delta):
         # hedge_scale : total notional amt to hedge in RMB
-        amt_position = - delta * self.hedge_scale
-        trade_unit = np.floor(amt_position / self.multiplier())
-        self.hedge_ratio = delta
+        amt_position = delta * self.notional
+        trade_unit = np.floor(amt_position / (self.mktprice_close()*self.multiplier()))
+        self.synthetic_ratio = delta
         return trade_unit
 
-    def rebalancing(self, delta: float, delta_bound: DeltaBound = DeltaBound.NONE) -> float:
-        d_delta = delta - self.hedge_ratio
+    # Get hedge position in trade unit
+    def get_hedge_position(self, delta):
+        # hedge_scale : total notional amt to hedge in RMB
+        return - self.get_synthetic_unit(delta)
+
+    def sythetic_option_rebalancing(self, delta: float, delta_bound: DeltaBound = DeltaBound.NONE) -> float:
+        d_delta = delta - self.synthetic_ratio
         # Apply delta bound filter
         if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
             if abs(d_delta) > delta_bound:
-                trade_unit = np.floor(d_delta * self.hedge_scale / self.multiplier())
+                trade_unit = np.floor(d_delta * self.notional / self.multiplier())
             else:
                 return 0.0
         else:
-            trade_unit = np.floor(d_delta * self.hedge_scale / self.multiplier())
-        self.hedge_ratio = delta
+            trade_unit = np.floor(d_delta * self.notional / self.multiplier())
+        self.synthetic_ratio = delta
         return trade_unit
 
     def portfolio_exposure(self, hedge_holding_unit):

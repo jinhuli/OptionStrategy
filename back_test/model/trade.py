@@ -1,9 +1,11 @@
 import datetime
 import uuid
-import pandas as pd
 from enum import Enum
-from back_test.model.constant import TradeType, LongShort, Util
 from typing import Union
+
+import pandas as pd
+
+from back_test.model.constant import TradeType, LongShort, Util
 
 
 class OrderStatus(Enum):
@@ -128,6 +130,30 @@ class Order(object):
     @property
     def uuid(self) -> uuid:
         return self._uuid
+
+    def trade_all_unit(self, slippage: int = 1) -> None:
+        executed_units = self.trade_unit
+        name_code = self.id_instrument.split("_")[0]
+        # buy at slippage tick size higher and sell lower.
+        executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+        # transaction cost will be added in base_product
+        slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
+        excution_res = pd.Series(
+            {
+                Util.UUID: uuid.uuid4(),
+                Util.DT_TRADE: self.dt_trade,
+                Util.ID_INSTRUMENT: self.id_instrument,
+                Util.TRADE_LONG_SHORT: self.long_short,
+                Util.TRADE_UNIT: executed_units,
+                Util.TRADE_PRICE: executed_price,
+                Util.TRADE_TYPE: self.trade_type,
+                Util.TIME_SIGNAL: self.time_signal,
+                Util.TRANSACTION_COST: slippage_cost
+            }
+        )
+
+        self.execution_res = excution_res
+
 
     def trade_with_current_volume(self,
                                   max_volume: int,

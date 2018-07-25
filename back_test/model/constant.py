@@ -53,6 +53,9 @@ class TradeType(Enum):
     CLOSE_LONG = -1
     CLOSE_SHORT = -2
 
+class ExecuteType(Enum):
+    EXECUTE_ALL_UNITS = 0
+    EXECUTE_WITH_MAX_VOLUME = 1
 
 class OptionUtil:
     MONEYNESS_POINT = 3.0

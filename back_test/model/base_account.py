@@ -187,6 +187,7 @@ class BaseAccount():
                            trade_unit: int = None,
                            trade_price: float = None,
                            ):
+        trade_unit = abs(trade_unit)  # unit的正负取绝对值，方向主要看trade type
         dt_trade = base_product.eval_date
         id_instrument = base_product.id_instrument()
         if trade_price is None:
