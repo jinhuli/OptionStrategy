@@ -11,16 +11,16 @@ from back_test.model.trade import Order
 
 
 class BaseAccount():
-    def __init__(self, init_fund, leverage=1.0, fee_rate=3.0 / 10000.0, rf=0.03):
+    def __init__(self, init_fund, leverage=1.0, rf=0.03):
         # super().__init__()
         self.df_records = pd.DataFrame()
         self.list_records = []
         self.trade_book = pd.DataFrame(columns=Util.TRADE_BOOK_COLUMN_LIST)
         self.dict_holding = {}  # id_instrument -> Product
-        self.account = []
+        self.account = pd.DataFrame(columns=Util.ACCOUNT_COLUMNS)
         self.init_fund = init_fund
         self.max_leverage = leverage
-        self.fee_rate = fee_rate
+        # self.fee_rate = fee_rate
         self.rf = rf
         self.cash = init_fund  # 现金账户：初始资金为现金
         self.actual_leverage = 0.0
@@ -195,12 +195,17 @@ class BaseAccount():
         time_signal = base_product.eval_datetime
         multiplier = base_product.multiplier()
         long_short = self.get_long_short(trade_type)
+        # if trade_type == TradeType.CLOSE_OUT:
+        #     trade_unit = book_series[Util.TRADE_UNIT]
+        #     print("Close out all positions! ")
+        # Close position时不检查保证金
         if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
             book_series = self.trade_book.loc[id_instrument]
-            trade_unit = book_series[Util.TRADE_UNIT]
             if trade_type == TradeType.CLOSE_SHORT and book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
+                print('no short position to close')
                 return
             elif trade_type == TradeType.CLOSE_LONG and book_series[Util.TRADE_LONG_SHORT] == LongShort.SHORT:
+                print('no short position to close')
                 return
             order = Order(dt_trade, id_instrument, trade_type, trade_unit, trade_price,
                           time_signal, long_short)
@@ -222,11 +227,12 @@ class BaseAccount():
 
     # TODO : trigger end of day
     def daily_accounting(self, eval_date):
+        if self.trade_book.empty: return
         for (id_instrument, row) in self.trade_book.iterrows():
             if row[Util.TRADE_UNIT] == 0.0: continue
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
-            trade_long_short = row[Util.TRADE_LONG_SHORT]
+            trade_long_short = row[Util.TRADE_LONG_SHORT].value
             price = base_product.mktprice_close()
             # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
             if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
@@ -240,7 +246,7 @@ class BaseAccount():
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] += trade_margin_capital_add
             self.cash -= trade_margin_capital_add
             # Calculate NPV
-            position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short.value)
+            position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short)
             self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
 
         portfolio_margin_capital = self.get_portfolio_margin_capital()
@@ -249,16 +255,15 @@ class BaseAccount():
         portfolio_total_scale = self.get_portfolio_total_scale()
         npv = portfolio_total_value / self.init_fund
         actual_leverage = portfolio_total_scale / portfolio_total_value
-        account_today = {
-            Util.DT_DATE: eval_date,
+        account_today = pd.Series({
             Util.CASH: self.cash,
             Util.PORTFOLIO_MARGIN_CAPITAL: portfolio_margin_capital,
             Util.PORTFOLIO_TRADES_VALUE: portfolio_trades_value,
             Util.PORTFOLIO_VALUE: portfolio_total_value,
             Util.PORTFOLIO_NPV: npv,
             Util.PORTFOLIO_LEVERAGE: actual_leverage
-        }
-        self.account.append(account_today)
+        })
+        self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK
         self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
 
@@ -276,15 +281,19 @@ class BaseAccount():
             if hold_long_short != long_short:
                 if trade_unit > hold_unit:  # TODO:反开仓暂时按开仓处理，需检查开仓账户现金充足率
                     if long_short == LongShort.LONG:
-                        return TradeType.OPEN_LONG
-                    else:
                         return TradeType.OPEN_SHORT
+                    else:
+                        return TradeType.OPEN_LONG
                 else:
                     if hold_long_short == LongShort.LONG:
-                        return TradeType.CLOSE_LONG
-                    else:
                         return TradeType.CLOSE_SHORT
-
+                    else:
+                        return TradeType.CLOSE_LONG
+            else:
+                if long_short == LongShort.LONG:
+                    return TradeType.OPEN_LONG
+                else:
+                    return TradeType.OPEN_SHORT
 
     def get_long_short(self, trade_type):
         if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:

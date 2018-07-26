@@ -52,6 +52,7 @@ class TradeType(Enum):
     OPEN_SHORT = 2
     CLOSE_LONG = -1
     CLOSE_SHORT = -2
+    CLOSE_OUT = -3
 
 class ExecuteType(Enum):
     EXECUTE_ALL_UNITS = 0
@@ -334,6 +335,8 @@ class Util:
                               TRADE_BOOK_VALUE, AVERAGE_POSITION_COST,
                               TRADE_REALIZED_PNL, NBR_MULTIPLIER,
                               POSITION_CURRENT_VALUE]  # ID_INSTRUMENR是df的index
+    ACCOUNT_COLUMNS = [DT_DATE, CASH, PORTFOLIO_MARGIN_CAPITAL, PORTFOLIO_TRADES_VALUE,
+            PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_LEVERAGE]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,

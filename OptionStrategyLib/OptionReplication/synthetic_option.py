@@ -20,17 +20,17 @@ class SytheticOption(BaseFutureCoutinuous):
                  notional=Util.BILLION):
         super().__init__(df_data=df_c1_minute, df_daily_data=df_c1_daily, rf=rf, frequency=frequency)
         self.df_futures_daily = df_futures_daily
-        self.df_targe_index = df_index_daily
+        self.df_targe_index_daily = df_index_daily
         self.idx_target_index = -1
         self.synthetic_ratio = 0.0
         self.notional = notional
-        self.target_index_state = None
+        self.target_index_state_daily = None
 
     def next(self):
         super().next()
-        if self.target_index_state is None or self.eval_date != self.eval_datetime:
+        if self.target_index_state_daily is None or self.eval_date != self.eval_datetime.date():
             self.idx_target_index += 1
-            self.target_index_state = self.df_targe_index.loc[self.idx_target_index]
+            self.target_index_state_daily = self.df_targe_index_daily.loc[self.idx_target_index]
 
     def get_c1_with_start_dates(self):
         df = self.df_daily_data.drop_duplicates(Util.ID_INSTRUMENT)[[Util.DT_DATE, Util.ID_INSTRUMENT]]
