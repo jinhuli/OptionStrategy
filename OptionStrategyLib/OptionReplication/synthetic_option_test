@@ -43,7 +43,7 @@ execution_record = synthetic_option.execute_order(order, slippage=0, execute_typ
 account.add_record(execution_record, synthetic_option)
 # df = synthetic_option.get_c1_with_end_dates()
 date = synthetic_option.eval_date
-while synthetic_option.eval_date < dt_maturity:
+while synthetic_option.has_next() and synthetic_option.eval_date < dt_maturity:
     if synthetic_option.eval_datetime.minute % 10 != 0:
         synthetic_option.next()
         continue
@@ -53,7 +53,6 @@ while synthetic_option.eval_date < dt_maturity:
         account.daily_accounting(date)
         print(date, account.account.loc[date, Util.PORTFOLIO_NPV])
         date = synthetic_option.eval_date
-
     delta = synthetic_option.get_black_delta(Option, vol)
     rebalance_unit = synthetic_option.get_sythetic_option_rebalancing_unit(delta)
     if rebalance_unit > 0:
@@ -70,8 +69,7 @@ while synthetic_option.eval_date < dt_maturity:
                                        rebalance_unit)
     execution_record = synthetic_option.execute_order(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
     account.add_record(execution_record, synthetic_option)
-    if datetime == datetime.datetime(2017,10,20,14,50,0):
-        print()
+
     synthetic_option.next()
 print(account.account)
 df_records = pd.DataFrame(account.list_records)

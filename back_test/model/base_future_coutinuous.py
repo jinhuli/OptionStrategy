@@ -31,11 +31,7 @@ class BaseFutureCoutinuous(BaseProduct):
 
     def get_initial_margin(self) -> Union[float, None]:
         pre_settle_price = self.mktprice_last_settlement()
-        try:
-            margin = pre_settle_price * self._margin_rate * self._multiplier
-        except:
-            print()
-            pass
+        margin = pre_settle_price * self._margin_rate * self._multiplier
         return margin
 
     def get_maintain_margin(self) -> Union[float, None]:
