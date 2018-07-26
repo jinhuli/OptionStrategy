@@ -65,11 +65,11 @@ class SytheticOption(BaseFutureCoutinuous):
         # Apply delta bound filter
         if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
             if abs(d_delta) > delta_bound:
-                trade_unit = np.floor(d_delta * self.notional / self.multiplier())
+                trade_unit = np.floor(d_delta * self.notional / (self.multiplier() * self.mktprice_close()))
             else:
                 return 0
         else:
-            trade_unit = np.floor(d_delta * self.notional / self.multiplier())
+            trade_unit = np.floor(d_delta * self.notional / (self.multiplier() * self.mktprice_close()))
         self.synthetic_ratio = delta
         return trade_unit
 

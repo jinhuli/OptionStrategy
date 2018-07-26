@@ -106,7 +106,8 @@ class BaseAccount():
                 last_price = execution_record[Util.TRADE_PRICE]
                 trade_margin_capital = execution_record[Util.TRADE_MARGIN_CAPITAL]
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
-                average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / book_series[Util.TRADE_UNIT]
+                average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / (
+                        book_series[Util.TRADE_UNIT] * base_product.multiplier())
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
                 self.cash -= trade_margin_capital
                 position_current_value = self.get_position_value(id_instrument, trade_unit,
@@ -183,7 +184,8 @@ class BaseAccount():
         return investable_cash * self.max_leverage
 
     def create_trade_order(self, base_product,
-                           trade_type: TradeType,
+                           # trade_type: TradeType,
+                           long_short: LongShort,
                            trade_unit: int = None,
                            trade_price: float = None,
                            ):
@@ -194,22 +196,24 @@ class BaseAccount():
             trade_price = base_product.mktprice_close()
         time_signal = base_product.eval_datetime
         multiplier = base_product.multiplier()
-        long_short = self.get_long_short(trade_type)
+        # long_short = self.get_long_short(trade_type)
         # if trade_type == TradeType.CLOSE_OUT:
         #     trade_unit = book_series[Util.TRADE_UNIT]
         #     print("Close out all positions! ")
         # Close position时不检查保证金
-        if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
+        # if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
+        if id_instrument in self.trade_book.index :
             book_series = self.trade_book.loc[id_instrument]
-            if trade_type == TradeType.CLOSE_SHORT and book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
-                print('no short position to close')
-                return
-            elif trade_type == TradeType.CLOSE_LONG and book_series[Util.TRADE_LONG_SHORT] == LongShort.SHORT:
-                print('no short position to close')
-                return
-            order = Order(dt_trade, id_instrument, trade_type, trade_unit, trade_price,
-                          time_signal, long_short)
-            return order
+            if long_short != self.trade_book.loc[id_instrument,Util.TRADE_LONG_SHORT]:
+                # if trade_type == TradeType.CLOSE_SHORT and book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
+                #     print('no short position to close')
+                #     return
+                # elif trade_type == TradeType.CLOSE_LONG and book_series[Util.TRADE_LONG_SHORT] == LongShort.SHORT:
+                #     print('no short position to close')
+                #     return
+                order = Order(dt_trade, id_instrument, trade_unit, trade_price,
+                              time_signal, long_short)
+                return order
         if trade_unit is None:
             raise ValueError("trade_unit is None when opening position !")
         if base_product.get_current_value(long_short) == 0.0:
@@ -221,7 +225,7 @@ class BaseAccount():
             return
         else:
             trade_unit = min(max_unit, trade_unit)
-            order = Order(dt_trade, id_instrument, trade_type, trade_unit, trade_price,
+            order = Order(dt_trade, id_instrument, trade_unit, trade_price,
                           time_signal, long_short)
             return order
 
@@ -256,6 +260,7 @@ class BaseAccount():
         npv = portfolio_total_value / self.init_fund
         actual_leverage = portfolio_total_scale / portfolio_total_value
         account_today = pd.Series({
+            Util.DT_DATE: eval_date,
             Util.CASH: self.cash,
             Util.PORTFOLIO_MARGIN_CAPITAL: portfolio_margin_capital,
             Util.PORTFOLIO_TRADES_VALUE: portfolio_trades_value,

@@ -33,11 +33,11 @@ Option = EuropeanOption(strike, dt_maturity, OptionType.PUT)
 delta = synthetic_option.get_black_delta(Option, vol)
 synthetic_unit = synthetic_option.get_synthetic_unit(delta)
 if synthetic_unit > 0:
-    trade_type = TradeType.OPEN_LONG
+    long_short = LongShort.LONG
 else:
-    trade_type = TradeType.OPEN_SHORT
+    long_short = LongShort.SHORT
 order = account.create_trade_order(synthetic_option,
-                                   trade_type,
+                                   long_short,
                                    synthetic_unit)
 execution_record = synthetic_option.execute_order(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
 account.add_record(execution_record, synthetic_option)
@@ -47,7 +47,6 @@ while synthetic_option.has_next() and synthetic_option.eval_date < dt_maturity:
     if synthetic_option.eval_datetime.minute % 10 != 0:
         synthetic_option.next()
         continue
-    print(synthetic_option.eval_datetime)
     # TODO: 移仓换月时计成本，update id_instruemnt in account trading book
     if date != synthetic_option.eval_date:
         account.daily_accounting(date)
@@ -62,10 +61,9 @@ while synthetic_option.has_next() and synthetic_option.eval_date < dt_maturity:
     else:
         synthetic_option.next()
         continue
-    trade_type = account.get_trade_type(synthetic_option.id_instrument(), rebalance_unit, long_short)
-    print(datetime,trade_type)
+    # trade_type = account.get_trade_type(synthetic_option.id_instrument(), rebalance_unit, long_short)
     order = account.create_trade_order(synthetic_option,
-                                       trade_type,
+                                       long_short,
                                        rebalance_unit)
     execution_record = synthetic_option.execute_order(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
     account.add_record(execution_record, synthetic_option)

@@ -31,7 +31,7 @@ class Order(object):
     def __init__(self,
                  dt_trade: datetime.date,
                  id_instrument: str,
-                 trade_type: TradeType,
+                 # trade_type: TradeType,
                  trade_unit: int,
                  trade_price: Union[float, None],
                  time_signal: Union[datetime.datetime, None],
@@ -42,20 +42,21 @@ class Order(object):
             self._trade_unit = abs(trade_unit)
         self._dt_trade: datetime = dt_trade
         self._id_instrument = id_instrument
-        self._trade_type = trade_type
+        # self._trade_type = trade_type
+        self._long_short = long_short
         self._trade_unit = trade_unit
         self._trade_price = trade_price
         self._time_signal = time_signal
         self._status = OrderStatus.INITIAL
         self._pending_unit = 0
         self._uuid = uuid.uuid4()
-        if long_short is None:
-            if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:
-                self._long_short = LongShort.LONG
-            else:
-                self._long_short = LongShort.SHORT
-        else:
-            self._long_short = long_short
+        # if long_short is None:
+        #     if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:
+        #         self._long_short = LongShort.LONG
+        #     else:
+        #         self._long_short = LongShort.SHORT
+        # else:
+        #     self._long_short = long_short
         self.execution_res = None
 
     @property
@@ -78,13 +79,13 @@ class Order(object):
     def id_instrument(self, id_instrument: str) -> None:
         self._id_instrument = id_instrument
 
-    @property
-    def trade_type(self) -> TradeType:
-        return self._trade_type
+    # @property
+    # def trade_type(self) -> TradeType:
+    #     return self._trade_type
 
-    @trade_type.setter
-    def trade_type(self, trade_type: TradeType) -> None:
-        self.trade_type = trade_type
+    # @trade_type.setter
+    # def trade_type(self, trade_type: TradeType) -> None:
+    #     self.trade_type = trade_type
 
     @property
     def trade_unit(self) -> int:
@@ -146,7 +147,7 @@ class Order(object):
                 Util.TRADE_LONG_SHORT: self.long_short,
                 Util.TRADE_UNIT: executed_units,
                 Util.TRADE_PRICE: executed_price,
-                Util.TRADE_TYPE: self.trade_type,
+                # Util.TRADE_TYPE: self.trade_type,
                 Util.TIME_SIGNAL: self.time_signal,
                 Util.TRANSACTION_COST: slippage_cost
             }
@@ -182,7 +183,7 @@ class Order(object):
                 Util.TRADE_LONG_SHORT: self.long_short,
                 Util.TRADE_UNIT: executed_units,
                 Util.TRADE_PRICE: executed_price,
-                Util.TRADE_TYPE: self.trade_type,
+                # Util.TRADE_TYPE: self.trade_type,
                 Util.TIME_SIGNAL: self.time_signal,
                 Util.TRANSACTION_COST: slippage_cost
             }
