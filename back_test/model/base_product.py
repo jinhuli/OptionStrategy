@@ -246,9 +246,13 @@ class BaseProduct(AbstractBaseProduct):
                     else self.df_data.loc[self.current_index - 1][Util.AMT_SETTLEMENT]
         else:
             ret = self.current_daily_state[Util.AMT_LAST_SETTLEMENT]
+            # if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
+            #     return self.mktprice_close() if self.current_daily_index == 0 \
+            #         else self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
+            if (ret is None or np.isnan(ret) or ret == Util.NAN_VALUE) and self.current_daily_index != 0:
+                ret = self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
             if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
-                return self.mktprice_close() if self.current_daily_index == 0 \
-                    else self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
+                return self.mktprice_close()
         return ret
 
     """ last bar/state, not necessarily daily"""
