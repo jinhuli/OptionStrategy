@@ -77,8 +77,10 @@ for order in close_out_orders:
 
 print(account.account)
 df_records = pd.DataFrame(account.list_records)
-print(df_records)
+# print(df_records)
 df_records.to_csv('trade_records.csv')
-
+total_pnl = df_records[Util.TRADE_REALIZED_PNL].sum()
+final_npv = (Util.BILLION + total_pnl)/Util.BILLION
+print('final npv from adding up realized pnl ; ', final_npv)
 
 
