@@ -47,15 +47,15 @@ class BaseAccount():
                     trade_margin_capital = 0.0
                     trade_book_value = 0.0
                     average_position_cost = 0.0
-                    trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + \
-                                         book_series[Util.NBR_MULTIPLIER] * \
-                                         execution_record[Util.TRADE_UNIT] * execution_record[
-                                             Util.TRADE_LONG_SHORT].value * \
+                    # execution_record realized pnl.
+                    realized_pnl = book_series[Util.NBR_MULTIPLIER] * book_series[Util.TRADE_UNIT] \
+                                   * book_series[Util.TRADE_LONG_SHORT].value * \
                                          (execution_record[Util.TRADE_PRICE] -
                                           book_series[Util.AVERAGE_POSITION_COST])
-                    realized_pnl = trade_realized_pnl
-                    self.cash += book_series[Util.TRADE_MARGIN_CAPITAL]
-                    self.cash += book_series[Util.TRADE_REALIZED_PNL]
+                    # This position total realized pnl.
+                    trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
+                    self.cash += book_series[Util.TRADE_MARGIN_CAPITAL] + realized_pnl
+                    # self.cash += book_series[Util.TRADE_REALIZED_PNL]
                     position_current_value = self.get_position_value(id_instrument, trade_unit,
                                                                      trade_long_short.value
                                                                      )
@@ -70,9 +70,11 @@ class BaseAccount():
                     trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] - margin_released
                     trade_book_value = book_series[Util.TRADE_BOOK_VALUE] * (1 - ratio)
                     average_position_cost = book_series[Util.AVERAGE_POSITION_COST]
+                    # execution_record realized pnl.
                     realized_pnl = book_series[Util.NBR_MULTIPLIER] * \
                                    execution_record[Util.TRADE_UNIT] * book_series[Util.TRADE_LONG_SHORT].value * \
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
+                    # This position total realized pnl.
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
                     self.cash += realized_pnl + margin_released
                     position_current_value = self.get_position_value(id_instrument, trade_unit,
@@ -106,8 +108,11 @@ class BaseAccount():
                 last_price = execution_record[Util.TRADE_PRICE]
                 trade_margin_capital = execution_record[Util.TRADE_MARGIN_CAPITAL]
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
-                average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / (
-                        book_series[Util.TRADE_UNIT] * base_product.multiplier())
+                # average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / (
+                #         book_series[Util.TRADE_UNIT] * base_product.multiplier())
+                average_position_cost = (book_series[Util.TRADE_UNIT] * book_series[Util.AVERAGE_POSITION_COST]
+                                          + execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_PRICE])/\
+                                         (execution_record[Util.TRADE_UNIT] + book_series[Util.TRADE_UNIT])
                 realized_pnl = 0.0
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
                 self.cash -= trade_margin_capital
@@ -255,19 +260,22 @@ class BaseAccount():
     # TODO : trigger end of day
     def daily_accounting(self, eval_date):
         if self.trade_book.empty: return
+        total_unrealized_pnl = 0.0
         for (id_instrument, row) in self.trade_book.iterrows():
             if row[Util.TRADE_UNIT] == 0.0: continue
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
             trade_long_short = row[Util.TRADE_LONG_SHORT].value
             price = base_product.mktprice_close()
+            unrealized_pnl = trade_long_short * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * row[
+                Util.NBR_MULTIPLIER]
+            total_unrealized_pnl += unrealized_pnl
             # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
             # TODO: UNRALIED PNL CALCULATION SHOULD NOT BASED ON LAST PRICE; CONSIDER SEQUENT OPEN SAME DIRECTION
             # if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
-            #     unrealized_pnl = trade_long_short * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * row[
-            #         Util.NBR_MULTIPLIER]
-            #     self.cash += unrealized_pnl
-            #     self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
+                # unrealized value add to cash
+                # self.cash += unrealized_pnl
+                # self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
 
             # Calculate margin capital added to/from cash account.
             trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[
@@ -280,7 +288,7 @@ class BaseAccount():
 
         portfolio_margin_capital = self.get_portfolio_margin_capital()
         portfolio_trades_value = self.get_portfolio_trades_value()
-        portfolio_total_value = self.cash + portfolio_margin_capital + portfolio_trades_value
+        portfolio_total_value = self.cash + portfolio_margin_capital + portfolio_trades_value + total_unrealized_pnl
         portfolio_total_scale = self.get_portfolio_total_scale()
         npv = portfolio_total_value / self.init_fund
         actual_leverage = portfolio_total_scale / portfolio_total_value
@@ -291,6 +299,7 @@ class BaseAccount():
             Util.PORTFOLIO_TRADES_VALUE: portfolio_trades_value,
             Util.PORTFOLIO_VALUE: portfolio_total_value,
             Util.PORTFOLIO_NPV: npv,
+            Util.PORTFOLIO_UNREALIZED_PNL: total_unrealized_pnl,
             Util.PORTFOLIO_LEVERAGE: actual_leverage
         })
         self.account.loc[eval_date] = account_today

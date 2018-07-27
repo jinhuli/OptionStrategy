@@ -327,6 +327,7 @@ class Util:
     PORTFOLIO_TRADES_VALUE = 'portfolio_trades_value'
     PORTFOLIO_VALUE = 'portfolio_value'
     PORTFOLIO_NPV = 'npv'
+    PORTFOLIO_UNREALIZED_PNL = 'unrealized_pnl'
     PORTFOLIO_LEVERAGE = 'portfolio_leverage'
 
     BILLION = 1000000000.0
@@ -336,7 +337,7 @@ class Util:
                               TRADE_REALIZED_PNL, NBR_MULTIPLIER,
                               POSITION_CURRENT_VALUE]  # ID_INSTRUMENR是df的index
     ACCOUNT_COLUMNS = [DT_DATE, CASH, PORTFOLIO_MARGIN_CAPITAL, PORTFOLIO_TRADES_VALUE,
-            PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_LEVERAGE]
+            PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL, PORTFOLIO_LEVERAGE]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,
