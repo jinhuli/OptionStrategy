@@ -102,8 +102,8 @@ class BaseAccount():
                 trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
                 trade_unit = book_series[Util.TRADE_UNIT] + execution_record[Util.TRADE_UNIT]
                 last_price = execution_record[Util.TRADE_PRICE]
-                trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] + execution_record[
-                    Util.TRADE_MARGIN_CAPITAL]
+                margin_add = execution_record[Util.TRADE_MARGIN_CAPITAL]
+                trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] + margin_add
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
                 # average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / (
                 #         book_series[Util.TRADE_UNIT] * base_product.multiplier())
@@ -112,7 +112,7 @@ class BaseAccount():
                                         (execution_record[Util.TRADE_UNIT] + book_series[Util.TRADE_UNIT])
                 realized_pnl = 0.0
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
-                self.cash -= trade_margin_capital
+                self.cash -= margin_add
                 position_current_value = self.get_position_value(id_instrument, trade_unit,
                                                                  trade_long_short.value)
             self.trade_book.loc[id_instrument, Util.TRADE_LONG_SHORT] = trade_long_short
