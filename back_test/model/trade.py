@@ -35,7 +35,7 @@ class Order(object):
                  trade_unit: int,
                  trade_price: Union[float, None],
                  time_signal: Union[datetime.datetime, None],
-                 long_short=None):
+                 long_short):
         super().__init__()
         if trade_unit <= 0:
             print('Order has zero or negative unit.')

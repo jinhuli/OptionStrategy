@@ -33,7 +33,6 @@ class BaseAccount():
 
     def add_record(self, execution_record: pd.Series, base_product: BaseProduct):
         if execution_record is None: return
-        self.list_records.append(execution_record)
         self.add_holding(base_product)
         id_instrument = execution_record[Util.ID_INSTRUMENT]
         if not self.trade_book.empty and id_instrument in self.trade_book.index:
@@ -54,6 +53,7 @@ class BaseAccount():
                                              Util.TRADE_LONG_SHORT].value * \
                                          (execution_record[Util.TRADE_PRICE] -
                                           book_series[Util.AVERAGE_POSITION_COST])
+                    realized_pnl = trade_realized_pnl
                     self.cash += book_series[Util.TRADE_MARGIN_CAPITAL]
                     self.cash += book_series[Util.TRADE_REALIZED_PNL]
                     position_current_value = self.get_position_value(id_instrument, trade_unit,
@@ -108,6 +108,7 @@ class BaseAccount():
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
                 average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / (
                         book_series[Util.TRADE_UNIT] * base_product.multiplier())
+                realized_pnl = 0.0
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
                 self.cash -= trade_margin_capital
                 position_current_value = self.get_position_value(id_instrument, trade_unit,
@@ -134,11 +135,15 @@ class BaseAccount():
                 Util.TRADE_REALIZED_PNL: 0.0,
                 Util.NBR_MULTIPLIER: base_product.multiplier()
             })
+            realized_pnl = 0.0
             self.trade_book.loc[id_instrument] = book_series
             self.cash -= execution_record[Util.TRADE_MARGIN_CAPITAL]
             position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short.value)
         self.cash -= execution_record[Util.TRADE_MARKET_VALUE]  # 无保证金交易（期权买方、股票等）的头寸市值从现金账户中全部扣除
         self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
+        execution_record[Util.TRADE_REALIZED_PNL] = realized_pnl
+        execution_record[Util.CASH] = self.cash
+        self.list_records.append(execution_record)
         # self.update_account_status()
 
     # 股票与购买期权杠杆率计算方法不一样：base_product加入current value(不包含保证金)？？
@@ -229,6 +234,24 @@ class BaseAccount():
                           time_signal, long_short)
             return order
 
+    def creat_close_out_order(self,base_product):
+        if self.trade_book.empty:
+            return
+        else:
+            order_list = []
+            for (id_instrument, book_series) in self.trade_book.iterrows():
+                trade_unit = book_series[Util.TRADE_UNIT]
+                if book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
+                    long_short = LongShort.SHORT
+                else:
+                    long_short = LongShort.LONG
+                order = Order(base_product.eval_date,id_instrument,trade_unit,
+                              trade_price=base_product.mktprice_close(),
+                              time_signal=base_product.eval_datetime, long_short=long_short)
+                order_list.append(order)
+            return order_list
+
+
     # TODO : trigger end of day
     def daily_accounting(self, eval_date):
         if self.trade_book.empty: return
@@ -239,11 +262,13 @@ class BaseAccount():
             trade_long_short = row[Util.TRADE_LONG_SHORT].value
             price = base_product.mktprice_close()
             # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
-            if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
-                unrealized_pnl = trade_long_short * (price - row[Util.LAST_PRICE]) * row[Util.TRADE_UNIT] * row[
-                    Util.NBR_MULTIPLIER]
-                self.cash += unrealized_pnl
-            self.trade_book.loc[id_instrument, Util.LAST_PRICE] = price
+            # TODO: UNRALIED PNL CALCULATION SHOULD NOT BASED ON LAST PRICE; CONSIDER SEQUENT OPEN SAME DIRECTION
+            # if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
+            #     unrealized_pnl = trade_long_short * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * row[
+            #         Util.NBR_MULTIPLIER]
+            #     self.cash += unrealized_pnl
+            #     self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
+
             # Calculate margin capital added to/from cash account.
             trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[
                 Util.TRADE_MARGIN_CAPITAL]
