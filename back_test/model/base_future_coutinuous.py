@@ -3,7 +3,7 @@ from typing import Union
 import pandas as pd
 
 from back_test.model.base_product import BaseProduct
-from back_test.model.constant import FrequentType, Util, ExecuteType
+from back_test.model.constant import FrequentType, Util, ExecuteType, LongShort
 from back_test.model.trade import Order
 
 
@@ -12,19 +12,32 @@ class BaseFutureCoutinuous(BaseProduct):
     BaseFuture: For Independent Future or Future Continuous.
     """
 
-    def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
-                 rf: float = 0.03, frequency: FrequentType = FrequentType.DAILY):
-        super().__init__(df_data, df_daily_data, rf, frequency)
+    def __init__(self, df_future_c1: pd.DataFrame,  # future c1
+                 df_future_c1_daily: pd.DataFrame = None,  # future daily c1
+                 df_future_c2: pd.DataFrame = None,  # future c2
+                 df_futures_all_daily: pd.DataFrame = None,
+                 df_underlying_index_daily: pd.DataFrame = None,
+                 rf: float = 0.03, frequency: FrequentType = FrequentType.MINUTE):
+        super().__init__(df_future_c1, df_future_c1_daily, rf, frequency)
         self._multiplier = Util.DICT_CONTRACT_MULTIPLIER[self.name_code()]
         self.fee_rate = Util.DICT_TRANSACTION_FEE_RATE[self.name_code()]
         self.fee_per_unit = Util.DICT_TRANSACTION_FEE[self.name_code()]
-        # self.fee_per_unit = 0
-        # self.fee_rate = 0
         self._margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
+        self.df_future_c2 = df_future_c2
+        self.df_underlying_index_daily = df_underlying_index_daily
+        self.df_all_futures_daily = df_futures_all_daily
+        self.idx_underlying_index = -1
+        self.underlying_index_state_daily = None
 
     def __repr__(self) -> str:
         return 'BaseInstrument(id_instrument: {0},eval_date: {1},frequency: {2})' \
             .format(self.id_instrument(), self.eval_date, self.frequency)
+
+    def next(self):
+        super().next()
+        if self.underlying_index_state_daily is None or self.eval_date != self.eval_datetime.date():
+            self.idx_underlying_index += 1
+            self.underlying_index_state_daily = self.df_underlying_index_daily.loc[self.idx_underlying_index]
 
     """ getters """
 
@@ -69,7 +82,7 @@ class BaseFutureCoutinuous(BaseProduct):
 
     # TODO: 主力连续的仓换月周/日；移仓换月成本
 
-    def execute_order(self, order: Order, slippage=1, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
         if order is None: return
         if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
             order.trade_all_unit(slippage)
@@ -99,3 +112,66 @@ class BaseFutureCoutinuous(BaseProduct):
         execution_record[
             Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
         return execution_record
+
+
+    # """ 高频数据下按照当日成交量加权均价开仓，结束后时间点移动到下一个交易日第一个时间点。 """
+    def execute_order_by_VWAP(self, order: Order, slippage=0,
+                                           execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+        if self.frequency in Util.LOW_FREQUENT:
+            return
+        else:
+            total_trade_value = 0.0
+            total_volume_value = 0.0
+            dt_date = self.eval_date
+            while dt_date == self.eval_date:
+                total_trade_value += self.mktprice_close() * self.trading_volume()
+                total_volume_value += self.trading_volume()
+                self.next()
+            volume_weighted_price = total_trade_value/total_volume_value
+            order.trade_price = volume_weighted_price
+            execution_record = self.execute_order(order, slippage, execute_type)
+            return execution_record
+
+    def shift_contract_by_VWAP(self, id_c1: str, id_c2: str, hold_unit: int,
+                               hold_long_short: LongShort, slippage,execute_type):
+        if hold_long_short == LongShort.LONG:
+            close_order_long_short = LongShort.SHORT
+        else:
+            close_order_long_short = LongShort.LONG
+        close_order = Order(self.eval_date, id_c1, hold_unit, close_order_long_short)
+        open_order = Order(self.eval_date, id_c2, hold_unit, hold_long_short)
+        if self.frequency in Util.LOW_FREQUENT:
+            return
+        else:
+            total_trade_value_c1 = 0.0
+            total_volume_value_c1 = 0.0
+            dt_date = self.eval_date
+            while dt_date == self.eval_date:
+                total_trade_value_c1 += self.mktprice_close() * self.trading_volume()
+                total_volume_value_c1 += self.trading_volume()
+                self.next()
+            volume_weighted_price_c1 = total_trade_value_c1/total_volume_value_c1
+            total_trade_value_c2 = 0.0
+            total_volume_value_c2 = 0.0
+            dt_date = self.eval_date
+            while dt_date == self.eval_date:
+                total_trade_value_c2 += self.mktprice_close() * self.trading_volume()
+                total_volume_value_c2 += self.trading_volume()
+                self.next()
+            volume_weighted_price_c2 = total_trade_value_c2 / total_volume_value_c2
+            close_order.trade_price = volume_weighted_price_c1
+            open_order.trade_price = volume_weighted_price_c2
+            close_execution_record = self.execute_order(close_order, slippage, execute_type)
+            open_execution_record = self.execute_order(close_order, slippage, execute_type)
+            return close_execution_record, open_execution_record
+
+
+
+
+
+
+
+
+
+
+

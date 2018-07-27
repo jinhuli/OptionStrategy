@@ -8,52 +8,61 @@ from back_test.model.trade import Trade
 from data_access.get_data import get_dzqh_cf_daily, get_dzqh_cf_c1_daily, \
     get_dzqh_cf_c1_minute, get_index_mktdata
 
-start_date = datetime.date(2017, 10, 10)
-end_date = datetime.date(2017, 10, 15)
+start_date = datetime.date(2017, 10, 15)
+end_date = datetime.date(2017, 10, 20)
 
 df_future_c1 = get_dzqh_cf_c1_minute(start_date, end_date, 'if')
 df_future_c1_daily = get_dzqh_cf_c1_daily(start_date, end_date, 'if')
 # daily data of all future contracts
-df_future_daily = get_dzqh_cf_daily(start_date, end_date, 'if')
+df_futures_all_daily = get_dzqh_cf_daily(start_date, end_date, 'if')
 # daily data of underlying index
 df_index = get_index_mktdata(start_date, end_date, 'index_300sh')
 synthetic_option = SytheticOption(df_c1_minute=df_future_c1,
                                   df_c1_daily=df_future_c1_daily,
-                                  df_futures_daily=df_future_daily,
+                                  df_futures_all_daily=df_futures_all_daily,
                                   df_index_daily=df_index)
 synthetic_option.init()
 account = BaseAccount(Util.BILLION, leverage=10.0, rf=0.0)
 trading_desk = Trade()
 
 #####################################################################
-strike = synthetic_option.target_index_state_daily[Util.AMT_CLOSE]
+strike = synthetic_option.underlying_index_state_daily[Util.AMT_CLOSE]
 dt_maturity = synthetic_option.eval_date + datetime.timedelta(days=30)
 vol = 0.2
 Option = EuropeanOption(strike, dt_maturity, OptionType.PUT)
 delta = synthetic_option.get_black_delta(Option, vol)
+id_future = synthetic_option.current_state[Util.ID_INSTRUMENT]
 synthetic_unit = synthetic_option.get_synthetic_unit(delta)
 if synthetic_unit > 0:
     long_short = LongShort.LONG
 else:
     long_short = LongShort.SHORT
+# """ 用第一天的成交量加权均价初次开仓 """
 order = account.create_trade_order(synthetic_option,
                                    long_short,
                                    synthetic_unit)
-execution_record = synthetic_option.execute_order(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
+execution_record = synthetic_option.execute_order_by_VWAP(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
 account.add_record(execution_record, synthetic_option)
 # df = synthetic_option.get_c1_with_end_dates()
+#####################################################################
+
 date = synthetic_option.eval_date
 while synthetic_option.has_next() and synthetic_option.eval_date < dt_maturity:
-    if synthetic_option.eval_datetime.minute % 10 != 0:
-        synthetic_option.next()
-        continue
-    # TODO: 移仓换月时计成本，update id_instruemnt in account trading book
     if date != synthetic_option.eval_date:
         account.daily_accounting(date)
         print(date, account.account.loc[date, Util.PORTFOLIO_NPV])
         date = synthetic_option.eval_date
+        if id_future != synthetic_option.current_state[Util.ID_INSTRUMENT]:
+            hold_long_short = account.trade_book.loc[id_future, Util.TRADE_LONG_SHORT]
+            synthetic_option.shift_contract_by_VWAP(id_future,synthetic_option.current_state[Util.ID_INSTRUMENT],
+                                                    hold_long_short, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
+
+    if synthetic_option.eval_datetime.minute % 10 != 0:
+        synthetic_option.next()
+        continue
+
     delta = synthetic_option.get_black_delta(Option, vol)
-    rebalance_unit = synthetic_option.get_sythetic_option_rebalancing_unit(delta)
+    rebalance_unit = synthetic_option.get_synthetic_option_rebalancing_unit(delta)
     if rebalance_unit > 0:
         long_short = LongShort.LONG
     elif rebalance_unit < 0:
@@ -74,7 +83,8 @@ close_out_orders = account.creat_close_out_order(synthetic_option)
 for order in close_out_orders:
     execution_record = synthetic_option.execute_order(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
     account.add_record(execution_record, synthetic_option)
-
+account.daily_accounting(date)
+print(date, account.account.loc[date, Util.PORTFOLIO_NPV])
 # print(account.account)
 df_records = pd.DataFrame(account.list_records)
 # print(df_records)
