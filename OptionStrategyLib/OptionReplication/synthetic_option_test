@@ -8,8 +8,8 @@ from back_test.model.trade import Trade
 from data_access.get_data import get_dzqh_cf_daily, get_dzqh_cf_c1_daily, \
     get_dzqh_cf_c1_minute, get_index_mktdata
 
-start_date = datetime.date(2017, 10, 15)
-end_date = datetime.date(2017, 10, 20)
+start_date = datetime.date(2017, 10, 10)
+end_date = datetime.date(2017, 10, 15)
 
 df_future_c1 = get_dzqh_cf_c1_minute(start_date, end_date, 'if')
 df_future_c1_daily = get_dzqh_cf_c1_daily(start_date, end_date, 'if')
@@ -22,7 +22,7 @@ synthetic_option = SytheticOption(df_c1_minute=df_future_c1,
                                   df_futures_daily=df_future_daily,
                                   df_index_daily=df_index)
 synthetic_option.init()
-account = BaseAccount(Util.BILLION, leverage=10.0, rf=0.03)
+account = BaseAccount(Util.BILLION, leverage=10.0, rf=0.0)
 trading_desk = Trade()
 
 #####################################################################
@@ -75,12 +75,12 @@ for order in close_out_orders:
     execution_record = synthetic_option.execute_order(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
     account.add_record(execution_record, synthetic_option)
 
-print(account.account)
+# print(account.account)
 df_records = pd.DataFrame(account.list_records)
 # print(df_records)
 df_records.to_csv('trade_records.csv')
 total_pnl = df_records[Util.TRADE_REALIZED_PNL].sum()
 final_npv = (Util.BILLION + total_pnl)/Util.BILLION
-print('final npv from adding up realized pnl ; ', final_npv)
+print('calculate final npv from adding up realized pnl ; ', final_npv)
 
 
