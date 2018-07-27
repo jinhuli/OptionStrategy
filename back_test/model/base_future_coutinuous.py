@@ -18,6 +18,8 @@ class BaseFutureCoutinuous(BaseProduct):
         self._multiplier = Util.DICT_CONTRACT_MULTIPLIER[self.name_code()]
         self.fee_rate = Util.DICT_TRANSACTION_FEE_RATE[self.name_code()]
         self.fee_per_unit = Util.DICT_TRANSACTION_FEE[self.name_code()]
+        # self.fee_per_unit = 0
+        # self.fee_rate = 0
         self._margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
 
     def __repr__(self) -> str:
@@ -34,6 +36,7 @@ class BaseFutureCoutinuous(BaseProduct):
         margin = pre_settle_price * self._margin_rate * self._multiplier
         return margin
 
+    # TODO: USE SETTLEMENT PRICE
     def get_maintain_margin(self) -> Union[float, None]:
         margin = self.mktprice_close() * self._margin_rate * self._multiplier
         return margin

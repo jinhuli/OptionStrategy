@@ -1,11 +1,7 @@
-import pandas as pd
 import numpy as np
-import datetime
-from typing import Union
-from back_test.model.abstract_account import AbstractAccount
+import pandas as pd
+
 from back_test.model.base_product import BaseProduct
-from back_test.model.base_future import BaseFuture
-from back_test.model.base_future_coutinuous import BaseFutureCoutinuous
 from back_test.model.constant import Util, TradeType, LongShort
 from back_test.model.trade import Order
 
@@ -50,8 +46,8 @@ class BaseAccount():
                     # execution_record realized pnl.
                     realized_pnl = book_series[Util.NBR_MULTIPLIER] * book_series[Util.TRADE_UNIT] \
                                    * book_series[Util.TRADE_LONG_SHORT].value * \
-                                         (execution_record[Util.TRADE_PRICE] -
-                                          book_series[Util.AVERAGE_POSITION_COST])
+                                   (execution_record[Util.TRADE_PRICE] -
+                                    book_series[Util.AVERAGE_POSITION_COST])
                     # This position total realized pnl.
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
                     self.cash += book_series[Util.TRADE_MARGIN_CAPITAL] + realized_pnl
@@ -106,13 +102,14 @@ class BaseAccount():
                 trade_long_short = execution_record[Util.TRADE_LONG_SHORT]
                 trade_unit = book_series[Util.TRADE_UNIT] + execution_record[Util.TRADE_UNIT]
                 last_price = execution_record[Util.TRADE_PRICE]
-                trade_margin_capital = execution_record[Util.TRADE_MARGIN_CAPITAL]
+                trade_margin_capital = book_series[Util.TRADE_MARGIN_CAPITAL] + execution_record[
+                    Util.TRADE_MARGIN_CAPITAL]
                 trade_book_value = book_series[Util.TRADE_BOOK_VALUE] + execution_record[Util.TRADE_BOOK_VALUE]
                 # average_position_cost = abs(book_series[Util.TRADE_BOOK_VALUE]) / (
                 #         book_series[Util.TRADE_UNIT] * base_product.multiplier())
                 average_position_cost = (book_series[Util.TRADE_UNIT] * book_series[Util.AVERAGE_POSITION_COST]
-                                          + execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_PRICE])/\
-                                         (execution_record[Util.TRADE_UNIT] + book_series[Util.TRADE_UNIT])
+                                         + execution_record[Util.TRADE_UNIT] * execution_record[Util.TRADE_PRICE]) / \
+                                        (execution_record[Util.TRADE_UNIT] + book_series[Util.TRADE_UNIT])
                 realized_pnl = 0.0
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
                 self.cash -= trade_margin_capital
@@ -212,9 +209,9 @@ class BaseAccount():
         #     print("Close out all positions! ")
         # Close position时不检查保证金
         # if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
-        if id_instrument in self.trade_book.index :
+        if id_instrument in self.trade_book.index:
             book_series = self.trade_book.loc[id_instrument]
-            if long_short != self.trade_book.loc[id_instrument,Util.TRADE_LONG_SHORT]:
+            if long_short != self.trade_book.loc[id_instrument, Util.TRADE_LONG_SHORT]:
                 # if trade_type == TradeType.CLOSE_SHORT and book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
                 #     print('no short position to close')
                 #     return
@@ -239,7 +236,7 @@ class BaseAccount():
                           time_signal, long_short)
             return order
 
-    def creat_close_out_order(self,base_product):
+    def creat_close_out_order(self, base_product):
         if self.trade_book.empty:
             return
         else:
@@ -250,12 +247,11 @@ class BaseAccount():
                     long_short = LongShort.SHORT
                 else:
                     long_short = LongShort.LONG
-                order = Order(base_product.eval_date,id_instrument,trade_unit,
+                order = Order(base_product.eval_date, id_instrument, trade_unit,
                               trade_price=base_product.mktprice_close(),
                               time_signal=base_product.eval_datetime, long_short=long_short)
                 order_list.append(order)
             return order_list
-
 
     # TODO : trigger end of day
     def daily_accounting(self, eval_date):
@@ -273,9 +269,9 @@ class BaseAccount():
             # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
             # TODO: UNRALIED PNL CALCULATION SHOULD NOT BASED ON LAST PRICE; CONSIDER SEQUENT OPEN SAME DIRECTION
             # if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
-                # unrealized value add to cash
-                # self.cash += unrealized_pnl
-                # self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
+            # unrealized value add to cash
+            # self.cash += unrealized_pnl
+            # self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
 
             # Calculate margin capital added to/from cash account.
             trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[
@@ -317,7 +313,7 @@ class BaseAccount():
         else:
             hold_unit = self.trade_book.loc[id_instrument, Util.TRADE_UNIT]
             hold_long_short = self.trade_book.loc[id_instrument, Util.TRADE_LONG_SHORT]
-            if hold_long_short != trade_long_short: # OPPOSITE DIRECTION
+            if hold_long_short != trade_long_short:  # OPPOSITE DIRECTION
                 if trade_unit > hold_unit:  # TODO:反开仓暂时按开仓处理，需检查开仓账户现金充足率
                     if trade_long_short == LongShort.LONG:
                         return TradeType.OPEN_LONG
@@ -328,7 +324,7 @@ class BaseAccount():
                         return TradeType.CLOSE_LONG
                     else:
                         return TradeType.CLOSE_SHORT
-            else: # SAME DIRECTION
+            else:  # SAME DIRECTION
                 if trade_long_short == LongShort.LONG:
                     return TradeType.OPEN_LONG
                 else:
