@@ -228,9 +228,9 @@ class FutureUtil:
 class Hedge:
 
     @staticmethod
-    def whalley_wilmott(self, ttm, gamma, spot, rho=1, fee=5.0 / 10000.0):
+    def whalley_wilmott(ttm, gamma, spot, rho=1, fee=5.0 / 10000.0, rf=0.03):
         # ttm = self.pricing_utl.get_ttm(eval_date, option.dt_maturity)
-        H = (1.5 * math.exp(-self.rf * ttm) * fee * spot * (gamma ** 2) / rho) ** (1 / 3)
+        H = (1.5 * math.exp(-rf * ttm) * fee * spot * (gamma ** 2) / rho) ** (1 / 3)
         return H
 
 
@@ -251,6 +251,8 @@ class Util:
     AMT_STRIKE_BEFORE_ADJ = 'amt_strike_before_adj'
     AMT_CLOSE = 'amt_close'
     AMT_OPEN = 'amt_open'
+    AMT_HIGH = 'amt_high'
+    AMT_LOW = 'amt_low'
     AMT_ADJ_OPTION_PRICE = 'amt_adj_option_price'
     AMT_OPTION_PRICE = 'amt_option_price'
     AMT_UNDERLYING_CLOSE = 'amt_underlying_close'
@@ -281,6 +283,8 @@ class Util:
     RISK_FREE_RATE = 'risk_free_rate'
     AMT_APPLICABLE_STRIKE = 'amt_applicable_strike'
     AMT_APPLICABLE_MULTIPLIER = 'amt_applicable_multiplier'
+    AMT_HISTVOL_1M = 'amt_hist_vol_1M'
+    AMT_PARKINSON_NUMBER_1M = 'amt_parkinson_number_1M'
     NAME_CODE = 'name_code'
     STR_CALL = 'call'
     STR_PUT = 'put'
@@ -393,6 +397,8 @@ class Util:
         'ih': 0.2,
         'ic': 0.2
     }
+
+    DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017,12,28),datetime.date(2017,12,29),datetime.date(2018,1,26),datetime.date(2018,5,4)]
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
