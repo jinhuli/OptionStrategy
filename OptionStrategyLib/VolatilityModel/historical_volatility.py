@@ -19,14 +19,14 @@ class historical_volatility_model:
     def parkinson_number_1M(df):
         n = 20
         df_vol = df[[Util.DT_DATE]]
-        # squred_log_h_l = (math.log(df[Util.AMT_HIGH] / df[Util.AMT_LOW], math.e)) ** 2
         squred_log_h_l = df.apply(historical_volatility_model.fun_parkinson_number, axis=1)
         sum_squred_log_h_l = squred_log_h_l.rolling(window=n).sum()
         df_vol[Util.AMT_PARKINSON_NUMBER_1M] = sum_squred_log_h_l.apply(
-            lambda x: math.sqrt(x / (n * 4 * math.log(2, 2))))
+            lambda x: math.sqrt(252 * x / (n * 4 * math.log(2))))
         df_vol = df_vol.dropna().set_index(Util.DT_DATE)
         return df_vol
 
     @staticmethod
     def fun_parkinson_number(df: pd.Series) -> float:
-        return (math.log(df[Util.AMT_HIGH] / df[Util.AMT_LOW], 2)) ** 2
+        print(df)
+        return (math.log(df[Util.AMT_HIGH] / df[Util.AMT_LOW])) ** 2
