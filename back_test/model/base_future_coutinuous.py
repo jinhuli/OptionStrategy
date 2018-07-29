@@ -113,10 +113,9 @@ class BaseFutureCoutinuous(BaseProduct):
             Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
         return execution_record
 
-
     # """ 高频数据下按照当日成交量加权均价开仓，结束后时间点移动到下一个交易日第一个时间点。 """
     def execute_order_by_VWAP(self, order: Order, slippage=0,
-                                           execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+                              execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
         if self.frequency in Util.LOW_FREQUENT:
             return
         else:
@@ -127,51 +126,44 @@ class BaseFutureCoutinuous(BaseProduct):
                 total_trade_value += self.mktprice_close() * self.trading_volume()
                 total_volume_value += self.trading_volume()
                 self.next()
-            volume_weighted_price = total_trade_value/total_volume_value
+            volume_weighted_price = total_trade_value / total_volume_value
             order.trade_price = volume_weighted_price
             execution_record = self.execute_order(order, slippage, execute_type)
             return execution_record
 
-    def shift_contract_by_VWAP(self, id_c1: str, id_c2: str, hold_unit: int,
-                               hold_long_short: LongShort, slippage,execute_type):
+    def shift_contract_by_VWAP(self, id_c1: str, id_c2: str, hold_unit: int, open_unit: int,
+                               hold_long_short: LongShort, slippage, execute_type):
         if hold_long_short == LongShort.LONG:
             close_order_long_short = LongShort.SHORT
         else:
             close_order_long_short = LongShort.LONG
-        close_order = Order(self.eval_date, id_c1, hold_unit, close_order_long_short)
-        open_order = Order(self.eval_date, id_c2, hold_unit, hold_long_short)
+        close_order = Order(dt_trade=self.eval_date, id_instrument=id_c1, trade_unit=hold_unit,
+                            trade_price=None, time_signal=self.eval_datetime, long_short=close_order_long_short)
+        # TODO: OPEN ORDER UNIT SHOULD BE RECALCULATED BY DELTA.
+        open_order = Order(dt_trade=self.eval_date, id_instrument=id_c2, trade_unit=hold_unit,
+                           trade_price=None, time_signal=self.eval_datetime, long_short=hold_long_short)
         if self.frequency in Util.LOW_FREQUENT:
             return
         else:
-            total_trade_value_c1 = 0.0
-            total_volume_value_c1 = 0.0
-            dt_date = self.eval_date
-            while dt_date == self.eval_date:
-                total_trade_value_c1 += self.mktprice_close() * self.trading_volume()
-                total_volume_value_c1 += self.trading_volume()
-                self.next()
-            volume_weighted_price_c1 = total_trade_value_c1/total_volume_value_c1
+            # total_trade_value_c1 = 0.0
+            # total_volume_value_c1 = 0.0
             total_trade_value_c2 = 0.0
-            total_volume_value_c2 = 0.0
+            total_volume_c2 = 0.0
             dt_date = self.eval_date
             while dt_date == self.eval_date:
-                total_trade_value_c2 += self.mktprice_close() * self.trading_volume()
-                total_volume_value_c2 += self.trading_volume()
+                # total_trade_value_c1 +=
+                # total_volume_value_c1 += self.trading_volume()
+                total_trade_value_c2 += self.mktprice_close() * self.trading_volume() * self.multiplier()
+                total_volume_c2 += self.trading_volume()
                 self.next()
-            volume_weighted_price_c2 = total_trade_value_c2 / total_volume_value_c2
+            df_c1_today = self.df_all_futures_daily[(self.df_all_futures_daily[Util.DT_DATE] == self.eval_date) & (
+                        self.df_all_futures_daily[Util.ID_INSTRUMENT] == id_c1)]
+            total_trade_value_c1 = df_c1_today[Util.AMT_TRADING_VALUE].values[0]
+            total_volume_c1 = df_c1_today[Util.AMT_TRADING_VOLUME].values[0]
+            volume_weighted_price_c1 = total_trade_value_c1 / (total_volume_c1 * self.multiplier())
+            volume_weighted_price_c2 = total_trade_value_c2 / (total_volume_c2 * self.multiplier())
             close_order.trade_price = volume_weighted_price_c1
             open_order.trade_price = volume_weighted_price_c2
             close_execution_record = self.execute_order(close_order, slippage, execute_type)
-            open_execution_record = self.execute_order(close_order, slippage, execute_type)
+            open_execution_record = self.execute_order(open_order, slippage, execute_type)
             return close_execution_record, open_execution_record
-
-
-
-
-
-
-
-
-
-
-

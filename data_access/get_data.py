@@ -213,7 +213,7 @@ def get_dzqh_cf_daily(start_date, end_date, name_code):
     utl = BktUtil()
     table_cf = admin.table_cf_daily()
     query = admin.session_dzqh().query(table_cf.c.dt_date, table_cf.c.id_instrument,
-                                       table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
+                                       table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume, table_cf.c.amt_trading_value). \
         filter((table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date)). \
         filter(table_cf.c.name_code == name_code)
     df = pd.read_sql(query.statement, query.session.bind)

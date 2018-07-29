@@ -21,7 +21,6 @@ class BaseProduct(AbstractBaseProduct):
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
         self._name_code: str = self._id_instrument.split('_')[0]
-        #TODO: 起始日期最好从数据的第二天开始。
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.eval_date: datetime.date = None
@@ -29,6 +28,7 @@ class BaseProduct(AbstractBaseProduct):
         self.current_state: pd.Series = None
         self.current_daily_state: pd.Series = None
         self.rf = rf
+
 
     def init(self) -> None:
         self.validate_data()
@@ -83,6 +83,10 @@ class BaseProduct(AbstractBaseProduct):
 
 
     #TODO: ADD NEXT DAY METHOD
+    def get_next_state_date(self):
+        if self.has_next():
+            next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
+            return next_date
 
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1

@@ -31,7 +31,7 @@ class Order(object):
     def __init__(self,
                  dt_trade: datetime.date,
                  id_instrument: str,
-                 trade_unit: int,
+                 trade_unit: Union[int, None],
                  trade_price: Union[float, None],
                  time_signal: Union[datetime.datetime, None],
                  long_short):
@@ -135,9 +135,13 @@ class Order(object):
         executed_units = self.trade_unit
         name_code = self.id_instrument.split("_")[0]
         # buy at slippage tick size higher and sell lower.
-        executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+        if slippage > 0:
+            executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+            slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
+        else:
+            executed_price = self.trade_price
+            slippage_cost = 0.0
         # transaction cost will be added in base_product
-        slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
         excution_res = pd.Series(
             {
                 Util.UUID: uuid.uuid4(),

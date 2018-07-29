@@ -154,7 +154,7 @@ class BaseOption(BaseProduct):
             dt_maturity = self.maturitydt()
             strike = self.applicable_strike()
             option_type = self.option_type()
-            option_price = self.option_price()
+            option_price = self.mktprice_close()
             spot = self.underlying_close()
             black_formula = BlackFormula(self.eval_date, dt_maturity, strike, option_type, spot, option_price, self.rf)
             implied_vol = black_formula.ImpliedVolApproximation()

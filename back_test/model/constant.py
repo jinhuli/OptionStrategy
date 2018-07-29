@@ -258,6 +258,7 @@ class Util:
     NBR_MULTIPLIER = 'nbr_multiplier'
     AMT_HOLDING_VOLUME = 'amt_holding_volume'
     AMT_TRADING_VOLUME = 'amt_trading_volume'
+    AMT_TRADING_VALUE = 'amt_trading_value'
     AMT_MORNING_OPEN_15MIN = 'amt_morning_open_15min'
     AMT_MORNING_CLOSE_15MIN = 'amt_morning_close_15min'
     AMT_AFTERNOON_OPEN_15MIN = 'amt_afternoon_open_15min'

@@ -33,8 +33,9 @@ class SytheticOption(BaseFutureCoutinuous):
         df = self.df_daily_data.drop_duplicates(Util.ID_INSTRUMENT, 'last')[[Util.DT_DATE, Util.ID_INSTRUMENT]]
         return df
 
-    def get_black_delta(self, option: EuropeanOption, vol: float):
-        spot = self.mktprice_close()
+    def get_black_delta(self, option: EuropeanOption, vol: float, spot: float=None):
+        if spot is None:
+            spot = self.mktprice_close()
         black = BlackCalculator(self.eval_date, option.dt_maturity, option.strike,
                                 option.option_type, spot, vol, self.rf)
         delta = black.Delta()
