@@ -41,6 +41,9 @@ class OptionType(Enum):
     CALL = 1
     PUT = -1
 
+class OptionExerciseType(Enum):
+    AMERICAN = 0
+    EUROPEAN = 1
 
 class DeltaBound(Enum):
     WHALLEY_WILLMOTT = 0
