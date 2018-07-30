@@ -421,3 +421,14 @@ class Util:
                                                            00):
             return True
         return False
+
+    @staticmethod
+    def largest_element_less_than(list, val):
+        for i in range(len(list), 0, -1):
+            if list[i - 1] < val:
+                return list[i - 1]
+            elif i == 0:
+                return None
+            else:
+                continue
+

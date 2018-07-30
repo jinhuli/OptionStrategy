@@ -23,6 +23,7 @@ class BaseAccount():
         self.actual_leverage = 0.0
         self.realized_pnl = 0.0
         self.trade_book_daily = pd.DataFrame(columns=Util.TRADE_BOOK_COLUMN_LIST)
+        self.realized_pnl_from_closed_out_positions = 0.0
         # self.total_mtm_position = 0.0  # 总多空持仓市值(abs value)加总
         # self.total_margin_trade_mtm_position = 0.0
 
@@ -290,9 +291,10 @@ class BaseAccount():
 
     def daily_accounting(self, eval_date):
         if self.trade_book.empty: return
-        total_unrealized_pnl = 0.0
+        margin_unrealized_pnl = 0.0
         total_short_scale = 0.0
         total_long_scale = 0.0
+        nonmargin_unrealized_pnl = 0.0
         for (id_instrument, row) in self.trade_book.iterrows():
             if row[Util.TRADE_UNIT] == 0.0: continue
             base_product = self.dict_holding[id_instrument]
@@ -304,9 +306,15 @@ class BaseAccount():
                 total_short_scale -= trade_unit*price*base_product.multiplier()
             else:
                 total_long_scale += trade_unit*price*base_product.multiplier()
-            unrealized_pnl = trade_long_short.value * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * row[
-                Util.NBR_MULTIPLIER]
-            total_unrealized_pnl += unrealized_pnl
+            unrealized_pnl = trade_long_short.value * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * \
+                             row[
+                                 Util.NBR_MULTIPLIER]
+            # 开仓为保证金交易，将已实现损益加入现金账户/ 非保证金交易（买股票、期权）不需要计算未实现损益，将头寸以当前市值计价即可。
+            if base_product.get_current_value(trade_long_short) == 0.0:
+                margin_unrealized_pnl += unrealized_pnl
+            else:
+                nonmargin_unrealized_pnl += unrealized_pnl
+            # self.trade_book.loc[id_instrument, Util.PORTFOLIO_UNREALIZED_PNL] = unrealized_pnl
             # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
             # TODO: UNRALIED PNL CALCULATION SHOULD NOT BASED ON LAST PRICE; CONSIDER SEQUENT OPEN SAME DIRECTION
             # if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
@@ -322,20 +330,23 @@ class BaseAccount():
             # Calculate NPV
             position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short)
             self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
-            self.trade_book.loc[id_instrument, Util.PORTFOLIO_UNREALIZED_PNL] = unrealized_pnl
             self.trade_book.loc[id_instrument, Util.DT_DATE] = eval_date
         self.trade_book_daily = self.trade_book_daily.append(self.trade_book)
 
         portfolio_margin_capital = self.get_portfolio_margin_capital()
         portfolio_trades_value = self.get_portfolio_trades_value()
         portfolio_total_value = self.cash + portfolio_margin_capital + \
-                                portfolio_trades_value + total_unrealized_pnl
+                                portfolio_trades_value + margin_unrealized_pnl
         total_realized_pnl = self.trade_book[Util.TRADE_REALIZED_PNL].sum()
-        portfolio_total_value2 = self.init_fund + total_unrealized_pnl + total_realized_pnl
+        portfolio_total_value2 = self.init_fund + margin_unrealized_pnl + nonmargin_unrealized_pnl + \
+                                 total_realized_pnl+ self.realized_pnl_from_closed_out_positions
 
         portfolio_total_scale = self.get_portfolio_total_scale()
         npv = portfolio_total_value / self.init_fund
-        npv2 = portfolio_total_value2 / self.init_fund
+        # npv2 = portfolio_total_value2 / self.init_fund
+        # print("\n")
+        # print('#############',npv,npv2,'#############')
+        # print('\n')
         actual_leverage = portfolio_total_scale / portfolio_total_value
         account_today = pd.Series({
             Util.DT_DATE: eval_date,
@@ -344,7 +355,7 @@ class BaseAccount():
             Util.PORTFOLIO_TRADES_VALUE: portfolio_trades_value,
             Util.PORTFOLIO_VALUE: portfolio_total_value,
             Util.PORTFOLIO_NPV: npv,
-            Util.PORTFOLIO_UNREALIZED_PNL: total_unrealized_pnl,
+            Util.PORTFOLIO_UNREALIZED_PNL: margin_unrealized_pnl+nonmargin_unrealized_pnl,
             Util.PORTFOLIO_LEVERAGE: actual_leverage,
             Util.TRADE_REALIZED_PNL: self.realized_pnl,
             Util.PORTFOLIO_LONG_POSITION_SCALE:total_long_scale,
@@ -352,7 +363,8 @@ class BaseAccount():
         })
         self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK
-        # self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
+        self.realized_pnl_from_closed_out_positions += self.trade_book[self.trade_book[Util.TRADE_UNIT] == 0.0][Util.TRADE_REALIZED_PNL].sum()
+        self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
         self.realized_pnl = 0.0
 
     """ getters from trade book """
