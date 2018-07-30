@@ -5,7 +5,7 @@ import pandas as pd
 from back_test.model.base_product import BaseProduct
 from back_test.model.constant import FrequentType, Util, ExecuteType, LongShort
 from back_test.model.trade import Order
-
+import datetime
 
 class BaseFutureCoutinuous(BaseProduct):
     """
@@ -122,10 +122,12 @@ class BaseFutureCoutinuous(BaseProduct):
             total_trade_value = 0.0
             total_volume_value = 0.0
             dt_date = self.eval_date
-            while dt_date == self.eval_date:
+            while self.eval_datetime < datetime.datetime(dt_date.year, dt_date.month, dt_date.day, 14, 59, 0):
                 total_trade_value += self.mktprice_close() * self.trading_volume()
                 total_volume_value += self.trading_volume()
                 self.next()
+            total_trade_value += self.mktprice_close() * self.trading_volume()
+            total_volume_value += self.trading_volume()
             volume_weighted_price = total_trade_value / total_volume_value
             order.trade_price = volume_weighted_price
             execution_record = self.execute_order(order, slippage, execute_type)
@@ -145,22 +147,22 @@ class BaseFutureCoutinuous(BaseProduct):
         if self.frequency in Util.LOW_FREQUENT:
             return
         else:
-            # total_trade_value_c1 = 0.0
-            # total_volume_value_c1 = 0.0
+            df_c1_today = self.df_all_futures_daily[(self.df_all_futures_daily[Util.DT_DATE] == self.eval_date) & (
+                self.df_all_futures_daily[Util.ID_INSTRUMENT] == id_c1)]
+            total_trade_value_c1 = df_c1_today[Util.AMT_TRADING_VALUE].values[0]
+            total_volume_c1 = df_c1_today[Util.AMT_TRADING_VOLUME].values[0]
+            volume_weighted_price_c1 = total_trade_value_c1 / (total_volume_c1 * self.multiplier())
             total_trade_value_c2 = 0.0
             total_volume_c2 = 0.0
             dt_date = self.eval_date
-            while dt_date == self.eval_date:
+            while self.eval_datetime < datetime.datetime(dt_date.year,dt_date.month,dt_date.day,14,59,0):
                 # total_trade_value_c1 +=
                 # total_volume_value_c1 += self.trading_volume()
                 total_trade_value_c2 += self.mktprice_close() * self.trading_volume() * self.multiplier()
                 total_volume_c2 += self.trading_volume()
                 self.next()
-            df_c1_today = self.df_all_futures_daily[(self.df_all_futures_daily[Util.DT_DATE] == self.eval_date) & (
-                        self.df_all_futures_daily[Util.ID_INSTRUMENT] == id_c1)]
-            total_trade_value_c1 = df_c1_today[Util.AMT_TRADING_VALUE].values[0]
-            total_volume_c1 = df_c1_today[Util.AMT_TRADING_VOLUME].values[0]
-            volume_weighted_price_c1 = total_trade_value_c1 / (total_volume_c1 * self.multiplier())
+            total_trade_value_c2 += self.mktprice_close() * self.trading_volume() * self.multiplier()
+            total_volume_c2 += self.trading_volume()
             volume_weighted_price_c2 = total_trade_value_c2 / (total_volume_c2 * self.multiplier())
             close_order.trade_price = volume_weighted_price_c1
             open_order.trade_price = volume_weighted_price_c2

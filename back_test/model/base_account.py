@@ -21,6 +21,8 @@ class BaseAccount():
         self.rf = rf
         self.cash = init_fund  # 现金账户：初始资金为现金
         self.actual_leverage = 0.0
+        self.realized_pnl = 0.0
+        self.trade_book_daily = pd.DataFrame(columns=Util.TRADE_BOOK_COLUMN_LIST)
         # self.total_mtm_position = 0.0  # 总多空持仓市值(abs value)加总
         # self.total_margin_trade_mtm_position = 0.0
 
@@ -174,6 +176,7 @@ class BaseAccount():
             position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short)
         # self.cash -= execution_record[Util.TRADE_MARKET_VALUE]
         self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
+        self.realized_pnl += realized_pnl
         execution_record[Util.TRADE_REALIZED_PNL] = realized_pnl
         execution_record[Util.CASH] = self.cash
         self.list_records.append(execution_record)
@@ -285,16 +288,22 @@ class BaseAccount():
                 order_list.append(order)
             return order_list
 
-    # TODO : trigger end of day
     def daily_accounting(self, eval_date):
         if self.trade_book.empty: return
         total_unrealized_pnl = 0.0
+        total_short_scale = 0.0
+        total_long_scale = 0.0
         for (id_instrument, row) in self.trade_book.iterrows():
             if row[Util.TRADE_UNIT] == 0.0: continue
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
             trade_long_short = row[Util.TRADE_LONG_SHORT]
             price = base_product.mktprice_close()
+
+            if trade_long_short == LongShort.SHORT:
+                total_short_scale -= trade_unit*price*base_product.multiplier()
+            else:
+                total_long_scale += trade_unit*price*base_product.multiplier()
             unrealized_pnl = trade_long_short.value * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * row[
                 Util.NBR_MULTIPLIER]
             total_unrealized_pnl += unrealized_pnl
@@ -313,12 +322,20 @@ class BaseAccount():
             # Calculate NPV
             position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short)
             self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
+            self.trade_book.loc[id_instrument, Util.PORTFOLIO_UNREALIZED_PNL] = unrealized_pnl
+            self.trade_book.loc[id_instrument, Util.DT_DATE] = eval_date
+        self.trade_book_daily = self.trade_book_daily.append(self.trade_book)
 
         portfolio_margin_capital = self.get_portfolio_margin_capital()
         portfolio_trades_value = self.get_portfolio_trades_value()
-        portfolio_total_value = self.cash + portfolio_margin_capital + portfolio_trades_value + total_unrealized_pnl
+        portfolio_total_value = self.cash + portfolio_margin_capital + \
+                                portfolio_trades_value + total_unrealized_pnl
+        total_realized_pnl = self.trade_book[Util.TRADE_REALIZED_PNL].sum()
+        portfolio_total_value2 = self.init_fund + total_unrealized_pnl + total_realized_pnl
+
         portfolio_total_scale = self.get_portfolio_total_scale()
         npv = portfolio_total_value / self.init_fund
+        npv2 = portfolio_total_value2 / self.init_fund
         actual_leverage = portfolio_total_scale / portfolio_total_value
         account_today = pd.Series({
             Util.DT_DATE: eval_date,
@@ -328,11 +345,15 @@ class BaseAccount():
             Util.PORTFOLIO_VALUE: portfolio_total_value,
             Util.PORTFOLIO_NPV: npv,
             Util.PORTFOLIO_UNREALIZED_PNL: total_unrealized_pnl,
-            Util.PORTFOLIO_LEVERAGE: actual_leverage
+            Util.PORTFOLIO_LEVERAGE: actual_leverage,
+            Util.TRADE_REALIZED_PNL: self.realized_pnl,
+            Util.PORTFOLIO_LONG_POSITION_SCALE:total_long_scale,
+            Util.PORTFOLIO_SHORT_POSITION_SCALE:total_short_scale
         })
         self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK
-        self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
+        # self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
+        self.realized_pnl = 0.0
 
     """ getters from trade book """
 

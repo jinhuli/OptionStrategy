@@ -283,8 +283,10 @@ class Util:
     RISK_FREE_RATE = 'risk_free_rate'
     AMT_APPLICABLE_STRIKE = 'amt_applicable_strike'
     AMT_APPLICABLE_MULTIPLIER = 'amt_applicable_multiplier'
-    AMT_HISTVOL_1M = 'amt_hist_vol_1M'
-    AMT_PARKINSON_NUMBER_1M = 'amt_parkinson_number_1M'
+    AMT_HISTVOL = 'amt_hist_vol'
+    AMT_PARKINSON_NUMBER = 'amt_parkinson_number'
+    AMT_GARMAN_KLASS = 'amt_garman_klass'
+    AMT_HEDHE_UNIT = 'amt_hedge_unit'
     NAME_CODE = 'name_code'
     STR_CALL = 'call'
     STR_PUT = 'put'
@@ -337,15 +339,20 @@ class Util:
     PORTFOLIO_NPV = 'npv'
     PORTFOLIO_UNREALIZED_PNL = 'unrealized_pnl'
     PORTFOLIO_LEVERAGE = 'portfolio_leverage'
-
+    PORTFOLIO_SHORT_POSITION_SCALE = 'portfolio_short_position_scale'
+    PORTFOLIO_LONG_POSITION_SCALE = 'portfolio_long_position_scale'
     BILLION = 1000000000.0
-    TRADE_BOOK_COLUMN_LIST = [TRADE_LONG_SHORT, TRADE_UNIT,
+    TRADE_BOOK_COLUMN_LIST = [DT_DATE,TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
                               TRADE_BOOK_VALUE, AVERAGE_POSITION_COST,
                               TRADE_REALIZED_PNL, NBR_MULTIPLIER,
-                              POSITION_CURRENT_VALUE]  # ID_INSTRUMENR是df的index
+                              POSITION_CURRENT_VALUE,PORTFOLIO_UNREALIZED_PNL
+                              ]  # ID_INSTRUMENR是df的index
     ACCOUNT_COLUMNS = [DT_DATE, CASH, PORTFOLIO_MARGIN_CAPITAL, PORTFOLIO_TRADES_VALUE,
-            PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL, PORTFOLIO_LEVERAGE]
+                        PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
+                       PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
+                       PORTFOLIO_SHORT_POSITION_SCALE,PORTFOLIO_LONG_POSITION_SCALE
+                       ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,

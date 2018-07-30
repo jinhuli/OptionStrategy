@@ -5,7 +5,6 @@ import numpy as np
 from OptionStrategyLib.OptionReplication.synthetic_option import SytheticOption
 from PricingLibrary.Options import EuropeanOption
 from back_test.model.base_account import BaseAccount
-from back_test.model.base_product import BaseProduct
 from back_test.model.base_instrument import BaseInstrument
 from back_test.model.constant import Util, OptionType, LongShort, ExecuteType
 from back_test.model.trade import Trade
@@ -15,27 +14,19 @@ from OptionStrategyLib.VolatilityModel.historical_volatility import historical_v
 
 start_date = datetime.date(2018, 4, 1)
 end_date = datetime.date(2018, 6, 1)
-
+hist_date = start_date - datetime.timedelta(days=40)
 df_future_c1 = get_dzqh_cf_c1_minute(start_date, end_date, 'if')
-df_future_c1_daily = get_dzqh_cf_c1_daily(start_date, end_date, 'if')
-# daily data of all future contracts
-df_futures_all_daily = get_dzqh_cf_daily(start_date, end_date, 'if')
-# daily data of underlying index
-df_index = get_index_mktdata(start_date, end_date, 'index_300sh')
+df_future_c1_daily = get_dzqh_cf_c1_daily(hist_date, end_date, 'if')
+df_futures_all_daily = get_dzqh_cf_daily(start_date, end_date, 'if')  # daily data of all future contracts
+df_index = get_index_mktdata(start_date, end_date, 'index_300sh')  # daily data of underlying index
 df_index = df_index[df_index[Util.DT_DATE].isin(Util.DZQH_CF_DATA_MISSING_DATES)==False].reset_index(drop=True)
-df_vol_1m = Histvol.hist_vol_1M(df_future_c1_daily)
-df_parkinson_1m = Histvol.parkinson_number_1M(df_future_c1_daily)
-df_vol_1m = df_vol_1m.join(df_parkinson_1m, how='left', on=Util.DT_DATE)
-# dates1 = list(df_index[Util.DT_DATE].unique())
-# dates2 = list(df_future_c1[Util.DT_DATE].unique())
-# df1 = pd.DataFrame()
-# df2 = pd.DataFrame()
-# df1['dt_index'] = dates1
-# # df1['dt_index1'] = dates1
-# df2['dt_future'] = dates2
-# df2['dt_future1'] = dates2
-# df = df1.join(df2.set_index('dt_future'), how='left', on='dt_index')
-# df_res = df[pd.isna(df['dt_future1'])]
+df_vol_1m = Histvol.hist_vol(df_future_c1_daily)
+# df_parkinson_1m = Histvol.parkinson_number(df_future_c1_daily)
+# df_garman_klass = Histvol.garman_klass(df_future_c1_daily)
+# df_hist_vol = df_vol_1m.join(df_parkinson_1m, how='left')
+# df_hist_vol = df_hist_vol.join(df_garman_klass, how='left')
+
+df_future_c1_daily = df_future_c1_daily[df_future_c1_daily[Util.DT_DATE]>=start_date].reset_index(drop=True)
 synthetic_option = SytheticOption(df_c1_minute=df_future_c1,
                                   df_c1_daily=df_future_c1_daily,
                                   df_futures_all_daily=df_futures_all_daily,
@@ -65,6 +56,7 @@ underlying_unit = np.floor(Util.BILLION/underlying.mktprice_close())
 order_underlying = account.create_trade_order(underlying, LongShort.LONG, underlying_unit)
 execution_record = underlying.execute_order(order_underlying, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
 account.add_record(execution_record, underlying)
+underlying.next()
 # """ 用第一天的成交量加权均价初次开仓复制期权头寸 """
 order = account.create_trade_order(synthetic_option,
                                    long_short,
@@ -72,7 +64,6 @@ order = account.create_trade_order(synthetic_option,
 execution_record = synthetic_option.execute_order_by_VWAP(order, slippage=0, execute_type=ExecuteType.EXECUTE_ALL_UNITS)
 account.add_record(execution_record, synthetic_option)
 #####################################################################
-underlying.next()
 while synthetic_option.has_next() and synthetic_option.eval_date < dt_maturity:
 
     if id_future != synthetic_option.current_state[Util.ID_INSTRUMENT]:

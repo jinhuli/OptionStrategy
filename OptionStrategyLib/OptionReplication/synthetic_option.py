@@ -18,12 +18,13 @@ class SytheticOption(BaseFutureCoutinuous):
                  df_index_daily=None,
                  rf=0.03,
                  frequency=FrequentType.MINUTE,
-                 notional=Util.BILLION):
+                 amt_option = 1
+                 ):
         super().__init__(df_future_c1=df_c1_minute, df_future_c1_daily=df_c1_daily,
                          df_futures_all_daily=df_futures_all_daily, df_underlying_index_daily=df_index_daily,
                          rf=rf, frequency=frequency)
         self.synthetic_ratio = 0.0
-        self.notional = notional
+        self.amt_option = amt_option
 
     def get_c1_with_start_dates(self):
         df = self.df_daily_data.drop_duplicates(Util.ID_INSTRUMENT)[[Util.DT_DATE, Util.ID_INSTRUMENT]]
@@ -44,8 +45,9 @@ class SytheticOption(BaseFutureCoutinuous):
     # Get synthetic position in trade unit
     def get_synthetic_unit(self, delta):
         # hedge_scale : total notional amt to hedge in RMB
-        amt_position = delta * self.notional
-        trade_unit = np.floor(amt_position / (self.mktprice_close() * self.multiplier()))
+        amt_position = delta * self.amt_option
+        # trade_unit = np.floor(amt_position / (self.mktprice_close() * self.multiplier()))
+        trade_unit = np.floor(amt_position / self.multiplier())
         self.synthetic_ratio = delta
         return trade_unit
 
@@ -59,11 +61,11 @@ class SytheticOption(BaseFutureCoutinuous):
         # Apply delta bound filter
         if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
             if abs(d_delta) > delta_bound:
-                trade_unit = np.floor(d_delta * self.notional / (self.multiplier() * self.mktprice_close()))
+                trade_unit = np.floor(d_delta * self.amt_option / self.multiplier())
             else:
                 return 0
         else:
-            trade_unit = np.floor(d_delta * self.notional / (self.multiplier() * self.mktprice_close()))
+            trade_unit = np.floor(d_delta * self.amt_option / self.multiplier())
         self.synthetic_ratio = delta
         return trade_unit
 
