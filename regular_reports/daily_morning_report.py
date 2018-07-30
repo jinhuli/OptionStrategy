@@ -5,6 +5,7 @@ import pandas as pd
 from data_access.db_tables import DataBaseTables as dbt
 from Utilities import admin_util as admin
 from Utilities.calculate import calculate_histvol
+from regular_reports.report_util import *
 
 
 def get_mktdata_future_c1(start_date, end_date, name_code):
@@ -153,6 +154,11 @@ def fun_report_namecode(namecode):
 
 # Eval Settings and Data
 dt_date = datetime.date(2018, 7, 20)  # Set as Friday
+
+
+
+# Eval Settings and Data
+
 dt_yesterday = dt_date - datetime.timedelta(days=1)
 dt_start = datetime.date(2018, 1, 1)
 dict_core_underlying = {}
@@ -326,6 +332,6 @@ text_2 = '隐含波动率方面，豆粕期权{}合约隐含波动率较前一�
 )
 text += text_2
 print(text)
+
 with open("../data/morning_report.txt", "w") as text_file:
     text_file.write(text)
-
