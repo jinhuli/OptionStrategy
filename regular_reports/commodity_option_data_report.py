@@ -13,7 +13,7 @@ from Utilities.PlotUtil import PlotUtil
 import QuantLib as ql
 from Utilities.calculate import calculate_histvol
 from Utilities import admin_util as admin
-
+from regular_reports.report_util import *
 
 """成交持仓认沽认购比P/C"""
 def pcr(df_pcr):
@@ -361,6 +361,7 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 
 ############################################################################################
 # Eval Settings
+
 dt_date = datetime.date(2018, 8, 7)  # Set as Friday
 dt_last_week = datetime.date(2018, 7, 6)
 # current_core_underlying = 'sr_1809'
@@ -415,7 +416,10 @@ hist_vol(df_underlying_core)
 print('Part [历史已实现波动率] completed')
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
-hist_atm_ivs(dt_date,startDate,w,namecode,exchange_code,df_srf)
+
+df_iv,x = df_iv_at_the_money(dt_date, startDate, namecode, df_srf)
+df_iv = df_iv.sort_values(by='dt_date',ascending=False)
+df_iv.to_csv('../save_results/'+namecode+'_hist_atm_ivs.csv')
 print('Part [历史隐含波动率] completed')
 trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
 print('Part [当日成交持仓量] completed')
