@@ -5,7 +5,7 @@ from typing import Union
 
 import pandas as pd
 
-from back_test.model.constant import TradeType, LongShort, Util
+from back_test.model.constant import LongShort, Util
 
 
 class OrderStatus(Enum):
@@ -36,26 +36,17 @@ class Order(object):
                  time_signal: Union[datetime.datetime, None],
                  long_short):
         super().__init__()
-        if trade_unit <= 0:
-            print('Order has zero or negative unit.')
-            self._trade_unit = abs(trade_unit)
+        if trade_unit < 0:
+            print('Order has negative unit, reset to positive.')
+        self._trade_unit = abs(trade_unit)
         self._dt_trade: datetime = dt_trade
         self._id_instrument = id_instrument
-        # self._trade_type = trade_type
         self._long_short = long_short
-        self._trade_unit = trade_unit
         self._trade_price = trade_price
         self._time_signal = time_signal
         self._status = OrderStatus.INITIAL
         self._pending_unit = 0
         self._uuid = uuid.uuid4()
-        # if long_short is None:
-        #     if trade_type == TradeType.OPEN_LONG or trade_type == TradeType.CLOSE_SHORT:
-        #         self._long_short = LongShort.LONG
-        #     else:
-        #         self._long_short = LongShort.SHORT
-        # else:
-        #     self._long_short = long_short
         self.execution_res = None
 
     @property
@@ -78,22 +69,13 @@ class Order(object):
     def id_instrument(self, id_instrument: str) -> None:
         self._id_instrument = id_instrument
 
-    # @property
-    # def trade_type(self) -> TradeType:
-    #     return self._trade_type
-
-    # @trade_type.setter
-    # def trade_type(self, trade_type: TradeType) -> None:
-    #     self.trade_type = trade_type
-
     @property
     def trade_unit(self) -> int:
         return self._trade_unit
 
-    @trade_unit.setter
-    def trade_unit(self, trade_unit: int) -> None:
-        # TODO might check trade_unit? kitten
-        self._trade_unit = trade_unit
+    # @trade_unit.setter
+    # def trade_unit(self, trade_unit: int) -> None:
+    #     self._trade_unit = trade_unit
 
     @property
     def trade_price(self) -> float:
@@ -137,7 +119,8 @@ class Order(object):
         # buy at slippage tick size higher and sell lower.
         if slippage > 0:
             executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
-            slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
+            # slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
+            slippage_cost = 0.0  # 滑点费用暂不在交易手续费中统计。
         else:
             executed_price = self.trade_price
             slippage_cost = 0.0

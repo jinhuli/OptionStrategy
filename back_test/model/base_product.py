@@ -88,6 +88,17 @@ class BaseProduct(AbstractBaseProduct):
             next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
             return next_date
 
+    def is_last_minute(self)-> bool:
+        if self.has_next():
+            next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
+            if self.eval_date == next_date:
+                return False
+            else:
+                return True
+        else:
+            return True
+
+
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
 

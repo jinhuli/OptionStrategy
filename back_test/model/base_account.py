@@ -343,10 +343,9 @@ class BaseAccount():
 
         portfolio_total_scale = self.get_portfolio_total_scale()
         npv = portfolio_total_value / self.init_fund
-        # npv2 = portfolio_total_value2 / self.init_fund
-        # print("\n")
-        # print('#############',npv,npv2,'#############')
-        # print('\n')
+        npv2 = portfolio_total_value2 / self.init_fund
+        print("\n")
+        print('#############',npv,npv2,'#############')
         actual_leverage = portfolio_total_scale / portfolio_total_value
         account_today = pd.Series({
             Util.DT_DATE: eval_date,

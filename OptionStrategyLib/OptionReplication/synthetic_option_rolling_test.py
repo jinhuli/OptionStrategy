@@ -18,10 +18,10 @@ from Utilities import Analysis
 
 class SyntheticOptionHedgedPortfolio():
     def __init__(self):
-        self.slippage = 3
+        self.slippage = 0
         self.start_date = start_date = datetime.date(2015, 1, 1)
         # self.end_date = end_date = datetime.date(2018, 3, 1)
-        self.end_date = end_date = datetime.date(2018, 8, 1)
+        self.end_date = end_date = datetime.date(2015, 8, 1)
         hist_date = start_date - datetime.timedelta(days=40)
         df_future_c1 = get_dzqh_cf_c1_minute(start_date, end_date, 'if')
         df_future_c1_daily = get_dzqh_cf_c1_daily(hist_date, end_date, 'if')
@@ -55,9 +55,14 @@ class SyntheticOptionHedgedPortfolio():
         self.init_spot = self.synthetic_option.underlying_index_state_daily[Util.AMT_CLOSE]
         self.df_analysis  = pd.DataFrame()
 
-    # def hedge_performance(self):
+    def next(self):
+        if self.synthetic_option.is_last_minute():
+            self.underlying.next()
+        self.synthetic_option.next()
 
     def disp(self):
+        if self.synthetic_option.eval_date != self.underlying.eval_date:
+            print('Date miss matched!')
         print(self.synthetic_option.eval_datetime,
               self.account.account.loc[self.synthetic_option.eval_date, Util.PORTFOLIO_NPV],
               self.underlying.mktprice_close() / self.init_spot,
@@ -108,9 +113,7 @@ class SyntheticOptionHedgedPortfolio():
         self.account.daily_accounting(self.synthetic_option.eval_date)
         self.add_additional_to_account()
         self.disp()
-
-        self.underlying.next()
-        self.synthetic_option.next()
+        self.next()
 
     def shift_synthetic_open_by_VWAP(self, hold_unit=0):
         # vol = self.df_vol_1m.loc[self.synthetic_option.eval_date, Util.AMT_HISTVOL]
@@ -141,8 +144,7 @@ class SyntheticOptionHedgedPortfolio():
         self.account.daily_accounting(self.synthetic_option.eval_date)
         self.add_additional_to_account()
         self.disp()
-        self.underlying.next()
-        self.synthetic_option.next()
+        self.next()
 
     def hedge(self, dt_end=None):
 
@@ -261,12 +263,12 @@ class SyntheticOptionHedgedPortfolio():
         if dt_end is None:
             dt_end = self.Option.dt_maturity
         dt_time_end = datetime.datetime(dt_end.year, dt_end.month,
-                                        dt_end.day, 14, 59, 0)
+                                        dt_end.day, 15, 0, 0)
 
         while self.synthetic_option.has_next() and self.synthetic_option.eval_datetime < dt_time_end:
 
             if id_future != self.synthetic_option.current_state[Util.ID_INSTRUMENT]:
-                open_long_short = self.account.trade_book.loc[id_future, Util.TRADE_LONG_SHORT]
+                long_short = self.account.trade_book.loc[id_future, Util.TRADE_LONG_SHORT]
                 hold_unit = self.account.trade_book.loc[id_future, Util.TRADE_UNIT]
                 synthetic_unit_previous = self.synthetic_option.get_synthetic_unit(delta)
                 spot = self.synthetic_option.current_daily_state[Util.AMT_CLOSE]
@@ -282,10 +284,10 @@ class SyntheticOptionHedgedPortfolio():
                     = self.synthetic_option.shift_contract_by_VWAP(id_c1=id_future,
                                                                    id_c2=id_c2,
                                                                    hold_unit=hold_unit,
-                                                                   hold_long_short=open_long_short,
+                                                                   open_unit=synthetic_unit,
+                                                                   long_short=long_short,
                                                                    slippage=self.slippage,
-                                                                   execute_type=ExecuteType.EXECUTE_ALL_UNITS,
-                                                                   open_unit=synthetic_unit
+                                                                   execute_type=ExecuteType.EXECUTE_ALL_UNITS
                                                                    )
 
                 self.account.add_record(close_execution_record, self.synthetic_option)
@@ -300,19 +302,18 @@ class SyntheticOptionHedgedPortfolio():
                                              })
                 self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
                                              Util.AMT_DELTA: delta,
-                                             Util.AMT_HEDHE_UNIT: hold_unit,
+                                             Util.AMT_HEDHE_UNIT: synthetic_unit,
                                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
                                              Util.ID_INSTRUMENT: id_future
                                              })
                 self.add_additional_to_account()
                 self.disp()
-                self.synthetic_option.next()
-                self.underlying.next()
+                self.next()
                 id_future = id_c2
 
             if self.synthetic_option.eval_date == self.synthetic_option.get_next_state_date():
                 if self.synthetic_option.eval_datetime.minute % 10 != 0:
-                    self.synthetic_option.next()
+                    self.next()
                     continue
 
             # print(self.synthetic_option.eval_datetime)
@@ -344,19 +345,18 @@ class SyntheticOptionHedgedPortfolio():
                                          Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
                                          })
 
-            if self.synthetic_option.eval_date != self.synthetic_option.get_next_state_date():
+            if self.synthetic_option.is_last_minute():
                 self.account.daily_accounting(self.synthetic_option.eval_date)  # 该日的收盘结算
                 self.add_additional_to_account()
                 self.disp()
-                self.underlying.next()
-            self.synthetic_option.next()
+            self.next()
 
-        self.account.daily_accounting(self.synthetic_option.eval_date)  # 该日的收盘结算
-        self.add_additional_to_account()
-        self.disp()
-        self.analysis()
-        self.underlying.next()
-        self.synthetic_option.next()
+        # self.account.daily_accounting(self.synthetic_option.eval_date)  # 该日的收盘结算
+        # self.add_additional_to_account()
+        # self.disp()
+        # self.analysis()
+        # self.underlying.next()
+        # self.synthetic_option.next()
 
     def close_out(self):
         close_out_orders = self.account.creat_close_out_order()
@@ -461,8 +461,6 @@ while dt_end <= port.end_date:
     if dt_end == port.trade_dates[-1]:
         port.close_out()
         break
-    # port.synthetic_option.next()
-    # port.underlying.next()
     print('reset option : ', port.synthetic_option.eval_datetime, port.underlying.eval_date)
     port.reset_option(dt_maturity)
     port.shift_synthetic_open_by_VWAP()
