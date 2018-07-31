@@ -60,7 +60,7 @@ class BaseAccount():
                     else: # 无保证金交易（期权买方、股票等）最终平仓收入（- execution_record[Util.TRADE_BOOK_VALUE]）加入现金账户。
                         self.cash += - execution_record[Util.TRADE_BOOK_VALUE]
                     position_current_value = 0.0
-                    self.dict_holding.pop(id_instrument, None)
+                    # self.dict_holding.pop(id_instrument, None)
                 # """ close partial """
                 elif book_series[Util.TRADE_UNIT] > execution_record[Util.TRADE_UNIT]:
                     ratio = execution_record[Util.TRADE_UNIT] / book_series[Util.TRADE_UNIT]
@@ -296,7 +296,6 @@ class BaseAccount():
         total_long_scale = 0.0
         nonmargin_unrealized_pnl = 0.0
         for (id_instrument, row) in self.trade_book.iterrows():
-            if row[Util.TRADE_UNIT] == 0.0: continue
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
             trade_long_short = row[Util.TRADE_LONG_SHORT]
@@ -307,8 +306,7 @@ class BaseAccount():
             else:
                 total_long_scale += trade_unit*price*base_product.multiplier()
             unrealized_pnl = trade_long_short.value * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * \
-                             row[
-                                 Util.NBR_MULTIPLIER]
+                             row[Util.NBR_MULTIPLIER]
             # 开仓为保证金交易，将已实现损益加入现金账户/ 非保证金交易（买股票、期权）不需要计算未实现损益，将头寸以当前市值计价即可。
             if base_product.get_current_value(trade_long_short) == 0.0:
                 margin_unrealized_pnl += unrealized_pnl
@@ -331,6 +329,8 @@ class BaseAccount():
             position_current_value = self.get_position_value(id_instrument, trade_unit, trade_long_short)
             self.trade_book.loc[id_instrument, Util.POSITION_CURRENT_VALUE] = position_current_value
             self.trade_book.loc[id_instrument, Util.DT_DATE] = eval_date
+            if row[Util.TRADE_UNIT] == 0.0: self.dict_holding.pop(id_instrument, None)
+
         self.trade_book_daily = self.trade_book_daily.append(self.trade_book)
 
         portfolio_margin_capital = self.get_portfolio_margin_capital()

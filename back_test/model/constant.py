@@ -402,7 +402,8 @@ class Util:
         "sr": 0.5,
         'if': 0.2,
         'ih': 0.2,
-        'ic': 0.2
+        'ic': 0.2,
+        'index':0
     }
 
     DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017,12,28),datetime.date(2017,12,29),datetime.date(2018,1,26),datetime.date(2018,5,4)]

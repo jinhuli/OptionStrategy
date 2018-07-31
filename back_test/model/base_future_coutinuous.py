@@ -133,8 +133,8 @@ class BaseFutureCoutinuous(BaseProduct):
             execution_record = self.execute_order(order, slippage, execute_type)
             return execution_record
 
-    def shift_contract_by_VWAP(self, id_c1: str, id_c2: str, hold_unit: int, open_unit: int,
-                               hold_long_short: LongShort, slippage, execute_type):
+    def shift_contract_by_VWAP(self, id_c1: str, id_c2: str, hold_unit: int,
+                               hold_long_short: LongShort, slippage, execute_type, open_unit: int=None):
         if hold_long_short == LongShort.LONG:
             close_order_long_short = LongShort.SHORT
         else:
