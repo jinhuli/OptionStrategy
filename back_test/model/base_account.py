@@ -225,7 +225,7 @@ class BaseAccount():
                               portfolio_margin_trade_scale / self.max_leverage)
         return investable_cash * self.max_leverage
 
-    def create_trade_order(self, base_product,
+    def create_trade_order_check_leverage(self, base_product,
                            # trade_type: TradeType,
                            long_short: LongShort,
                            trade_unit: int = None,
@@ -270,6 +270,53 @@ class BaseAccount():
             order = Order(dt_trade, id_instrument, trade_unit, trade_price,
                           time_signal, long_short)
             return order
+
+    def create_trade_order(self, base_product,
+                           # trade_type: TradeType,
+                           long_short: LongShort,
+                           trade_unit: int = None,
+                           trade_price: float = None,
+                           ):
+        trade_unit = abs(trade_unit)  # unit的正负取绝对值，方向主要看trade type
+        dt_trade = base_product.eval_date
+        id_instrument = base_product.id_instrument()
+        if trade_price is None:
+            trade_price = base_product.mktprice_close()
+        time_signal = base_product.eval_datetime
+        # multiplier = base_product.multiplier()
+        # long_short = self.get_long_short(trade_type)
+        # if trade_type == TradeType.CLOSE_OUT:
+        #     trade_unit = book_series[Util.TRADE_UNIT]
+        #     print("Close out all positions! ")
+        # Close position时不检查保证金
+        # if trade_type == TradeType.CLOSE_SHORT or trade_type == TradeType.CLOSE_LONG:
+        # if id_instrument in self.trade_book.index:
+        #     book_series = self.trade_book.loc[id_instrument]
+        #     if long_short != self.trade_book.loc[id_instrument, Util.TRADE_LONG_SHORT]:
+        #         # if trade_type == TradeType.CLOSE_SHORT and book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
+        #         #     print('no short position to close')
+        #         #     return
+        #         # elif trade_type == TradeType.CLOSE_LONG and book_series[Util.TRADE_LONG_SHORT] == LongShort.SHORT:
+        #         #     print('no short position to close')
+        #         #     return
+        #         order = Order(dt_trade, id_instrument, trade_unit, trade_price,
+        #                       time_signal, long_short)
+        #         return order
+        # if trade_unit is None:
+        #     raise ValueError("trade_unit is None when opening position !")
+        # if base_product.get_current_value(long_short) == 0.0:
+        #     investable_market_value = self.get_investable_cash()
+        # else:
+        #     investable_market_value = self.get_investable_cash() * self.max_leverage
+        # max_unit = np.floor(investable_market_value / (trade_price * multiplier))
+        # if max_unit < 1:
+        #     return
+        # else:
+        #     trade_unit = min(max_unit, trade_unit)
+        order = Order(dt_trade, id_instrument, trade_unit, trade_price,
+                          time_signal, long_short)
+        return order
+
 
     def creat_close_out_order(self):
         if self.trade_book.empty:

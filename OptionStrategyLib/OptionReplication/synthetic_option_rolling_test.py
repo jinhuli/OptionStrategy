@@ -30,7 +30,7 @@ class SyntheticOptionHedgedPortfolio():
         df_index = df_index[df_index[Util.DT_DATE].isin(Util.DZQH_CF_DATA_MISSING_DATES) == False].reset_index(
             drop=True)
         df_index.to_csv('df_index.csv')
-        self.trade_dates = list(df_index[Util.DT_DATE].unique())
+        self.trade_dates = sorted(df_future_c1_daily[Util.DT_DATE].unique())
         self.df_vol_1m = Histvol.hist_vol(df_future_c1_daily)
         # df_parkinson_1m = Histvol.parkinson_number(df_future_c1_daily)
         self.df_garman_klass = Histvol.garman_klass(df_future_c1_daily)
@@ -38,7 +38,7 @@ class SyntheticOptionHedgedPortfolio():
         df_hist_vol.to_csv('df_hist_vol.csv')
         df_future_c1_daily = df_future_c1_daily[df_future_c1_daily[Util.DT_DATE] >= start_date].reset_index(drop=True)
         self.underlying_notional = Util.BILLION
-        self.hedge_notional = Util.BILLION / 2
+        self.hedge_notional = Util.BILLION * 0.3
         self.underlying = BaseInstrument(df_data=df_index)
         self.underlying.init()
         self.amt_option = self.underlying_notional/self.underlying.mktprice_close()
@@ -51,7 +51,7 @@ class SyntheticOptionHedgedPortfolio():
 
         self.account = BaseAccount(self.underlying_notional + self.hedge_notional, leverage=20.0, rf=0.0)
         self.trading_desk = Trade()
-        self.list_hedge_info = []
+        # self.list_hedge_info = []
         self.init_spot = self.synthetic_option.underlying_index_state_daily[Util.AMT_CLOSE]
         self.df_analysis  = pd.DataFrame()
 
@@ -67,10 +67,7 @@ class SyntheticOptionHedgedPortfolio():
 
         strike = self.synthetic_option.underlying_index_state_daily[Util.AMT_CLOSE]
         # dt_maturity = self.synthetic_option.eval_date + datetime.timedelta(days=30)
-        print('maturity date : ', dt_maturity)
         self.Option = EuropeanOption(strike, dt_maturity, OptionType.PUT)
-
-
 
         """ 用第一天的日收盘价开仓标的现货多头头寸 """
         underlying_unit = np.floor(Util.BILLION / self.underlying.mktprice_close())
@@ -94,15 +91,12 @@ class SyntheticOptionHedgedPortfolio():
         execution_record = self.synthetic_option.execute_order_by_VWAP(order, slippage=self.slippage,
                                                                        execute_type=ExecuteType.EXECUTE_ALL_UNITS)
         self.account.add_record(execution_record, self.synthetic_option)
-
-        """ disp """
-        self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
-                                     Util.AMT_DELTA: self.delta,
-                                     Util.AMT_HEDHE_UNIT: synthetic_unit,
-                                     Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
-                                     Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
-                                     })
-
+        # self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
+        #                              Util.AMT_DELTA: self.delta,
+        #                              Util.AMT_HEDHE_UNIT: synthetic_unit,
+        #                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
+        #                              Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
+        #                              })
         self.account.daily_accounting(self.synthetic_option.eval_date)
         self.add_additional_to_account()
         self.disp()
@@ -127,13 +121,12 @@ class SyntheticOptionHedgedPortfolio():
                                                                        execute_type=ExecuteType.EXECUTE_ALL_UNITS)
         self.account.add_record(execution_record, self.synthetic_option)
 
-        """ disp """
-        self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
-                                     Util.AMT_DELTA: self.delta,
-                                     Util.AMT_HEDHE_UNIT: d_unit,
-                                     Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
-                                     Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
-                                     })
+        # self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
+        #                              Util.AMT_DELTA: self.delta,
+        #                              Util.AMT_HEDHE_UNIT: d_unit,
+        #                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
+        #                              Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
+        #                              })
 
         self.account.daily_accounting(self.synthetic_option.eval_date)
         self.add_additional_to_account()
@@ -291,18 +284,18 @@ class SyntheticOptionHedgedPortfolio():
                 self.synthetic_option.synthetic_unit = open_unit
                 """ USE SAME UNIT TO SHIFT CONTRACT AND USE CLOSE PRICE TO REBALANCING DELTA CHANGE. """
                 print(' Relancing after shift contract, ', self.synthetic_option.eval_date)
-                self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
-                                             Util.AMT_DELTA: self.delta,
-                                             Util.AMT_HEDHE_UNIT: -hold_unit,
-                                             Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
-                                             Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
-                                             })
-                self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
-                                             Util.AMT_DELTA: self.delta,
-                                             Util.AMT_HEDHE_UNIT: open_unit,
-                                             Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
-                                             Util.ID_INSTRUMENT: id_future
-                                             })
+                # self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
+                #                              Util.AMT_DELTA: self.delta,
+                #                              Util.AMT_HEDHE_UNIT: -hold_unit,
+                #                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
+                #                              Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
+                #                              })
+                # self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
+                #                              Util.AMT_DELTA: self.delta,
+                #                              Util.AMT_HEDHE_UNIT: open_unit,
+                #                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
+                #                              Util.ID_INSTRUMENT: id_future
+                #                              })
                 id_future = id_c2
 
             if self.synthetic_option.eval_date == self.synthetic_option.get_next_state_date():
@@ -318,13 +311,6 @@ class SyntheticOptionHedgedPortfolio():
                 self.add_additional_to_account()
                 self.disp()
             self.next()
-
-        # self.account.daily_accounting(self.synthetic_option.eval_date)  # 该日的收盘结算
-        # self.add_additional_to_account()
-        # self.disp()
-        # self.analysis()
-        # self.underlying.next()
-        # self.synthetic_option.next()
 
     def rebalancing(self):
         vol = self.get_vol()
@@ -348,12 +334,12 @@ class SyntheticOptionHedgedPortfolio():
         execution_record = self.synthetic_option.execute_order(order, slippage=self.slippage,
                                                                execute_type=ExecuteType.EXECUTE_ALL_UNITS)
         self.account.add_record(execution_record, self.synthetic_option)
-        self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
-                                     Util.AMT_DELTA: self.delta,
-                                     Util.AMT_HEDHE_UNIT: rebalance_unit,
-                                     Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
-                                     Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
-                                     })
+        # self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
+        #                              Util.AMT_DELTA: self.delta,
+        #                              Util.AMT_HEDHE_UNIT: rebalance_unit,
+        #                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
+        #                              Util.ID_INSTRUMENT: self.synthetic_option.id_instrument()
+        #                              })
 
     def close_out(self):
         close_out_orders = self.account.creat_close_out_order()
@@ -362,27 +348,35 @@ class SyntheticOptionHedgedPortfolio():
             execution_record = self.account.dict_holding[order.id_instrument].execute_order(order, slippage=self.slippage,
                                                                                             execute_type=ExecuteType.EXECUTE_ALL_UNITS)
             self.account.add_record(execution_record, self.account.dict_holding[order.id_instrument])
-            self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
-                                         Util.AMT_DELTA: None,
-                                         Util.AMT_HEDHE_UNIT: order.trade_unit,
-                                         Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
-                                         Util.ID_INSTRUMENT: order.id_instrument
-                                         })
+            # self.list_hedge_info.append({Util.DT_DATETIME: self.synthetic_option.eval_datetime,
+            #                              Util.AMT_DELTA: None,
+            #                              Util.AMT_HEDHE_UNIT: order.trade_unit,
+            #                              Util.AMT_UNDERLYING_CLOSE: self.underlying.mktprice_close(),
+            #                              Util.ID_INSTRUMENT: order.id_instrument
+            #                              })
         self.account.daily_accounting(self.synthetic_option.eval_date)
         self.add_additional_to_account()
-        self.disp()
 
-        """ Result Analysis """
-        self.analysis()
+        self.disp()
+        """ Final NPV check """
+        self.df_records = pd.DataFrame(self.account.list_records)
+        total_pnl = self.df_records[Util.TRADE_REALIZED_PNL].sum()
+        final_npv = (self.underlying_notional + self.hedge_notional + total_pnl) / (
+            self.underlying_notional + self.hedge_notional)
+        print('calculate final npv from adding up realized pnl ; ', final_npv)
+
 
     def get_vol(self):
 
         date = self.synthetic_option.eval_date
         if date in self.df_vol_1m.index:
-            vol = self.df_vol_1m.loc[date, Util.AMT_HISTVOL]
+            # vol = self.df_vol_1m.loc[date, Util.AMT_HISTVOL]
+            vol = self.df_garman_klass.loc[self.synthetic_option.eval_date, Util.AMT_GARMAN_KLASS]
+
         else:
             dt1 = Util.largest_element_less_than(port.trade_dates, date)
-            vol = self.df_vol_1m.loc[dt1, Util.AMT_HISTVOL]
+            vol = self.df_garman_klass.loc[dt1, Util.AMT_GARMAN_KLASS]
+            # vol = self.df_vol_1m.loc[dt1, Util.AMT_HISTVOL]
         return vol
 
     def add_additional_to_account(self):
@@ -394,34 +388,14 @@ class SyntheticOptionHedgedPortfolio():
         self.account.account.loc[self.synthetic_option.eval_date,'hedge_position'] \
             =  - self.account.trade_book[self.account.trade_book[Util.TRADE_LONG_SHORT]==LongShort.SHORT][Util.TRADE_UNIT].sum()
 
-    def analysis(self):
-        """ Result Analysis """
-        self.df_records = pd.DataFrame(self.account.list_records)
-        total_pnl = self.df_records[Util.TRADE_REALIZED_PNL].sum()
-        final_npv = (self.underlying_notional + self.hedge_notional + total_pnl) / (self.underlying_notional + self.hedge_notional)
-        print('calculate final npv from adding up realized pnl ; ', final_npv)
-        analysis = Analysis.get_netvalue_analysis(port.account.account[Util.PORTFOLIO_NPV])
-        df_hedge_records = self.df_records[self.df_records[Util.ID_INSTRUMENT] != 'index_300sh']
-        hedge_position_pnl = df_hedge_records[Util.TRADE_REALIZED_PNL].sum()
-        option_pnl = self.amt_option*max(self.Option.strike - self.underlying.mktprice_close(), 0)
-        replicate_cost = hedge_position_pnl - option_pnl
-        pct_replicate_cost = replicate_cost/Util.BILLION
-        transaction_cost = df_hedge_records[Util.TRANSACTION_COST].sum()
-        analysis['hedge_position_pnl'] = hedge_position_pnl
-        analysis['option_pnl'] = option_pnl
-        analysis['replicate_cost'] = replicate_cost
-        analysis['pct_replicate_cost'] = pct_replicate_cost
-        analysis['transaction_cost'] = transaction_cost
-        analysis['dt_maturity'] = self.Option.dt_maturity
-        self.df_analysis.append(analysis,ignore_index=True)
-        # print(analysis)
+
 
     def save_results(self):
 
         self.df_records.to_csv('trade_records.csv')
         self.account.account.to_csv('account.csv')
-        self.df_hedge_info = pd.DataFrame(self.list_hedge_info)
-        self.df_hedge_info.to_csv('hedge_info.csv')
+        # self.df_hedge_info = pd.DataFrame(self.list_hedge_info)
+        # self.df_hedge_info.to_csv('hedge_info.csv')
         self.df_analysis.to_csv('df_analysis.csv')
         self.account.trade_book_daily.to_csv('trade_book_daily.csv')
 
@@ -445,6 +419,37 @@ class SyntheticOptionHedgedPortfolio():
         if strike is None:
             strike = self.underlying.mktprice_close()
         self.Option = EuropeanOption(strike,maturity,OptionType.PUT)
+
+    def analysis(self, dt_start, dt_end):
+        """ Replicate Period Result Analysis """
+        self.df_records = pd.DataFrame(self.account.list_records)
+        # analysis = Analysis.get_netvalue_analysis(port.account.account[Util.PORTFOLIO_NPV])
+        analysis = pd.Series()
+        df_hedge_records = self.df_records[(self.df_records[Util.ID_INSTRUMENT] != 'index_300sh')&(self.df_records[Util.DT_TRADE]>=dt_start)&(self.df_records[Util.DT_TRADE]<=dt_end)]
+        init_stock_value = self.account.account.loc[dt_start, Util.PORTFOLIO_TRADES_VALUE]
+        terminal_stock_value = self.account.account.loc[dt_end, Util.PORTFOLIO_TRADES_VALUE]
+        init_portfolio_value = self.account.account.loc[dt_start, Util.PORTFOLIO_VALUE]
+        replicate_pnl = df_hedge_records[Util.TRADE_REALIZED_PNL].sum()
+        option_payoff = self.amt_option*max(self.Option.strike - self.underlying.mktprice_close(), 0)
+        replicate_cost = replicate_pnl - option_payoff
+        pct_replicate_cost = replicate_cost/init_stock_value
+        pct_replicate_pnl = replicate_pnl/init_stock_value
+        transaction_cost = df_hedge_records[Util.TRANSACTION_COST].sum()
+        analysis['dt_start'] = dt_start
+        analysis['dt_end'] = dt_end
+        analysis['init_stock_value'] = init_stock_value
+        analysis['init_portfolio_value'] = init_portfolio_value
+        analysis['replicate_pnl'] = replicate_pnl
+        analysis['option_payoff'] = option_payoff
+        analysis['replicate_cost'] = replicate_cost
+        analysis['pct_replicate_cost'] = pct_replicate_cost
+        analysis['pct_replicate_pnl'] = pct_replicate_pnl
+        analysis['pct_underlying_pnl'] = (terminal_stock_value - init_stock_value)/init_stock_value
+        analysis['transaction_cost'] = transaction_cost
+        analysis['dt_maturity'] = self.Option.dt_maturity
+        self.df_analysis = self.df_analysis.append(analysis,ignore_index=True)
+        print(analysis)
+
 #
 # port = SyntheticOptionHedgedPortfolio()
 # dt_maturity = Util.largest_element_less_than(port.trade_dates,port.start_date + datetime.timedelta(days=30))
@@ -471,23 +476,26 @@ class SyntheticOptionHedgedPortfolio():
 
 """ 1st month """
 port = SyntheticOptionHedgedPortfolio()
-dt_maturity = port.start_date + datetime.timedelta(days=40)
+dt_start = port.start_date
+dt_maturity = dt_start + datetime.timedelta(days=40)
 tmp = port.start_date + relativedelta(months=1)
 dt_end = Util.largest_element_less_than(port.trade_dates,tmp)
 port.init_portfolio(dt_maturity)
-while dt_end <= port.end_date:
+while dt_end < port.trade_dates[-1]:
+    dt_start = port.synthetic_option.eval_date
     print('start hedge : ', port.synthetic_option.eval_datetime, port.underlying.eval_date)
     port.hedge_continuous(dt_end)
+    port.analysis(dt_start,dt_end)
     print('finished hedge : ', port.synthetic_option.eval_datetime, port.underlying.eval_date)
     tmp += relativedelta(months=1)
+    # dt_end = min(Util.largest_element_less_than(port.trade_dates, tmp),port.trade_dates[-1])
     dt_end = Util.largest_element_less_than(port.trade_dates, tmp)
     dt_maturity = port.synthetic_option.eval_date + datetime.timedelta(days=40)
     if dt_end == port.trade_dates[-1]:
         port.close_out()
         break
-    print('reset option : ', port.synthetic_option.eval_datetime, port.underlying.eval_date)
     port.reset_option(dt_maturity)
-    # hold_unit = - port.account.trade_book[port.account.trade_book[Util.TRADE_LONG_SHORT]==LongShort.SHORT][Util.TRADE_UNIT].sum()
+    print('reset option : ', port.Option.strike, port.synthetic_option.eval_datetime, port.underlying.eval_date)
     port.shift_synthetic_open_by_VWAP()
 
 # port.close_out()

@@ -51,6 +51,7 @@ class BaseProduct(AbstractBaseProduct):
             self.eval_datetime: datetime.datetime  = self.df_data.loc[0][Util.DT_DATETIME]
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
+            self.nbr_index: int = self.df_data.shape[0]
         else:
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
             self.eval_datetime: datetime.datetime  = datetime.datetime(self.eval_date.year,
