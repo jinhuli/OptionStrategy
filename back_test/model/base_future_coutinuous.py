@@ -45,8 +45,8 @@ class BaseFutureCoutinuous(BaseProduct):
         return self._margin_rate
 
     def get_initial_margin(self) -> Union[float, None]:
-        pre_settle_price = self.mktprice_last_settlement()
-        margin = pre_settle_price * self._margin_rate * self._multiplier
+        # pre_settle_price = self.mktprice_last_settlement()
+        margin = self.mktprice_close() * self._margin_rate * self._multiplier
         return margin
 
     # TODO: USE SETTLEMENT PRICE
@@ -121,8 +121,7 @@ class BaseFutureCoutinuous(BaseProduct):
         else:
             total_trade_value = 0.0
             total_volume_value = 0.0
-            dt_date = self.eval_date
-            while self.eval_date == self.get_next_state_date():
+            while not self.is_last_minute():
                 total_trade_value += self.mktprice_close() * self.trading_volume()
                 total_volume_value += self.trading_volume()
                 self.next()
@@ -155,8 +154,7 @@ class BaseFutureCoutinuous(BaseProduct):
             price_c1 = (df_c1_today[Util.AMT_CLOSE].values[0]+df_c1_today[Util.AMT_OPEN].values[0])/2.0
             total_trade_value_c2 = 0.0
             total_volume_c2 = 0.0
-            dt_date = self.eval_date
-            while self.eval_date == self.get_next_state_date():
+            while not self.is_last_minute():
                 total_trade_value_c2 += self.mktprice_close() * self.trading_volume() * self.multiplier()
                 total_volume_c2 += self.trading_volume()
                 self.next()

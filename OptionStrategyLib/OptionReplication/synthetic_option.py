@@ -13,7 +13,7 @@ from back_test.model.constant import Util, FrequentType, DeltaBound
 class SytheticOption(BaseFutureCoutinuous):
 
     def __init__(self, df_c1_minute,
-                 df_c1_daily,
+                 df_c1_daily=None,
                  df_futures_all_daily=None,
                  df_index_daily=None,
                  rf=0.03,
