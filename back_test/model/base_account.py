@@ -394,6 +394,7 @@ class BaseAccount():
         # print("\n")
         # print('#############',npv,npv2,'#############')
         actual_leverage = portfolio_total_scale / portfolio_total_value
+        self.cash = self.cash*(1+self.rf*(1.0/252.0))
         account_today = pd.Series({
             Util.DT_DATE: eval_date,
             Util.CASH: self.cash,
@@ -405,7 +406,9 @@ class BaseAccount():
             Util.PORTFOLIO_LEVERAGE: actual_leverage,
             Util.TRADE_REALIZED_PNL: self.realized_pnl,
             Util.PORTFOLIO_LONG_POSITION_SCALE:total_long_scale,
-            Util.PORTFOLIO_SHORT_POSITION_SCALE:total_short_scale
+            Util.PORTFOLIO_SHORT_POSITION_SCALE:total_short_scale,
+            Util.MARGIN_UNREALIZED_PNL:margin_unrealized_pnl,
+            Util.NONMARGIN_UNREALIZED_PNL:nonmargin_unrealized_pnl
         })
         self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK

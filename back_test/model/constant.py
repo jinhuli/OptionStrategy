@@ -2,9 +2,9 @@ from enum import Enum
 import pandas as pd
 import numpy as np
 from typing import List, Union
-import datetime
 import math
-
+import datetime
+import typing
 
 class FrequentType(Enum):
     DAILY = 1
@@ -49,6 +49,9 @@ class DeltaBound(Enum):
     WHALLEY_WILLMOTT = 0
     NONE = -1
 
+class BuyWrite(Enum):
+    BUY = 1
+    WRITE = -1
 
 class TradeType(Enum):
     OPEN_LONG = 1
@@ -122,6 +125,11 @@ class OptionUtil:
                     rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
             d.update({rank: strike})
         return d
+
+    @staticmethod
+    def get_df_by_mdt(df,mdt):
+        df = df[df[Util.DT_MATURITY]==mdt].reset_index(drop=True)
+        return df
 
 
 class Option50ETF:
@@ -234,6 +242,75 @@ class Hedge:
         return H
 
 
+
+
+class Calendar(object):
+
+    def __init__(self, date_list: typing.List[datetime.date]):
+        self.date_list = sorted(date_list)
+        self.max_year = self.date_list[-1].year
+        self.date_map = {}
+        self.init()
+
+    """
+    Initialize Calender with date_list
+    {
+        "2017": {
+            "1": [datetime(2017,1,1), datetime(2017,1,2)],
+            "3": [datetime(2017,3,1), datetime(2017,3,2)]
+        }
+    }
+    """
+
+    def init(self):
+        for date in self.date_list:
+            year_map = self.date_map.get(date.year, None)
+            if year_map is None:
+                year_map = {}
+                self.date_map[date.year] = year_map
+            month_list = year_map.get(date.month, None)
+            if month_list is None:
+                month_list = []
+                year_map[date.month] = month_list
+            month_list.append(date)
+        for year, year_map in self.date_map.items():
+            for month, month_list in year_map.items():
+                year_map[month] = sorted(year_map[month])
+
+    def next(self,dt):
+        if dt<self.date_list[-1]:
+            return self.date_list[self.date_list.index(dt)+1]
+        else:
+            return
+
+    def firstBusinessDayNextMonth(self, date: datetime.date) -> datetime.date:
+        year = date.year
+        month = date.month
+        # Date is like 2017-12-3
+        if month == 12:
+            if year == self.max_year:
+                raise ValueError("No available business in next month")
+            else:
+                return self.date_map.get(year + 1).get(1)[0]
+        else:
+            return self.date_map.get(year).get(month + 1)[0]
+
+    def lastBusinessDayThisMonth(self, date: datetime.date) -> datetime.date:
+        year = date.year
+        month = date.month
+        last_business_day_this_month = self.date_map.get(year).get(month)[-1]
+        if date >= last_business_day_this_month:
+            raise ValueError("No available business day after date {} this month".format(date))
+        else:
+            return last_business_day_this_month
+
+# dl = [datetime.date(2017, 1, 4), datetime.date(2017, 1, 2), datetime.date(2018, 1, 1), datetime.date(2018, 1, 2),datetime.date(2017, 2, 6),
+#       datetime.date(2017, 3, 6), datetime.date(2017, 3, 3), datetime.date(2017, 3, 5), datetime.date(2017, 4, 2),
+#       datetime.date(2017, 4, 5)]
+# c = Calendar(dl, 2018)
+# c.init()
+# print(c.firstBusinessDayNextMonth(datetime.date(2017,1,1)))
+
 class Util:
     """database column names"""
     # basic
@@ -341,6 +418,8 @@ class Util:
     PORTFOLIO_LEVERAGE = 'portfolio_leverage'
     PORTFOLIO_SHORT_POSITION_SCALE = 'portfolio_short_position_scale'
     PORTFOLIO_LONG_POSITION_SCALE = 'portfolio_long_position_scale'
+    MARGIN_UNREALIZED_PNL = 'margin_unrealized_pnl'
+    NONMARGIN_UNREALIZED_PNL = 'nonmargin_unrealized_pnl'
     BILLION = 1000000000.0
     TRADE_BOOK_COLUMN_LIST = [DT_DATE,TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
@@ -351,7 +430,8 @@ class Util:
     ACCOUNT_COLUMNS = [DT_DATE, CASH, PORTFOLIO_MARGIN_CAPITAL, PORTFOLIO_TRADES_VALUE,
                         PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
                        PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
-                       PORTFOLIO_SHORT_POSITION_SCALE,PORTFOLIO_LONG_POSITION_SCALE
+                       PORTFOLIO_SHORT_POSITION_SCALE,PORTFOLIO_LONG_POSITION_SCALE,
+                       MARGIN_UNREALIZED_PNL,NONMARGIN_UNREALIZED_PNL
                        ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
@@ -376,7 +456,8 @@ class Util:
         "sr": 0.0,
     }
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
-        'if': 6.9 / 10000.0,
+        # 'if': 6.9 / 10000.0,
+        'if': 0 / 10000.0,
         'ih': 6.9 / 10000.0,
         'ic': 6.9 / 10000.0,
     }

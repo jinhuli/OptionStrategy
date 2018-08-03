@@ -1,26 +1,28 @@
 from data_access.get_data import get_50option_mktdata as option_data
-from back_test.BktOptionStrategy import BktOptionStrategy
+from back_test.model.base_option_set import BaseOptionSet
+from back_test.model.constant import Util,OptionType, OptionUtil
+from PricingLibrary.Util import PricingUtil
 import datetime
 import math
 import pandas as pd
 
 
-class SkewIndexing(BktOptionStrategy):
+class SkewIndexing(BaseOptionSet):
     def __init__(self, start_date, end_date, min_holding):
         df_metrics = option_data(start_date, end_date)
-        BktOptionStrategy.__init__(self, df_metrics, rf=0.03)
-        self.set_min_holding_days(min_holding)
+        super().__init__(df_metrics, rf=0.03)
+        # self.set_min_holding_days(min_holding)
 
-    def select_eligible_contracts(self, df_data, eval_date):
-        if df_data.empty: return
-        df_metrics = self.util.get_duplicate_strikes_dropped(df_data,eval_date)
-        # TODO: add other criterion
-        return df_metrics
+    # def select_eligible_contracts(self, df_data, eval_date):
+    #     if df_data.empty: return
+    #     df_metrics = Util.get_duplicate_strikes_dropped(df_data,eval_date)
+    #     # TODO: add other criterion
+    #     return df_metrics
 
     def fun_otm_quote(self, df):
-        if df[self.util.col_applicable_strike] > df['mid_k']:
+        if df[Util.AMT_APPLICABLE_STRIKE] > df['mid_k']:
             quote = df['amt_call_quote']
-        elif df[self.util.col_applicable_strike] < df['mid_k']:
+        elif df[Util.AMT_APPLICABLE_STRIKE] < df['mid_k']:
             quote = df['amt_put_quote']
         else:
             quote = (df['amt_call_quote'] + df['amt_put_quote']) / 2.0
@@ -29,27 +31,27 @@ class SkewIndexing(BktOptionStrategy):
     def fun_for_p1(self, df):
         DK = df['amt_delta_k']
         Q = df['amt_otm_quote']
-        K = df[self.util.col_applicable_strike]
+        K = df[Util.AMT_APPLICABLE_STRIKE]
         return -Q * DK / K ** 2
 
     def fun_for_p2(self, df):
         DK = df['amt_delta_k']
         Q = df['amt_otm_quote']
-        K = df[self.util.col_applicable_strike]
+        K = df[Util.AMT_APPLICABLE_STRIKE]
         F = df['F']
         return 2 * (1 - math.log(K / F, math.e)) * Q * DK / K ** 2
 
     def fun_for_p3(self, df):
         DK = df['amt_delta_k']
         Q = df['amt_otm_quote']
-        K = df[self.util.col_applicable_strike]
+        K = df[Util.AMT_APPLICABLE_STRIKE]
         F = df['F']
         return 3 * (2 * math.log(K / F, math.e) - math.log(K / F, math.e) ** 2) * Q * DK / K ** 2
 
     def fun_for_sigma(self, df):
         DK = df['amt_delta_k']
         Q = df['amt_otm_quote']
-        K = df[self.util.col_applicable_strike]
+        K = df[Util.AMT_APPLICABLE_STRIKE]
         return Q * DK / K ** 2
 
     def get_e1(self, F, K):
@@ -66,25 +68,30 @@ class SkewIndexing(BktOptionStrategy):
         # x = p1**2
         # y = p2-p1**2
         # d = (p2-p1**2)**1.5
-        return (p3 - 3 * p1 * p2 + 2 * p1 ** 3) / (p2 - p1 ** 2) ** 1.5
+        res = (p3 - 3 * p1 * p2 + 2 * p1 ** 3) / (p2 - p1 ** 2) ** 1.5
+        # print("S : ", res)
+        return res
 
     def get_T_quotes(self, df_mdt, eval_date):
-        df_call = df_mdt[df_mdt[self.util.col_option_type] == self.util.type_call].rename(
-            columns={self.util.col_option_price: 'amt_call_quote'})
-        df_put = df_mdt[df_mdt[self.util.col_option_type] == self.util.type_put].rename(
-            columns={self.util.col_option_price: 'amt_put_quote'})
-        df = pd.merge(df_call[['amt_call_quote', self.util.col_applicable_strike]],
-                      df_put[['amt_put_quote', self.util.col_applicable_strike]],
-                      how='inner', on=self.util.col_applicable_strike)
+        df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
+            columns={Util.AMT_CLOSE: 'amt_call_quote'})
+        df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
+            columns={Util.AMT_CLOSE: 'amt_put_quote'})
+        df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+
+        df = pd.merge(df_call[['amt_call_quote', Util.AMT_APPLICABLE_STRIKE]],
+                      df_put[['amt_put_quote', Util.AMT_APPLICABLE_STRIKE]],
+                      how='inner', on=Util.AMT_APPLICABLE_STRIKE)
         # df = pd.concat([df_call[['amt_call_quote']], df_put[['amt_put_quote']]], axis=1, join='inner', verify_integrity=True)
-        df[self.util.col_underlying_close] = df_put[self.util.col_underlying_close].values[0]
+        df[Util.AMT_UNDERLYING_CLOSE] = df_put[Util.AMT_UNDERLYING_CLOSE].values[0]
         df['amt_cp_diff'] = abs(df['amt_call_quote'] - df['amt_put_quote'])
-        maturitydt = df_put[self.util.col_maturitydt].values[0]
-        df[self.util.col_maturitydt] = maturitydt
+        maturitydt = df_put[Util.DT_MATURITY].values[0]
+        df[Util.DT_MATURITY] = maturitydt
         df['amt_ttm'] = ((maturitydt - eval_date).total_seconds() / 60.0) / (365.0 * 1440)
-        df['amt_fv'] = math.exp(self.bkt_optionset.rf * ((maturitydt - eval_date).days / 365.0))
-        df = df.sort_values(by=self.util.col_applicable_strike).reset_index(drop=True)
-        df['amt_delta_k'] = df[self.util.col_applicable_strike].diff() / 2.0
+        df['amt_fv'] = math.exp(self.rf * ((maturitydt - eval_date).days / 365.0))
+        df = df.sort_values(by=Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        df['amt_delta_k'] = df[Util.AMT_APPLICABLE_STRIKE].diff() / 2.0
         # delta_k = df[self.util.col_applicable_strike].diff().mean()
         df.loc[0, 'amt_delta_k'] = df.loc[1, 'amt_delta_k']*2
         df.loc[len(df) - 1, 'amt_delta_k'] = df.loc[len(df) - 2, 'amt_delta_k']*2
@@ -95,7 +102,7 @@ class SkewIndexing(BktOptionStrategy):
         # ATM strike k0 -- First strike below the forward index level, F
         # Forward price F -- F, by identifying the strike price at which the absolute difference
         # between the call and put prices is smallest.
-        df = t_quotes.set_index(self.util.col_applicable_strike)
+        df = t_quotes.set_index(Util.AMT_APPLICABLE_STRIKE)
         mid_k = df.sort_values(by='amt_cp_diff', ascending=True).index[0]
         p_call = df.loc[mid_k, 'amt_call_quote']
         p_put = df.loc[mid_k, 'amt_put_quote']
@@ -147,11 +154,16 @@ class SkewIndexing(BktOptionStrategy):
     def calculate(self, eval_date):
         # df_daily_state = self.bkt_optionset.df_data[
         #     self.bkt_optionset.df_data[self.util.col_date] == eval_date].reset_index(drop=True)
-        df_daily_state = self.bkt_optionset.df_daily_state
-        mdt1 = self.get_1st_eligible_maturity(eval_date)
-        mdt2 = self.get_2nd_eligible_maturity(eval_date)
-        df_mdt1 = self.select_eligible_contracts(self.util.get_df_by_mdt(df_daily_state, mdt1), eval_date)
-        df_mdt2 = self.select_eligible_contracts(self.util.get_df_by_mdt(df_daily_state, mdt2), eval_date)
+        df_daily_state = self.get_current_state()
+        mdt = self.get_maturities_list()[0]
+        if (mdt - self.eval_date).days <= 8:
+            mdt1 = self.get_maturities_list()[1]
+            mdt2 = self.get_maturities_list()[2]
+        else:
+            mdt1 = self.get_maturities_list()[0]
+            mdt2 = self.get_maturities_list()[1]
+        df_mdt1 = OptionUtil.get_df_by_mdt(df_daily_state, mdt1)
+        df_mdt2 = OptionUtil.get_df_by_mdt(df_daily_state, mdt2)
         t_quotes1 = self.for_calculation(self.get_T_quotes(df_mdt1, eval_date), eval_date)
         t_quotes2 = self.for_calculation(self.get_T_quotes(df_mdt2, eval_date), eval_date)
         # print(t_quotes1)
@@ -167,30 +179,41 @@ class SkewIndexing(BktOptionStrategy):
         N365 = 365 * 1440.0
         w = (NT2 - N30) / (NT2 - NT1)
         skew = 100 - 10 * (w * S1 + (1 - w) * S2)
-        W1 = T1 * w
-        W2 = T2 * (1-w)
-        x0 = T1 * sigma1 * w + T2 * sigma2 * (1 - w)
-        x1 = (T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30
-        vix = 100 * math.sqrt((T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30)
+        # W1 = T1 * w
+        # W2 = T2 * (1-w)
+        # x0 = T1 * sigma1 * w + T2 * sigma2 * (1 - w)
+        # x1 = (T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30
+        # vix = 100 * math.sqrt((T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30)
         # vix = 100 * math.sqrt((sigma1 * w + sigma2 * (1 - w)) * N365 / N30)
+        vix = None
         return vix, skew
 
     def run(self):
-        while self.bkt_optionset.index < len(self.bkt_optionset.dt_list) - 1:
-            eval_date = self.bkt_optionset.eval_date
-            vix, skew = self.calculate(eval_date)
-            vol_1M_call = self.bkt_optionset.get_interpolated_atm_1M(self.util.type_call)
-            vol_1M_put = self.bkt_optionset.get_interpolated_atm_1M(self.util.type_put)
-            print("%10s %20s %20s %20s %20s" % (eval_date, vix, skew,vol_1M_call,vol_1M_put))
-            self.bkt_optionset.next()
+        self.df_res = pd.DataFrame()
+        self.df_data = self.df_data[self.df_data[Util.NBR_MULTIPLIER]==10000]
+        while self.has_next():
+            eval_date = self.eval_date
+            try:
+                vix, skew = self.calculate(eval_date)
+                if skew is not None and skew > 50 and skew < 200:
+                    self.df_res.loc[eval_date,'skew'] = skew
+                print("%10s %20s" % (eval_date, skew))
+
+            except:
+                pass
+            # vol_1M_call = self.get_interpolated_atm_1M(self.util.type_call)
+            # vol_1M_put = self.bkt_optionset.get_interpolated_atm_1M(self.util.type_put)
+            self.next()
 
 
 print('=' * 100)
 print("%10s %20s %20s" % ('date', 'vix', 'skew'))
 print('-' * 100)
 # start_date = datetime.date(2015,3,1)
-start_date = datetime.date(2018, 5, 1)
-end_date = datetime.date(2018, 6, 14)
+start_date = datetime.date(2015, 3, 1)
+end_date = datetime.date(2018, 8, 1)
 skew_indexing = SkewIndexing(start_date, end_date, 8)
+skew_indexing.init()
 # skew_indexing.calculate(datetime.date(2018, 6, 7))
 skew_indexing.run()
+skew_indexing.df_res.to_csv('../skew.csv')

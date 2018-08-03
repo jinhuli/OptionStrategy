@@ -4,7 +4,7 @@ from collections import deque
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
-    MoneynessMethod, OptionFilter, OptionType, OptionUtil, TradeType
+    MoneynessMethod, OptionFilter, OptionType, OptionUtil, TradeType,Option50ETF
 from typing import Dict, List, Tuple
 
 
@@ -26,7 +26,10 @@ class BaseOptionSet(AbstractBaseProductSet):
         super().__init__()
         self._name_code: str = df_data.loc[0, Util.ID_INSTRUMENT].split('_')[0]
         self.df_data: pd.DataFrame = df_data
-        self.df_daily_data = df_daily_data
+        if frequency in Util.LOW_FREQUENT:
+            self.df_daily_data = df_data
+        else:
+            self.df_daily_data = df_daily_data
         self.df_underlying = df_underlying  # df_underlying should have the same frequency with df_data.
         self.frequency: FrequentType = frequency
         self.flag_calculate_iv: bool = flag_calculate_iv
@@ -90,17 +93,21 @@ class BaseOptionSet(AbstractBaseProductSet):
         return df_id_multiplier
 
     def pre_process(self) -> None:
-        mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
-        self.df_data = self.df_data[mask].reset_index(drop=True)
+
         if self.frequency in Util.LOW_FREQUENT:
             self.date_list: List[datetime.date] = sorted(self.df_data[Util.DT_DATE].unique())
             self.nbr_index = len(self.date_list)
         else:
+            mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
+            self.df_data = self.df_data[mask].reset_index(drop=True)
             self.datetime_list: List[datetime.datetime] = sorted(self.df_data[Util.DT_DATETIME].unique())
             self.nbr_index = len(self.datetime_list)
             if self.df_daily_data is None:
                 # TODO: Rise error if no daily data in high frequency senario.
                 return
+        # TODO: """ new added """
+        self.df_data[Util.AMT_STRIKE_BEFORE_ADJ] = self.df_data.apply(Option50ETF.fun_strike_before_adj, axis=1)
+        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(Option50ETF.fun_applicable_strike, axis=1)
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         if self.df_daily_data is not None:
             groups_daily = self.df_daily_data.groupby([Util.ID_INSTRUMENT])
@@ -159,8 +166,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                     print("Option datetime does not match, id : {0}, dt_optionset:{1}, dt_option:{2}".format(
                         option.id_instrument(), self.eval_datetime, option.eval_datetime))
         end = datetime.datetime.now()
-        print("OptionSet.NEXT iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
-                                                                     (end - start).total_seconds()))
+        # print("OptionSet.NEXT iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
+        #                                                              (end - start).total_seconds()))
         return None
 
     def __repr__(self) -> str:
