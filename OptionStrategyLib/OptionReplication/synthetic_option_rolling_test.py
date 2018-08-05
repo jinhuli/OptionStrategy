@@ -288,7 +288,7 @@ class SyntheticOptionHedgedPortfolio():
         vol = self.get_vol()
         # vol = self.df_garman_klass.loc[self.synthetic_option.eval_date, Util.AMT_GARMAN_KLASS]
         self.delta = self.synthetic_option.get_black_delta(self.Option, vol)
-        rebalance_unit = self.synthetic_option.get_synthetic_option_rebalancing_unit(self.delta,
+        rebalance_unit = self.synthetic_option.get_rebalancing_unit(self.delta,
                                                                                      self.Option,
                                                                                      vol,
                                                                                      self.synthetic_option.mktprice_close(),

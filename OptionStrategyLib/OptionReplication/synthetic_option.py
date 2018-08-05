@@ -23,7 +23,6 @@ class SytheticOption(BaseFutureCoutinuous):
         super().__init__(df_future_c1=df_c1_minute, df_future_c1_daily=df_c1_daily,
                          df_futures_all_daily=df_futures_all_daily, df_underlying_index_daily=df_index_daily,
                          rf=rf, frequency=frequency)
-        self.synthetic_ratio = 0.0
         self.synthetic_unit: int = 0
         self.amt_option = 0
     def get_c1_with_start_dates(self):
@@ -44,12 +43,7 @@ class SytheticOption(BaseFutureCoutinuous):
 
     # Get synthetic position in trade unit
     def get_synthetic_unit(self, delta, buywrite=BuyWrite.BUY) -> int:
-        # hedge_scale : total notional amt to hedge in RMB
-        # amt_position = delta * self.amt_option
-        # trade_unit = np.floor(amt_position / (self.mktprice_close() * self.multiplier()))
         trade_unit = np.floor(buywrite.value * delta * self.amt_option / self.multiplier())
-        # self.synthetic_ratio = delta
-        self.synthetic_unit = trade_unit
         return trade_unit
 
     # Get hedge position in trade unit
@@ -57,7 +51,7 @@ class SytheticOption(BaseFutureCoutinuous):
         # hedge_scale : total notional amt to hedge in RMB
         return - self.get_synthetic_unit(delta, buywrite)
 
-    def get_synthetic_option_rebalancing_unit(self, delta: float,
+    def get_rebalancing_unit(self, delta: float,
                                               option: EuropeanOption,
                                               vol:float,
                                               spot:float,
@@ -69,15 +63,13 @@ class SytheticOption(BaseFutureCoutinuous):
         if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
             bound = self.whalley_wilmott(self.eval_date,option,vol,spot)*self.amt_option / self.multiplier()
             if abs(d_unit)>bound:
-                self.synthetic_unit = synthetic_unit
                 return d_unit
             else:
-                # print(self.eval_datetime,' within hedge bound ',d_unit,bound)
                 return 0
         else:
             return d_unit
 
-    def whalley_wilmott(self, eval_date, option, vol, spot=None, rho=0.5, fee=5.0 / 10000.0):
+    def whalley_wilmott(self, eval_date, option, vol, spot=None, rho=0.5, fee=6.9 / 10000.0):
         if spot is None:
             spot = self.mktprice_close()
         black = BlackCalculator(self.eval_date, option.dt_maturity, option.strike,

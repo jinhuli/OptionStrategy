@@ -83,7 +83,7 @@ class BaseFutureCoutinuous(BaseProduct):
     # TODO: 主力连续的仓换月周/日；移仓换月成本
 
     def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
-        if order is None: return
+        if order is None or order.trade_unit == 0: return
         if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
             order.trade_all_unit(slippage)
         elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:

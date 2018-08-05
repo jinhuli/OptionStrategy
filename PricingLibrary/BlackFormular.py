@@ -97,13 +97,13 @@ class BlackFormulaImpliedStdDev(object):
         return
 
 # dt_eval = datetime.date(2018, 7, 6)
-# dt_maturity = datetime.date(2018, 7, 25)
-# strike = 2.45
-# spot = 2.425
-# black_price = 0.04
+# dt_maturity = dt_eval + datetime.timedelta(days=30)
+# strike = 4000
+# spot = 4000
+# black_price = spot*0.1
 # type = OptionType.CALL
-# blackImplied = BlackFormulaImpliedStdDevApproximation(dt_eval, dt_maturity, strike, type, spot, black_price)
-# std = blackImplied.stddev
+# black = BlackFormula(dt_eval, dt_maturity, strike, type, spot, black_price)
+# std = black.stddev
 # vol = std / math.sqrt(PricingUtil.get_ttm(dt_eval, dt_maturity))
 # print(vol * 100, '%')
 # black = BlackCalculator(dt_eval, dt_maturity, strike, type, spot, vol)

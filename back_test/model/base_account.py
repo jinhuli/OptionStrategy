@@ -320,11 +320,12 @@ class BaseAccount():
 
     def creat_close_out_order(self):
         if self.trade_book.empty:
-            return
+            return []
         else:
             order_list = []
             for (id_instrument, book_series) in self.trade_book.iterrows():
                 trade_unit = book_series[Util.TRADE_UNIT]
+                if trade_unit == 0: continue
                 if book_series[Util.TRADE_LONG_SHORT] == LongShort.LONG:
                     long_short = LongShort.SHORT
                 else:
