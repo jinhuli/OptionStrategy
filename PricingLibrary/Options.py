@@ -1,13 +1,17 @@
+from back_test.model.constant import OptionType
+import datetime
+
 class Option(object):
 
-    def __init__(self, strike, dt_maturity, optionType):
+    def __init__(self, strike:float, dt_maturity:datetime.date, optionType:OptionType):
         self.strike = strike
         self.dt_maturity = dt_maturity
         self.option_type = optionType
 
 
 class EuropeanOption(Option):
-    def __init__(self, strike, dt_maturity, optionType, dt_issue=None, init_price=None):
+    def __init__(self, strike:float, dt_maturity:datetime.date, optionType:OptionType,
+                 dt_issue:datetime.date=None, init_price:float=None):
         super().__init__(strike, dt_maturity, optionType)
         self.init_price = init_price
         self.dt_issue = dt_issue

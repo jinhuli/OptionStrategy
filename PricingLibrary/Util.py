@@ -69,17 +69,3 @@ class Calendar(object):
     def isLeapYear(self, year):
         return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-        # d1 = datetime.date(2016,12,22)
-        # d2 = datetime.date(2015,1,11)
-        #
-        # d3 = datetime.date(d1.year,d2.month,d2.day)
-        #
-        # _leapdates = (d1-d3).days-leepDates(d1,d3)
-        # frac_part = (d1-d3).days/(365.0+_leapdates)
-        # yearFrac = (d1.year-d2.year)+frac_part
-        #
-        # print((d1-d2).days)
-        # print(leepDates(d1,d2))
-        # print(_leapdates)
-        # print(leepDates(d1,d2)/365)
-        # print(yearFrac)

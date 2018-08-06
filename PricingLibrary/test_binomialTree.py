@@ -1,5 +1,6 @@
 from unittest import TestCase
-from back_test.pricing.binomial_tree import BinomialTree
+from PricingLibrary.BinomialModel import BinomialTree
+from PricingLibrary.BlackCalculator import BlackCalculator
 from back_test.model.constant import OptionType, OptionExerciseType
 import datetime
 import QuantLib as ql
@@ -8,7 +9,7 @@ import QuantLib as ql
 class TestBinomialTree(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.size = 100
+        cls.size =800
         cls.max_index = 9
         cls.strike = 20
 
@@ -23,6 +24,10 @@ class TestBinomialTree(TestCase):
         european_binomial_tree.initialize()
         european_binomial_tree.step_back(0)
         print("european binomial_tree price", european_binomial_tree.NPV())
+
+        black = BlackCalculator(datetime.date(2017, 1, 1), datetime.date(2017, 4, 1),120,OptionType.PUT,120,0.3)
+        print("european blackcalculator price", black.NPV())
+
         maturity_date = ql.Date(1, 4, 2017)
         spot_price = 120
         strike_price = 120
@@ -62,7 +67,12 @@ class TestBinomialTree(TestCase):
                                                    flat_vol_ts)
         steps = 100
         binomial_engine = ql.BinomialVanillaEngine(bsm_process, "crr", steps)
+        black_engine = ql.AnalyticEuropeanEngine(bsm_process)
         american_option.setPricingEngine(binomial_engine)
-        print("american quantlib price", american_option.NPV())
+        print("american quantlib price(BinomialVanillaEngine)", american_option.NPV())
         european_option.setPricingEngine(binomial_engine)
-        print("european quantlib price", european_option.NPV())
+        print("european quantlib price(BinomialVanillaEngine)", european_option.NPV())
+        european_option.setPricingEngine(black_engine)
+        print("european quantlib price(blackcalculator)", european_option.NPV())
+
+
