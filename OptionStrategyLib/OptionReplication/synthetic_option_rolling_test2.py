@@ -33,7 +33,7 @@ class SyntheticOptionHedgedPortfolio():
         df_index = get_index_mktdata(start_date, end_date, 'index_300sh')  # daily data of underlying index
         df_index = df_index[df_index[Util.DT_DATE].isin(Util.DZQH_CF_DATA_MISSING_DATES) == False].reset_index(
             drop=True)
-        df_index.to_csv('df_index.csv')
+        # df_index.to_csv('df_index.csv')
         self.trade_dates = sorted(df_future_c1_daily[Util.DT_DATE].unique())
         self.df_vol_1m = Histvol.hist_vol(df_future_c1_daily)
         # df_parkinson_1m = Histvol.parkinson_number(df_future_c1_daily)
@@ -79,11 +79,7 @@ class SyntheticOptionHedgedPortfolio():
         """ 用第一天的成交量加权均价开仓/调整复制期权头寸 """
         vol = self.get_vol()
         self.delta = self.synthetic_option.get_black_delta(self.Option, vol)
-        synthetic_unit = self.synthetic_option.get_rebalancing_unit(self.delta,
-                                                                    self.Option,
-                                                                    vol,
-                                                                    self.synthetic_option.mktprice_close(),
-                                                                    DeltaBound.NONE,
+        synthetic_unit = self.synthetic_option.get_synthetic_unit(self.delta,
                                                                     self.buywrite)
         self.synthetic_option.synthetic_unit = synthetic_unit
         if synthetic_unit > 0:
@@ -191,8 +187,8 @@ class SyntheticOptionHedgedPortfolio():
                 self.account.daily_accounting(self.synthetic_option.eval_date)  # 该日的收盘结算
                 self.add_additional_to_account()
                 self.disp()
-            # if self.synthetic_option.eval_date == dt_end and self.synthetic_option.is_last_minute():
-            #     self.close_out()
+            if self.synthetic_option.eval_date == dt_end and self.synthetic_option.is_last_minute():
+                self.close_out()
             self.next()
 
     def if_hedge(self, cd):
@@ -257,6 +253,7 @@ class SyntheticOptionHedgedPortfolio():
         self.add_additional_to_account()
 
         self.disp()
+        self.synthetic_option.sythetic_unit = 0
         """ Final NPV check """
         self.df_records = pd.DataFrame(self.account.list_records)
         total_pnl = self.df_records[Util.TRADE_REALIZED_PNL].sum()
@@ -389,7 +386,7 @@ class SyntheticOptionHedgedPortfolio():
         # print(analysis)
 
 
-start_date = datetime.date(2017, 5, 1)
+start_date = datetime.date(2015, 1, 1)
 end_date = datetime.date(2018, 8, 1)
 port = SyntheticOptionHedgedPortfolio(start_date, end_date)
 calendar = Calendar(port.trade_dates)
@@ -404,5 +401,7 @@ while dt_end < port.trade_dates[-1]:
     print('finished hedge : ', port.synthetic_option.eval_datetime, port.underlying.eval_date)
     dt_start = calendar.next(dt_end)
     dt_end = calendar.lastBusinessDayThisMonth(dt_start)
-    port.rebalance_sythetic_option()
+    port.init_portfolio(port.account.cash)
 port.save_results()
+
+
