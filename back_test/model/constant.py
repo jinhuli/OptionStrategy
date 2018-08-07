@@ -153,10 +153,10 @@ class Option50ETF:
         dividend_dates = Option50ETF.DIVIDEND_DATES
         dates = sorted(dividend_dates.keys(), reverse=False)
         if eval_date < dates[0]:
-            return df[Util.AMT_STRIKE_BEFORE_ADJ]  # 分红除息日前反算调整前的行权价
+            return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)  # 分红除息日前反算调整前的行权价
         elif eval_date < dates[1]:
             if contract_month in dividend_dates[dates[1]]:
-                return df[Util.AMT_STRIKE_BEFORE_ADJ]  # 分红除息日前反算调整前的行权价
+                return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)  # 分红除息日前反算调整前的行权价
             else:
                 return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
         else:

@@ -111,9 +111,14 @@ class SkewIndexing(BaseOptionSet):
             K0 = df.sort_values(by='amt_cp_diff', ascending=True).index[0]
         return mid_k, K0, F
 
-    """ for skew calculation, K0 is the 1st strike below F0 """
+    """ K0 is the 1st strike below F0 """
     def for_calculation(self, df, eval_date):
         mid_k, k0, F = self.forward_cboe(df, eval_date)
+        ttm = df.loc[0, 'amt_ttm']
+        S = df.loc[0, 'amt_underlying_close']
+        implied_r = math.log(F/S,math.e)/ttm
+        self.implied_rf = implied_r
+
         df['k0'] = k0
         df['mid_k'] = mid_k
         df['F'] = F
@@ -195,10 +200,12 @@ class SkewIndexing(BaseOptionSet):
             eval_date = self.eval_date
             try:
                 vix, skew = self.calculate(eval_date)
-                # if skew is not None and skew > 50 and skew < 200:
-                #     self.df_res.loc[eval_date,'skew'] = skew
-                self.df_res.loc[eval_date,'skew'] = skew
-                print("%10s %20s %20s" % (eval_date,vix, skew))
+                if skew is not None and skew > 50 and skew < 200:
+                    self.df_res.loc[eval_date,'skew'] = skew
+                    self.df_res.loc[eval_date,'vix'] = vix
+                    self.df_res.loc[eval_date,'ir'] = self.implied_rf
+                # self.df_res.loc[eval_date,'skew'] = skew
+                print("%10s %20s %20s %20s" % (eval_date,vix, skew, self.implied_rf))
 
             except:
                 pass
@@ -208,11 +215,13 @@ class SkewIndexing(BaseOptionSet):
 
 
 
-start_date = datetime.date(2015, 1, 1)
-end_date = datetime.date(2018, 11, 25)
+start_date = datetime.date(2015, 1, 11)
+# start_date = datetime.date(2018, 8, 7)
+end_date = datetime.date(2018, 8, 7)
 skew_indexing = SkewIndexing(start_date, end_date)
 skew_indexing.init()
 skew_indexing.run()
-skew_indexing.df_res.to_csv('../skew.csv')
+res = skew_indexing.df_res.sort_index(ascending=False)
+res.to_csv('../skew.csv')
 
 
