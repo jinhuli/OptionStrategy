@@ -32,7 +32,7 @@ class SkewIndexing(BaseOptionSet):
         DK = df['amt_delta_k']
         Q = df['amt_otm_quote']
         K = df[Util.AMT_APPLICABLE_STRIKE]
-        return -Q * DK / K ** 2
+        return Q * DK / K ** 2
 
     def fun_for_p2(self, df):
         DK = df['amt_delta_k']
@@ -88,8 +88,9 @@ class SkewIndexing(BaseOptionSet):
         df['amt_cp_diff'] = abs(df['amt_call_quote'] - df['amt_put_quote'])
         maturitydt = df_put[Util.DT_MATURITY].values[0]
         df[Util.DT_MATURITY] = maturitydt
-        df['amt_ttm'] = ((maturitydt - eval_date).total_seconds() / 60.0) / (365.0 * 1440)
-        df['amt_fv'] = math.exp(self.rf * ((maturitydt - eval_date).days / 365.0))
+        ttm = ((maturitydt - eval_date).total_seconds() / 60.0) / (365.0 * 1440)
+        df['amt_ttm'] = ttm
+        df['amt_fv'] = math.exp(self.rf * (ttm))
         df = df.sort_values(by=Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         df['amt_delta_k'] = df[Util.AMT_APPLICABLE_STRIKE].diff() / 2.0
         # delta_k = df[self.util.col_applicable_strike].diff().mean()
@@ -131,8 +132,11 @@ class SkewIndexing(BaseOptionSet):
         df['for_p1'] = df.apply(self.fun_for_p1, axis=1)
         df['for_p2'] = df.apply(self.fun_for_p2, axis=1)
         df['for_p3'] = df.apply(self.fun_for_p3, axis=1)
+        print(df['for_p1'])
+        print(df['for_p2'])
+        print(df['for_p3'])
         fv = df.loc[0, 'amt_fv']
-        p1 = fv * df['for_p1'].sum() + e1
+        p1 = -fv * df['for_p1'].sum() + e1
         p2 = fv * df['for_p2'].sum() + e2
         p3 = fv * df['for_p3'].sum() + e3
         S = self.get_S(p1, p2, p3)
@@ -164,15 +168,19 @@ class SkewIndexing(BaseOptionSet):
             mdt2 = self.get_maturities_list()[1]
         df_mdt1 = OptionUtil.get_df_by_mdt(df_daily_state, mdt1)
         df_mdt2 = OptionUtil.get_df_by_mdt(df_daily_state, mdt2)
-        t_quotes1 = self.for_calculation(self.get_T_quotes(df_mdt1, eval_date), eval_date)
-        t_quotes2 = self.for_calculation(self.get_T_quotes(df_mdt2, eval_date), eval_date)
+        t_quotes1 = self.get_T_quotes(df_mdt1, eval_date)
+        t_quotes2 = self.get_T_quotes(df_mdt2, eval_date)
+        t_quotes1.to_csv('t_quotes1.csv')
+        t_quotes2.to_csv('t_quotes2.csv')
+        calculate1 = self.for_calculation(t_quotes1, eval_date)
+        calculate2 = self.for_calculation(t_quotes2, eval_date)
         # print(t_quotes1)
-        S1 = self.calculate_S_for_skew(t_quotes1)
-        S2 = self.calculate_S_for_skew(t_quotes2)
-        sigma1 = self.calculate_sigma_for_vix(t_quotes1)
-        sigma2 = self.calculate_sigma_for_vix(t_quotes2)
-        T1 = t_quotes1.loc[0, 'amt_ttm']
-        T2 = t_quotes2.loc[0, 'amt_ttm']
+        S1 = self.calculate_S_for_skew(calculate1)
+        S2 = self.calculate_S_for_skew(calculate2)
+        sigma1 = self.calculate_sigma_for_vix(calculate1)
+        sigma2 = self.calculate_sigma_for_vix(calculate2)
+        T1 = calculate1.loc[0, 'amt_ttm']
+        T2 = calculate2.loc[0, 'amt_ttm']
         NT1 = (mdt1 - eval_date).total_seconds() / 60.0
         NT2 = (mdt2 - eval_date).total_seconds() / 60.0
         N30 = 30 * 1440.0
@@ -183,15 +191,14 @@ class SkewIndexing(BaseOptionSet):
         # W2 = T2 * (1-w)
         # x0 = T1 * sigma1 * w + T2 * sigma2 * (1 - w)
         # x1 = (T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30
-        # vix = 100 * math.sqrt((T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30)
+        vix = 100 * math.sqrt((T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30)
         # vix = 100 * math.sqrt((sigma1 * w + sigma2 * (1 - w)) * N365 / N30)
-        vix = None
         return vix, skew
 
     def run(self):
         self.df_res = pd.DataFrame()
         self.df_data = self.df_data[self.df_data[Util.NBR_MULTIPLIER]==10000]
-        while self.has_next():
+        while self.current_index < self.nbr_index:
             eval_date = self.eval_date
             try:
                 vix, skew = self.calculate(eval_date)
@@ -203,17 +210,17 @@ class SkewIndexing(BaseOptionSet):
                 pass
             # vol_1M_call = self.get_interpolated_atm_1M(self.util.type_call)
             # vol_1M_put = self.bkt_optionset.get_interpolated_atm_1M(self.util.type_put)
+            if not self.has_next():break
             self.next()
+
 
 
 print('=' * 100)
 print("%10s %20s %20s" % ('date', 'vix', 'skew'))
 print('-' * 100)
-# start_date = datetime.date(2015,3,1)
-start_date = datetime.date(2015, 3, 1)
-end_date = datetime.date(2018, 8, 1)
+start_date = datetime.date(2018, 8, 6)
+end_date = datetime.date(2018, 8, 6)
 skew_indexing = SkewIndexing(start_date, end_date, 8)
 skew_indexing.init()
-# skew_indexing.calculate(datetime.date(2018, 6, 7))
 skew_indexing.run()
-skew_indexing.df_res.to_csv('../skew.csv')
+# skew_indexing.df_res.to_csv('../skew.csv')
