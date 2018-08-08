@@ -10,7 +10,7 @@ from Utilities import admin_write_util as admin
 
 w.start()
 
-date = datetime.date(2018,7,16)
+date = datetime.date(2018,7,18)
 
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
@@ -557,7 +557,7 @@ if res.rowcount == 0:
     db_data = dc.table_index().wind_data_index(windcode, dt_date, id_instrument)
     try:
         conn.execute(index_daily.insert(), db_data)
-        print('equity_index-50etf -- inserted into data base succefully')
+        print('equity_index-50sh -- inserted into data base succefully')
     except Exception as e:
         print(e)
 res = index_daily.select((index_daily.c.dt_date == dt_date) &

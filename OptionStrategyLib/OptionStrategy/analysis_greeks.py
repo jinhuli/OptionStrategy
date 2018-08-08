@@ -8,7 +8,6 @@ from PricingLibrary.OptionMetrics import OptionMetrics
 from PricingLibrary.Evaluation import Evaluation
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
-from OptionStrategyLib.OptionPricing import OptionPricingUtil as util
 import math
 
 

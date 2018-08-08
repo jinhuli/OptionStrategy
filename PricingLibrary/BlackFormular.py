@@ -96,15 +96,68 @@ class BlackFormulaImpliedStdDev(object):
     def ImpliedVol(self):
         return
 
+# a = [
+# -0.0527 ,
+# -0.0238 ,
+# -0.0268 ,
+# -0.0253 ,
+# -0.0426 ,
+# -0.0699 ,
+# -0.0566 ,
+# -0.0525 ,
+# -0.1019 ,
+# -0.0379 ,
+# -0.0302 ,
+# -0.0270 ,
+# -0.0338 ,
+# -0.0064 ,
+# -0.0313 ,
+# -0.0360 ,
+# -0.0376 ,
+# -0.0188 ,
+# -0.0243 ,
+# -0.0230 ,
+# -0.0265 ,
+# -0.0154 ,
+# -0.0150 ,
+# -0.0215 ,
+# -0.0130 ,
+# -0.0170 ,
+# -0.0219 ,
+# -0.0151 ,
+# -0.0229 ,
+# -0.0166 ,
+# -0.0220 ,
+# -0.0187 ,
+# -0.0166 ,
+# -0.0123 ,
+# -0.0170 ,
+# -0.0152 ,
+# -0.0103 ,
+# -0.0158 ,
+# -0.0410 ,
+# -0.0266 ,
+# -0.0276
+# ]
+# vols = []
 # dt_eval = datetime.date(2018, 7, 6)
-# dt_maturity = datetime.date(2018, 7, 25)
-# strike = 2.45
-# spot = 2.425
-# black_price = 0.04
-# type = OptionType.CALL
-# blackImplied = BlackFormulaImpliedStdDevApproximation(dt_eval, dt_maturity, strike, type, spot, black_price)
-# std = blackImplied.stddev
-# vol = std / math.sqrt(PricingUtil.get_ttm(dt_eval, dt_maturity))
-# print(vol * 100, '%')
-# black = BlackCalculator(dt_eval, dt_maturity, strike, type, spot, vol)
-# print(black.NPV())
+# dt_maturity = dt_eval + datetime.timedelta(days=30)
+# strike = 4000
+# spot = 4000
+# for i in a:
+#     black_price = spot*(-i)
+#     type = OptionType.CALL
+#     black = BlackFormula(dt_eval, dt_maturity, strike, type, spot, black_price)
+#     std = black.stddev
+#     vol = std / math.sqrt(PricingUtil.get_ttm(dt_eval, dt_maturity))
+#     # print(vol * 100, '%')
+#     # black = BlackCalculator(dt_eval, dt_maturity, strike, type, spot, vol)
+#     # print(black.NPV())
+#     vols.append(vol)
+#
+# df = pd.DataFrame()
+# df['vol'] = vols
+# df.to_csv('../vols.csv')
+# print(df)
+
+

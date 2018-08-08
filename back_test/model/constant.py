@@ -1,9 +1,10 @@
 from enum import Enum
 import pandas as pd
 import numpy as np
-from typing import List
+from typing import List, Union
+import math
 import datetime
-
+import typing
 
 class FrequentType(Enum):
     DAILY = 1
@@ -40,13 +41,28 @@ class OptionType(Enum):
     CALL = 1
     PUT = -1
 
+class OptionExerciseType(Enum):
+    AMERICAN = 0
+    EUROPEAN = 1
+
+class DeltaBound(Enum):
+    WHALLEY_WILLMOTT = 0
+    NONE = -1
+
+class BuyWrite(Enum):
+    BUY = 1
+    WRITE = -1
 
 class TradeType(Enum):
     OPEN_LONG = 1
     OPEN_SHORT = 2
     CLOSE_LONG = -1
     CLOSE_SHORT = -2
+    CLOSE_OUT = -3
 
+class ExecuteType(Enum):
+    EXECUTE_ALL_UNITS = 0
+    EXECUTE_WITH_MAX_VOLUME = 1
 
 class OptionUtil:
     MONEYNESS_POINT = 3.0
@@ -110,6 +126,11 @@ class OptionUtil:
             d.update({rank: strike})
         return d
 
+    @staticmethod
+    def get_df_by_mdt(df,mdt):
+        df = df[df[Util.DT_MATURITY]==mdt].reset_index(drop=True)
+        return df
+
 
 class Option50ETF:
     DIVIDEND_DATES = {
@@ -132,10 +153,10 @@ class Option50ETF:
         dividend_dates = Option50ETF.DIVIDEND_DATES
         dates = sorted(dividend_dates.keys(), reverse=False)
         if eval_date < dates[0]:
-            return df[Util.AMT_STRIKE_BEFORE_ADJ]  # 分红除息日前反算调整前的行权价
+            return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)  # 分红除息日前反算调整前的行权价
         elif eval_date < dates[1]:
             if contract_month in dividend_dates[dates[1]]:
-                return df[Util.AMT_STRIKE_BEFORE_ADJ]  # 分红除息日前反算调整前的行权价
+                return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)  # 分红除息日前反算调整前的行权价
             else:
                 return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
         else:
@@ -160,6 +181,17 @@ class Option50ETF:
 
 class OptionFilter:
     @staticmethod
+    def fun_option_type_split(self, id_instrument) -> Union[OptionType, None]:
+        type_str = id_instrument.split('_')[2]
+        if type_str == 'c':
+            option_type = OptionType.CALL
+        elif type_str == 'p':
+            option_type = OptionType.PUT
+        else:
+            return
+        return option_type
+
+    @staticmethod
     def fun_option_price(df: pd.Series) -> float:
         if df[Util.AMT_CLOSE] != Util.NAN_VALUE:
             option_price = df[Util.AMT_CLOSE]
@@ -179,19 +211,169 @@ class OptionFilter:
         else:
             return round(round(strike / 0.1) * 0.1, 2)
 
-    @staticmethod
-    def fun_strike_before_adj(df: pd.Series) -> float:
-        if df[Util.NAME_CODE] == Util.STR_50ETF:
-            return Option50ETF.fun_strike_before_adj(df)
-        else:
-            return df[Util.AMT_STRIKE]
+    # @staticmethod
+    # def fun_strike_before_adj(df: pd.Series) -> float:
+    #     if df[Util.NAME_CODE] == Util.STR_50ETF:
+    #         return Option50ETF.fun_strike_before_adj(df)
+    #     else:
+    #         return df[Util.AMT_STRIKE]
+    #
+    # @staticmethod
+    # def fun_applicable_strike(df: pd.Series) -> float:
+    #     if df[Util.NAME_CODE] == Util.STR_50ETF:
+    #         return Option50ETF.fun_applicable_strike(df)
+    #     else:
+    #         return df[Util.AMT_STRIKE]
+
+
+class FutureUtil:
 
     @staticmethod
-    def fun_applicable_strike(df: pd.Series) -> float:
-        if df[Util.NAME_CODE] == Util.STR_50ETF:
-            return Option50ETF.fun_applicable_strike(df)
+    def get_contract_shift_cost(c1, c2, long_short: LongShort):
+        return
+
+
+class Hedge:
+
+    @staticmethod
+    def whalley_wilmott(ttm, gamma, spot, rho=1, fee=5.0 / 10000.0, rf=0.03):
+        # ttm = self.pricing_utl.get_ttm(eval_date, option.dt_maturity)
+        H = (1.5 * math.exp(-rf * ttm) * fee * spot * (gamma ** 2) / rho) ** (1 / 3)
+        return H
+
+
+
+
+class Calendar(object):
+
+    def __init__(self, date_list: typing.List[datetime.date]):
+        self.date_list = sorted(date_list)
+        self.max_year = self.date_list[-1].year
+        self.date_map = {}
+        self.init()
+
+    """
+    Initialize Calender with date_list
+    {
+        "2017": {
+            "1": [datetime(2017,1,1), datetime(2017,1,2)],
+            "3": [datetime(2017,3,1), datetime(2017,3,2)]
+        }
+    }
+    """
+
+    def init(self):
+        for date in self.date_list:
+            year_map = self.date_map.get(date.year, None)
+            if year_map is None:
+                year_map = {}
+                self.date_map[date.year] = year_map
+            month_list = year_map.get(date.month, None)
+            if month_list is None:
+                month_list = []
+                year_map[date.month] = month_list
+            month_list.append(date)
+        for year, year_map in self.date_map.items():
+            for month, month_list in year_map.items():
+                year_map[month] = sorted(year_map[month])
+
+    def next(self,dt):
+        if dt<self.date_list[-1]:
+            return self.date_list[self.date_list.index(dt)+1]
         else:
-            return df[Util.AMT_STRIKE]
+            return
+
+    def firstBusinessDayNextMonth(self, date: datetime.date) -> datetime.date:
+        year = date.year
+        month = date.month
+        # Date is like 2017-12-3
+        if month == 12:
+            if year == self.max_year:
+                raise ValueError("No available business in next month")
+            else:
+                return self.date_map.get(year + 1).get(1)[0]
+        else:
+            return self.date_map.get(year).get(month + 1)[0]
+
+    def lastBusinessDayThisMonth(self, date: datetime.date) -> datetime.date:
+        year = date.year
+        month = date.month
+        last_business_day_this_month = self.date_map.get(year).get(month)[-1]
+        if date >= last_business_day_this_month:
+            raise ValueError("No available business day after date {} this month".format(date))
+        else:
+            return last_business_day_this_month
+
+# dl = [datetime.date(2017, 1, 4), datetime.date(2017, 1, 2), datetime.date(2018, 1, 1), datetime.date(2018, 1, 2),datetime.date(2017, 2, 6),
+#       datetime.date(2017, 3, 6), datetime.date(2017, 3, 3), datetime.date(2017, 3, 5), datetime.date(2017, 4, 2),
+#       datetime.date(2017, 4, 5)]
+# c = Calendar(dl, 2018)
+# c.init()
+# print(c.firstBusinessDayNextMonth(datetime.date(2017,1,1)))
+
+
+
+class PricingUtil:
+
+
+    @staticmethod
+    def payoff(spot: float, strike: float, option_type: OptionType):
+        return abs(max(option_type.value * (spot - strike), 0.0))
+
+    @staticmethod
+    def get_ttm(dt_eval, dt_maturity):
+        N = (dt_maturity - dt_eval).total_seconds() / 60.0
+        N365 = 365 * 1440.0
+        ttm = N / N365
+        return ttm
+
+    @staticmethod
+    def get_std(dt_eval, dt_maturity, annualized_vol):
+        stdDev = annualized_vol * math.sqrt(PricingUtil.get_ttm(dt_eval, dt_maturity))
+        return stdDev
+
+    @staticmethod
+    def get_discount(dt_eval, dt_maturity, rf):
+        discount = math.exp(-rf * PricingUtil.get_ttm(dt_eval, dt_maturity))
+        return discount
+
+    @staticmethod
+    def get_maturity_metrics(self, dt_date, spot, option):
+        strike = option.strike
+        if option.option_type == OptionType.PUT:
+            if strike > spot: # ITM
+                delta = -1.0
+            elif strike < spot: # OTM
+                delta = 0.0
+            else:
+                delta = 0.5
+            option_price = max(strike - spot, 0)
+        else:
+            if strike < spot: # ITM
+                delta = 1.0
+            elif strike > spot: # OTM
+                delta = 0.0
+            else:
+                delta = 0.5
+            option_price = max(spot - strike, 0)
+        delta = delta
+        option_price = option_price
+        return delta, option_price
+
+    @staticmethod
+    def get_mdate_by_contractid(commodityType, contractId, calendar):
+        maturity_date = 0
+        if commodityType == 'm':
+            year = '20' + contractId[0: 2]
+            month = contractId[-2:]
+            date = ql.Date(1, int(month), int(year))
+            maturity_date = calendar.advance(calendar.advance(date, ql.Period(-1, ql.Months)), ql.Period(4, ql.Days))
+        elif commodityType == 'sr':
+            year = '201' + contractId[2]
+            month = contractId[-2:]
+            date = ql.Date(1, int(month), int(year))
+            maturity_date = calendar.advance(calendar.advance(date, ql.Period(-1, ql.Months)), ql.Period(-5, ql.Days))
+        return maturity_date
 
 
 class Util:
@@ -211,6 +393,8 @@ class Util:
     AMT_STRIKE_BEFORE_ADJ = 'amt_strike_before_adj'
     AMT_CLOSE = 'amt_close'
     AMT_OPEN = 'amt_open'
+    AMT_HIGH = 'amt_high'
+    AMT_LOW = 'amt_low'
     AMT_ADJ_OPTION_PRICE = 'amt_adj_option_price'
     AMT_OPTION_PRICE = 'amt_option_price'
     AMT_UNDERLYING_CLOSE = 'amt_underlying_close'
@@ -221,6 +405,7 @@ class Util:
     NBR_MULTIPLIER = 'nbr_multiplier'
     AMT_HOLDING_VOLUME = 'amt_holding_volume'
     AMT_TRADING_VOLUME = 'amt_trading_volume'
+    AMT_TRADING_VALUE = 'amt_trading_value'
     AMT_MORNING_OPEN_15MIN = 'amt_morning_open_15min'
     AMT_MORNING_CLOSE_15MIN = 'amt_morning_close_15min'
     AMT_AFTERNOON_OPEN_15MIN = 'amt_afternoon_open_15min'
@@ -240,6 +425,10 @@ class Util:
     RISK_FREE_RATE = 'risk_free_rate'
     AMT_APPLICABLE_STRIKE = 'amt_applicable_strike'
     AMT_APPLICABLE_MULTIPLIER = 'amt_applicable_multiplier'
+    AMT_HISTVOL = 'amt_hist_vol'
+    AMT_PARKINSON_NUMBER = 'amt_parkinson_number'
+    AMT_GARMAN_KLASS = 'amt_garman_klass'
+    AMT_HEDHE_UNIT = 'amt_hedge_unit'
     NAME_CODE = 'name_code'
     STR_CALL = 'call'
     STR_PUT = 'put'
@@ -272,7 +461,7 @@ class Util:
     TRADE_TYPE = 'trade_type'
     TRADE_PRICE = 'trade_price'
     TRANSACTION_COST = 'transaction_cost'
-    TRADE_UNIT = 'trade_unit' # 绝对值
+    TRADE_UNIT = 'trade_unit'  # 绝对值
     TIME_SIGNAL = 'time_signal'
     OPTION_PREMIIUM = 'option_premium'
     CASH = 'cash'
@@ -280,63 +469,192 @@ class Util:
     TRADE_MARKET_VALUE = 'trade_market_value'  # 头寸市值
     TRADE_BOOK_VALUE = 'trade_book_value'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
     TRADE_LONG_SHORT = 'long_short'
-    AVERAGE_POSITION_COST = 'average_position_cost' # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
+    AVERAGE_POSITION_COST = 'average_position_cost'  # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
     TRADE_REALIZED_PNL = 'realized_pnl'
     LAST_PRICE = 'last_price'
-    POSITION_CURRENT_VALUE = 'position_current_value' # 用于计算杠杆率，保证金交易的current value为零
+    POSITION_CURRENT_VALUE = 'position_current_value'  # 用于计算杠杆率，保证金交易的current value为零
+    PORTFOLIO_MARGIN_CAPITAL = 'portfolio_margin_capital'
+    PORTFOLIO_MARGIN_TRADE_SCALE = 'portfolio_margin_trade_scale'
+    PORTFOLIO_TOTAL_SCALE = 'portfolio_total_scale'
+    PORTFOLIO_TRADES_VALUE = 'portfolio_trades_value'
+    PORTFOLIO_VALUE = 'portfolio_value'
+    PORTFOLIO_NPV = 'npv'
+    PORTFOLIO_UNREALIZED_PNL = 'unrealized_pnl'
+    PORTFOLIO_LEVERAGE = 'portfolio_leverage'
+    PORTFOLIO_SHORT_POSITION_SCALE = 'portfolio_short_position_scale'
+    PORTFOLIO_LONG_POSITION_SCALE = 'portfolio_long_position_scale'
+    MARGIN_UNREALIZED_PNL = 'margin_unrealized_pnl'
+    NONMARGIN_UNREALIZED_PNL = 'nonmargin_unrealized_pnl'
     BILLION = 1000000000.0
-    TRADE_BOOK_COLUMN_LIST = [TRADE_LONG_SHORT, TRADE_UNIT,
+    TRADE_BOOK_COLUMN_LIST = [DT_DATE,TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
                               TRADE_BOOK_VALUE, AVERAGE_POSITION_COST,
-                              TRADE_REALIZED_PNL,NBR_MULTIPLIER,
-                              POSITION_CURRENT_VALUE] # ID_INSTRUMENR是df的index
-    DICT_FUTURE_MARGIN_RATE = { # 合约价值的百分比
+                              TRADE_REALIZED_PNL, NBR_MULTIPLIER,
+                              POSITION_CURRENT_VALUE,PORTFOLIO_UNREALIZED_PNL
+                              ]  # ID_INSTRUMENR是df的index
+    ACCOUNT_COLUMNS = [DT_DATE, CASH, PORTFOLIO_MARGIN_CAPITAL, PORTFOLIO_TRADES_VALUE,
+                        PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
+                       PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
+                       PORTFOLIO_SHORT_POSITION_SCALE,PORTFOLIO_LONG_POSITION_SCALE,
+                       MARGIN_UNREALIZED_PNL,NONMARGIN_UNREALIZED_PNL
+                       ]
+    DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
         'if': 0.15,
         'ih': 0.15,
         'ic': 0.15,
     }
-    DICT_TRANSACTION_FEE = { # 元/手
+    DICT_TRANSACTION_FEE = {  # 元/手
         'm': 3.0,
         'if': None,
         'ih': None,
         'ic': None,
     }
-    DICT_TRANSACTION_FEE_RATE = { # 百分比
+    DICT_OPTION_TRANSACTION_FEE_RATE = {  # 百分比
+        "50etf": 0.0,
+        "m": 0.0,
+        "sr": 0.0,
+    }
+    DICT_OPTION_TRANSACTION_FEE = {  # 元/手
+        "50etf": 0.0,
+        "m": 0.0,
+        "sr": 0.0,
+    }
+    DICT_TRANSACTION_FEE_RATE = {  # 百分比
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
         'ic': 6.9 / 10000.0,
     }
-    DICT_CONTRACT_MULTIPLIER = { # 合约乘数
+    DICT_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,
         'if': 300,
         'ih': 300,
         'ic': 200,
     }
+    DICT_OPTION_CONTRACT_MULTIPLIER = {  # 合约乘数
+        'm': 10,
+        'sr': 10,
+        STR_50ETF: 10000
+    }
     DICT_FUTURE_CORE_CONTRACT = {
         'm': [1, 5, 9],
         'sr': [1, 5, 6],
         STR_50ETF: STR_ALL}
+
     DICT_TICK_SIZE = {
         "50etf": 0.0001,
         "m": 1,
         "sr": 0.5,
         'if': 0.2,
         'ih': 0.2,
-        'ic': 0.2
+        'ic': 0.2,
+        'index':0
     }
+
+    DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017,12,28),datetime.date(2017,12,29),datetime.date(2018,1,26),datetime.date(2018,5,4)]
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
         cur_date = x[Util.DT_DATE]
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 9, 30, 00) and \
-                        x[
-                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
-                                                                   00):
+                x[
+                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 11, 30,
+                                                           00):
             return True
         if x[Util.DT_DATETIME] >= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 13, 00, 00) and \
-                        x[
-                            Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
-                                                                   00):
+                x[
+                    Util.DT_DATETIME] <= datetime.datetime(cur_date.year, cur_date.month, cur_date.day, 15, 00,
+                                                           00):
             return True
         return False
+
+    @staticmethod
+    def largest_element_less_than(list, val):
+        for i in range(len(list), 0, -1):
+            if list[i - 1] < val:
+                return list[i - 1]
+            elif i == 0:
+                return None
+            else:
+                continue
+
+
+import QuantLib as ql
+
+
+class QuantlibUtil:
+
+    @staticmethod
+    def to_dt_dates(ql_dates):
+        datetime_dates = []
+        for d in ql_dates:
+            dt = datetime.date(d.year(), d.month(), d.dayOfMonth())
+            datetime_dates.append(dt)
+        return datetime_dates
+
+    @staticmethod
+    def to_ql_dates(datetime_dates):
+        ql_dates = []
+        for d in datetime_dates:
+            dt = ql.Date(d.day, d.month, d.year)
+            ql_dates.append(dt)
+        return ql_dates
+
+    @staticmethod
+    def to_ql_date(datetime_date):
+        dt = ql.Date(datetime_date.day, datetime_date.month, datetime_date.year)
+        return dt
+
+    @staticmethod
+    def to_dt_date(ql_date):
+        dt = datetime.date(ql_date.year(), ql_date.month(), ql_date.dayOfMonth())
+        return dt
+
+    # @staticmethod
+    # def get_curve_treasury_bond(evalDate, daycounter):
+    #     datestr = str(evalDate.year()) + "-" + str(evalDate.month()) + "-" + str(evalDate.dayOfMonth())
+    #     try:
+    #         curvedata = pd.read_json(os.path.abspath('..') + '\marketdata\curvedata_tb_' + datestr + '.json')
+    #         rates = curvedata.values[0]
+    #         calendar = ql.China()
+    #         dates = [evalDate,
+    #                  calendar.advance(evalDate, ql.Period(1, ql.Months)),
+    #                  calendar.advance(evalDate, ql.Period(3, ql.Months)),
+    #                  calendar.advance(evalDate, ql.Period(6, ql.Months)),
+    #                  calendar.advance(evalDate, ql.Period(9, ql.Months)),
+    #                  calendar.advance(evalDate, ql.Period(1, ql.Years))]
+    #         krates = np.divide(rates, 100)
+    #         curve = ql.ForwardCurve(dates, krates, daycounter)
+    #     except Exception as e:
+    #         print(e)
+    #         print('Error def -- get_curve_treasury_bond in \'svi_read_data\' on date : ', evalDate)
+    #         return
+    #     return curve
+
+
+    #
+    # @staticmethod
+    # def get_rf_tbcurve(evalDate, daycounter, maturitydate):
+    #     curve = get_curve_treasury_bond(evalDate, daycounter)
+    #     maxdate = curve.maxDate()
+    #     # print(maxdate,maturitydate)
+    #     if maturitydate > maxdate:
+    #         rf = curve.zeroRate(maxdate, daycounter, ql.Continuous).rate()
+    #     else:
+    #         rf = curve.zeroRate(maturitydate, daycounter, ql.Continuous).rate()
+    #     return rf
+
+    @staticmethod
+    def get_yield_ts(evalDate, curve, mdate, daycounter):
+        maxdate = curve.maxDate()
+        if mdate > maxdate:
+            rf = curve.zeroRate(maxdate, daycounter, ql.Continuous).rate()
+        else:
+            rf = curve.zeroRate(mdate, daycounter, ql.Continuous).rate()
+        yield_ts = ql.YieldTermStructureHandle(ql.FlatForward(evalDate, rf, daycounter))
+        return yield_ts
+
+    @staticmethod
+    def get_dividend_ts(evalDate, daycounter):
+        dividend_ts = ql.YieldTermStructureHandle(ql.FlatForward(evalDate, 0.0, daycounter))
+        return dividend_ts

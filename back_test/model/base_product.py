@@ -1,7 +1,6 @@
 import datetime
 import numpy as np
 import pandas as pd
-from abc import abstractmethod
 from back_test.model.abstract_base_product import AbstractBaseProduct
 from back_test.model.constant import FrequentType, Util, TradeType
 from back_test.model.trade import Order
@@ -30,11 +29,20 @@ class BaseProduct(AbstractBaseProduct):
         self.current_daily_state: pd.Series = None
         self.rf = rf
 
+
     def init(self) -> None:
+        self.validate_data()
         self.pre_process()
         self.next()
 
-    def pre_process(self) -> None:
+    def next(self) -> None:
+        if not self.has_next():
+            return None
+        self.update_current_state()
+        self.update_current_daily_state()
+
+    def validate_data(self) -> None:
+        # Basic validation appliable for all instruments
         if self.frequency not in Util.LOW_FREQUENT:
             # High Frequency Data:
             # overwrite date col based on data in datetime col.
@@ -43,16 +51,19 @@ class BaseProduct(AbstractBaseProduct):
             self.eval_datetime: datetime.datetime  = self.df_data.loc[0][Util.DT_DATETIME]
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
+            self.nbr_index: int = self.df_data.shape[0]
         else:
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
             self.eval_datetime: datetime.datetime  = datetime.datetime(self.eval_date.year,
                                                                        self.eval_date.month,
                                                                        self.eval_date.day,
                                                                        0,0,0)
+        # Product specific validation to be override
         self._generate_required_columns_if_missing()
-        self.validate_data()
+        # Product specific pre_process to be override
+        self.pre_process()
 
-    def validate_data(self) -> None:
+    def pre_process(self) -> None:
         return
 
     def _generate_required_columns_if_missing(self) -> None:
@@ -61,22 +72,33 @@ class BaseProduct(AbstractBaseProduct):
         for column in required_column_list:
             if column not in columns:
                 self.df_data[column] = None
-        if self.df_daily_data.empty:
-            for column in required_column_list:
-                self.df_daily_data[column] = None
+        if self.df_daily_data is None or self.df_daily_data.empty:
+            return
+            # for column in required_column_list:
+            #     self.df_daily_data[column] = None
         else:
             columns2 = self.df_daily_data.columns
             for column in required_column_list:
                 if column not in columns2:
                     self.df_daily_data[column] = None
 
-    def next(self) -> None:
-        if not self.has_next():
-            return None
-        self.update_current_state()
-        self.update_current_daily_state()
 
     #TODO: ADD NEXT DAY METHOD
+    def get_next_state_date(self):
+        if self.has_next():
+            next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
+            return next_date
+
+    def is_last_minute(self)-> bool:
+        if self.has_next():
+            next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
+            if self.eval_date == next_date:
+                return False
+            else:
+                return True
+        else:
+            return True
+
 
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
@@ -135,8 +157,9 @@ class BaseProduct(AbstractBaseProduct):
         # TODO
         return True
 
-    def execute_order(self, order: Order):
+    def execute_order(self, order: Order, slippage=0):
         raise NotImplementedError("Child class not implement method execute_order.")
+
     """
     getters
     """
@@ -239,9 +262,13 @@ class BaseProduct(AbstractBaseProduct):
                     else self.df_data.loc[self.current_index - 1][Util.AMT_SETTLEMENT]
         else:
             ret = self.current_daily_state[Util.AMT_LAST_SETTLEMENT]
+            # if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
+            #     return self.mktprice_close() if self.current_daily_index == 0 \
+            #         else self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
+            if (ret is None or np.isnan(ret) or ret == Util.NAN_VALUE) and self.current_daily_index != 0:
+                ret = self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
             if ret is None or np.isnan(ret) or ret == Util.NAN_VALUE:
-                return self.mktprice_close() if self.current_daily_index == 0 \
-                    else self.df_daily_data.loc[self.current_daily_index - 1][Util.AMT_SETTLEMENT]
+                return self.mktprice_close()
         return ret
 
     """ last bar/state, not necessarily daily"""
@@ -259,3 +286,4 @@ class BaseProduct(AbstractBaseProduct):
 
     def get_maintain_margin(self) -> float:
         return 0.0
+

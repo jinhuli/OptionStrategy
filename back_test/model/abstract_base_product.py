@@ -63,7 +63,7 @@ class AbstractBaseProduct(ABC):
     excecute_order: execute an order
     """
     @abstractmethod
-    def execute_order(self, order: Order) -> bool:
+    def execute_order(self, order: Order, slippage=0) -> bool:
         pass
 
     @abstractmethod

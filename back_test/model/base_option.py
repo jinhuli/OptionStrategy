@@ -2,7 +2,7 @@ import datetime
 import pandas as pd
 import numpy as np
 from typing import Union
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType,Option50ETF
 from back_test.model.base_product import BaseProduct
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.BlackFormular import BlackFormula
@@ -19,6 +19,8 @@ class BaseOption(BaseProduct):
         self.flag_calculate_iv = flag_calculate_iv
         self.black_calculater: BlackCalculator = None
         self.implied_vol: float = None
+        self.fee_rate = Util.DICT_OPTION_TRANSACTION_FEE_RATE[self.name_code()]
+        self.fee_per_unit = Util.DICT_OPTION_TRANSACTION_FEE[self.name_code()]
 
     def next(self) -> None:
         self._destroy_black_calculater()
@@ -28,13 +30,13 @@ class BaseOption(BaseProduct):
         return 'BaseOption(id_instrument: {0},eval_date: {1},frequency: {2})' \
             .format(self.id_instrument(), self.eval_date, self.frequency)
 
-    def _validate_data(self):
-        # If close price is nan value
-        self.df_data[Util.AMT_OPTION_PRICE] = self.df_data.apply(OptionFilter.fun_option_price, axis=1)
+    def pre_process(self):
+        # self.df_data[Util.AMT_OPTION_PRICE] = self.df_data.apply(OptionFilter.fun_option_price, axis=1)
         # For Dividend Adjusts
         self.df_data[Util.AMT_NEAREST_STRIKE] = self.df_data.apply(OptionFilter.nearest_strike_level, axis=1)
-        self.df_data[Util.AMT_STRIKE_BEFORE_ADJ] = self.df_data.apply(OptionFilter.fun_strike_before_adj, axis=1)
-        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(OptionFilter.fun_applicable_strike, axis=1)
+        if self.name_code() == Util.STR_50ETF:
+            self.df_data[Util.AMT_STRIKE_BEFORE_ADJ] = self.df_data.apply(Option50ETF.fun_strike_before_adj, axis=1)
+            self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(Option50ETF.fun_applicable_strike, axis=1)
 
     def _generate_required_columns_if_missing(self) -> None:
         required_column_list = Util.OPTION_COLUMN_LIST
@@ -67,13 +69,13 @@ class BaseOption(BaseProduct):
         return self.current_state[Util.NAME_CONTRACT_MONTH]
 
     def option_type(self) -> Union[OptionType, None]:
-        type_str = self.current_state[Util.CD_OPTION_TYPE]
-        if type_str == Util.STR_CALL:
+        type = self.current_state[Util.CD_OPTION_TYPE]
+        if type == Util.STR_CALL:
             option_type = OptionType.CALL
-        elif type_str == Util.STR_PUT:
+        elif type == Util.STR_PUT:
             option_type = OptionType.PUT
         else:
-            return
+            return type
         return option_type
 
     def id_underlying(self) -> str:
@@ -97,11 +99,16 @@ class BaseOption(BaseProduct):
         return self.current_state[Util.AMT_APPLICABLE_STRIKE]
 
     # """ 如果close price为空，使用settlement price作为option price """
-    def option_price(self) -> Union[float, None]:
-        ret = self.current_state[Util.AMT_OPTION_PRICE]
-        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
-            return
-        return ret
+    def mktprice_close(self) -> Union[float, None]:
+        if self.current_state[Util.AMT_CLOSE] != Util.NAN_VALUE:
+            option_price = self.current_state[Util.AMT_CLOSE]
+        elif self.current_state[Util.AMT_SETTLEMENT] != Util.NAN_VALUE:
+            option_price = self.current_state[Util.AMT_SETTLEMENT]
+        else:
+            print('amt_close and amt_settlement are null!')
+            print(self.current_state)
+            option_price = None
+        return option_price
 
     def underlying_close(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_UNDERLYING_CLOSE]
@@ -133,7 +140,10 @@ class BaseOption(BaseProduct):
         return ret
 
     def multiplier(self) -> Union[int, None]:
-        return self.current_state[Util.NBR_MULTIPLIER]
+        if self._name_code == Util.STR_50ETF:
+            return self.current_state[Util.NBR_MULTIPLIER]
+        else:
+            return Util.DICT_CONTRACT_MULTIPLIER[self._name_code]
 
     """
     black calculator related calculations.
@@ -144,7 +154,7 @@ class BaseOption(BaseProduct):
             dt_maturity = self.maturitydt()
             strike = self.applicable_strike()
             option_type = self.option_type()
-            option_price = self.option_price()
+            option_price = self.mktprice_close()
             spot = self.underlying_close()
             black_formula = BlackFormula(self.eval_date, dt_maturity, strike, option_type, spot, option_price, self.rf)
             implied_vol = black_formula.ImpliedVolApproximation()
@@ -187,7 +197,8 @@ class BaseOption(BaseProduct):
         return
 
     """ 用于计算杠杆率 ：option，买方具有current value为当前的权利金，期权卖方为保证金交易，current value为零 """
-    def get_current_value(self,long_short):
+
+    def get_current_value(self, long_short):
         if long_short == Util.LONG:
             return self.mktprice_close()
         else:
@@ -242,7 +253,33 @@ class BaseOption(BaseProduct):
             return int(self.id_underlying()[-2, :]) in Util.MAIN_CONTRACT_159
         return True
 
-    # TODO:
-    def execute_order(self, order: Order):
-        ret: pd.Series =order.trade_with_current_volume(int(self.trading_volume()))
-
+    def execute_order(self, order: Order, slippage=1):
+        if order is None: return
+        order.trade_with_current_volume(int(self.trading_volume()), slippage)
+        execution_record: pd.Series = order.execution_res
+        if order.long_short == Util.LONG:
+            # 无保证金交易的情况下，trade_market_value有待从现金账户中全部扣除。
+            execution_record[Util.TRADE_MARGIN_CAPITAL] = 0.0
+            execution_record[Util.TRADE_MARKET_VALUE] = execution_record[Util.TRADE_UNIT] * \
+                                                        execution_record[Util.TRADE_PRICE] * self.multiplier()
+        else:
+            execution_record[Util.TRADE_MARGIN_CAPITAL] = self.get_initial_margin() * \
+                                                          execution_record[Util.TRADE_UNIT]
+            execution_record[Util.TRADE_MARKET_VALUE] = 0.0
+        if self.fee_per_unit is None:
+            # 百分比手续费
+            transaction_fee = execution_record[Util.TRADE_PRICE] * self.fee_rate * execution_record[
+                Util.TRADE_UNIT] * self.multiplier()
+        else:
+            # 每手手续费
+            transaction_fee = self.fee_per_unit * execution_record[Util.TRADE_UNIT]
+        execution_record[Util.TRANSACTION_COST] += transaction_fee
+        transaction_fee_add_to_price = transaction_fee / (execution_record[Util.TRADE_UNIT] *
+                                                          self.multiplier())
+        execution_record[Util.TRADE_PRICE] += execution_record[Util.TRADE_LONG_SHORT].value \
+                                              * transaction_fee_add_to_price
+        position_size = order.long_short.value * execution_record[Util.TRADE_PRICE] * \
+                        execution_record[Util.TRADE_UNIT] * self.multiplier()
+        execution_record[
+            Util.TRADE_BOOK_VALUE] = position_size  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
+        return execution_record
