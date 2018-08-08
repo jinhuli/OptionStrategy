@@ -1,7 +1,7 @@
 from unittest import TestCase
 from PricingLibrary.BinomialModel import BinomialTree
 from PricingLibrary.BlackCalculator import BlackCalculator
-from back_test.model.constant import OptionType, OptionExerciseType
+from back_test.model.constant import OptionType, OptionExerciseType, QuantlibUtil
 import datetime
 import QuantLib as ql
 
@@ -9,37 +9,42 @@ import QuantLib as ql
 class TestBinomialTree(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.size =800
-        cls.max_index = 9
-        cls.strike = 20
+        cls.risk_free_rate = 0.03
 
     def test_step_back(self):
-        american_binomial_tree = BinomialTree(self.size, datetime.date(2017, 1, 1), datetime.date(2017, 4, 1),
-                                              OptionType.PUT, OptionExerciseType.AMERICAN, 120, 120, 0.3)
-        american_binomial_tree.initialize()
-        american_binomial_tree.step_back(0)
-        print("american binomial_tree price", american_binomial_tree.NPV())
-        european_binomial_tree = BinomialTree(self.size, datetime.date(2017, 1, 1), datetime.date(2017, 4, 1),
-                                              OptionType.PUT, OptionExerciseType.EUROPEAN, 120, 120, 0.3)
-        european_binomial_tree.initialize()
-        european_binomial_tree.step_back(0)
-        print("european binomial_tree price", european_binomial_tree.NPV())
-
-        black = BlackCalculator(datetime.date(2017, 1, 1), datetime.date(2017, 4, 1),120,OptionType.PUT,120,0.3)
-        print("european blackcalculator price", black.NPV())
-
-        maturity_date = ql.Date(1, 4, 2017)
+        dt_eval = datetime.date(2017, 1, 1)
+        dt_maturity = datetime.date(2017, 4, 1)
         spot_price = 120
         strike_price = 120
         volatility = 0.3  # the historical vols or implied vols
         dividend_rate = 0
+        risk_free_rate = 0.03
+        steps = 800
+
+        american_binomial_tree = BinomialTree(steps, dt_eval, dt_maturity,
+                                              OptionType.PUT, OptionExerciseType.AMERICAN, spot_price, strike_price, volatility)
+        american_binomial_tree.initialize()
+        american_binomial_tree.step_back(0)
+        print(american_binomial_tree.T)
+        print("american binomial_tree price", american_binomial_tree.NPV())
+        european_binomial_tree = BinomialTree(steps, dt_eval, dt_maturity,
+                                              OptionType.PUT, OptionExerciseType.EUROPEAN, spot_price, strike_price, volatility)
+        european_binomial_tree.initialize()
+        european_binomial_tree.step_back(0)
+        print("european binomial_tree price", european_binomial_tree.NPV())
+
+        black = BlackCalculator(dt_eval, dt_maturity,strike_price,OptionType.PUT,spot_price,volatility)
+        print("european blackcalculator price", black.NPV())
+
+        maturity_date = QuantlibUtil.to_ql_date(dt_maturity)
+
         option_type = ql.Option.Put
 
-        risk_free_rate = 0.03
         day_count = ql.ActualActual()
         calendar = ql.NullCalendar()
 
-        calculation_date = ql.Date(1, 1, 2017)
+        calculation_date = QuantlibUtil.to_ql_date(dt_eval)
+        print(day_count.yearFraction(calculation_date,maturity_date))
         ql.Settings.instance().evaluationDate = calculation_date
         payoff = ql.PlainVanillaPayoff(option_type, strike_price)
         settlement = calculation_date
@@ -65,7 +70,6 @@ class TestBinomialTree(TestCase):
                                                    dividend_yield,
                                                    flat_ts,
                                                    flat_vol_ts)
-        steps = 100
         binomial_engine = ql.BinomialVanillaEngine(bsm_process, "crr", steps)
         black_engine = ql.AnalyticEuropeanEngine(bsm_process)
         american_option.setPricingEngine(binomial_engine)

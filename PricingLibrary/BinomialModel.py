@@ -36,7 +36,8 @@ class BinomialTree(object):
         self.spot = spot
         self.dt_eval: datetime.date = dt_eval
         self.dt_maturity: datetime.date = dt_maturity
-        self.t: float = (dt_maturity - dt_eval).days / n / 365.0
+        self.T: float = (dt_maturity - dt_eval).days / 365.0
+        self.t: float = self.T/n
         self.u = math.exp(vol * math.sqrt(self.t))
         self.d = math.exp(-1 * vol * math.sqrt(self.t))
         self.p_u = (math.exp(rf * self.t) - self.d) / (self.u - self.d)
