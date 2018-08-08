@@ -1,9 +1,11 @@
-from back_test.BktOptionStrategy import BktOptionStrategy,BktOptionIndex
-from back_test.BktInstrument import BktInstrument
-import numpy as np
-import QuantLib as ql
 import datetime
-from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata,get_pciv_ratio
+
+import QuantLib as ql
+import numpy as np
+from back_test.BktOptionStrategy import BktOptionStrategy
+
+from back_test.deprecated.BktInstrument import BktInstrument
+from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata, get_pciv_ratio
 
 
 class BktStrategyCollar(BktOptionStrategy):

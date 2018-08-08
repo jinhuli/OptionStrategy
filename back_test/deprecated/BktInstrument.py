@@ -1,6 +1,8 @@
-from back_test.BktUtil import BktUtil
 import datetime
+
 import numpy as np
+
+from back_test.deprecated.BktUtil import BktUtil
 
 
 class BktInstrument(object):

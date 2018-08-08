@@ -1,14 +1,12 @@
 import datetime
-import pandas as pd
 import math
-import numpy as np
-import matplotlib.pyplot as plt
-from Utilities.PlotUtil import PlotUtil
-from back_test.BktUtil import BktUtil
-from PricingLibrary.Util import PricingUtil
+
+import pandas as pd
+
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.Options import EuropeanOption
-
+from PricingLibrary.Util import PricingUtil
+from back_test.deprecated.BktUtil import BktUtil
 
 
 class Replication():

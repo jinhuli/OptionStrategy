@@ -1,10 +1,11 @@
+import datetime
+
 import pandas as pd
 from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from data_access.db_tables import DataBaseTables as dbt
-from back_test.BktUtil import BktUtil
+
 from Utilities import admin_util as admin
-import datetime
+from back_test.deprecated.BktUtil import BktUtil
+from data_access.db_tables import DataBaseTables as dbt
 
 
 def get_eventsdata(start_date, end_date, flag_impact):

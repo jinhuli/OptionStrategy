@@ -1,5 +1,6 @@
-from back_test.BktOptionStrategy import BktOptionStrategy
 import pandas as pd
+
+from back_test.deprecated.BktOptionStrategy import BktOptionStrategy
 
 
 class BktStrategyMoneynessVol(BktOptionStrategy):

@@ -101,7 +101,7 @@ for indexid in index_ids:
     ax2.set_xticks([5,10,20,60,120])
     ax2.set_xticklabels(x_labels)
     f2.set_size_inches((12, 6))
-    f2.savefig('../save_figure/otc_histvols_'+indexid+'_' + str(hist_date)+' - '+ str(evalDate) + '.png', dpi=300, format='png')
+    f2.savefig('../data/otc_histvols_'+indexid+'_' + str(hist_date)+' - '+ str(evalDate) + '.png', dpi=300, format='png')
 
 
 

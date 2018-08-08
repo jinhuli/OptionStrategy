@@ -1,8 +1,9 @@
 import numpy as np
-from back_test.BktInstrument import BktInstrument
-from back_test.BktUtil import BktUtil
+from back_test.deprecated.BktUtil import BktUtil
+
 from PricingLibrary.Options import EuropeanOption
 from PricingLibrary.Util import PricingUtil
+from back_test.deprecated.BktInstrument import BktInstrument
 
 
 class BktOption(BktInstrument):

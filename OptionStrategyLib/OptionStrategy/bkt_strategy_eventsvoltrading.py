@@ -1,10 +1,12 @@
-from back_test.BktOptionStrategy import BktOptionStrategy
-from back_test.BktAccount import BktAccount
-import QuantLib as ql
 import datetime
-from data_access.get_data import get_50option_mktdata, get_eventsdata, get_50etf_mktdata
-from back_test.OptionPortfolio import *
+
+import QuantLib as ql
 import pandas as pd
+from back_test.deprecated.BktOptionStrategy import BktOptionStrategy
+from back_test.deprecated.OptionPortfolio import *
+
+from back_test.deprecated.BktAccount import BktAccount
+from data_access.get_data import get_50option_mktdata, get_eventsdata
 
 
 class BktStrategyEventVol(BktOptionStrategy):
