@@ -10,12 +10,17 @@ from back_test.deprecated.BktUtil import BktUtil
 from data_access.get_data import get_50option_mktdata, get_comoption_mktdata
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 start_date = datetime.date(2018,7,16)
 end_date = datetime.date(2018,7,20)
 =======
 start_date = datetime.date(2018,7,13)
 end_date = datetime.date(2018,7,27)
 >>>>>>> [MODIF][WEEKLY REPORT ATM IV]
+=======
+start_date = datetime.date(2018,7,27)
+end_date = datetime.date(2018,8,5)
+>>>>>>> [8.6 weekly report]
 
 calendar = ql.China()
 daycounter = ql.ActualActual()

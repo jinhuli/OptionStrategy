@@ -417,7 +417,7 @@ print('Part [历史已实现波动率] completed')
 implied_vol_analysis(evalDate,w,namecode,exchange_code)
 print('Part [隐含波动率期限结构] completed')
 
-df_iv,x = df_iv_at_the_money(dt_date, startDate, namecode, df_srf)
+df_iv,x = df_iv_at_the_money(dt_date, dt_last_week, namecode, df_srf)
 df_iv = df_iv.sort_values(by='dt_date',ascending=False)
 df_iv.to_csv('../save_results/'+namecode+'_hist_atm_ivs.csv')
 print('Part [历史隐含波动率] completed')
