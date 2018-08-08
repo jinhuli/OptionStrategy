@@ -34,6 +34,7 @@ class BinomialTree(object):
         self.option_exercise_type = option_exercise_type
         self.strike = strike
         self.spot = spot
+        self.rf = rf
         self.dt_eval: datetime.date = dt_eval
         self.dt_maturity: datetime.date = dt_maturity
         self.T: float = (dt_maturity - dt_eval).days / 365.0
@@ -86,6 +87,7 @@ class BinomialTree(object):
         return i
 
     def NPV(self) -> float:
+        self.step_back(0)
         return self.values[0][0]
 
     def step_back(self, step_back_to: int) -> None:
@@ -104,3 +106,27 @@ class BinomialTree(object):
                 pre_value.append(max(continous_value, exercise_value))
             self.values.insert(0, pre_value)
         return None
+
+    def reset(self, vol: float) -> None:
+        self.asset_values = []
+        self.values = []
+        self.exercise_values = []
+        self.u = math.exp(vol * math.sqrt(self.t))
+        self.d = math.exp(-1 * vol * math.sqrt(self.t))
+        self.p_u = (math.exp(self.rf * self.t) - self.d) / (self.u - self.d)
+        self.p_d = 1 - self.p_u
+        self.discount = math.exp(-1 * self.rf * self.t)
+        self.populate_asset()
+
+    def estimate_vol(self, price: float):
+        l = 0.00001
+        r = 2
+        while l < r and round((r - l), 5) > 0.00001:
+            m = round(l + (r - l) / 2, 5)
+            self.reset(m)
+            p = self.NPV()
+            if p < price:
+                l = m
+            else:
+                r = m
+        return m, p

@@ -9,7 +9,9 @@ import QuantLib as ql
 class TestBinomialTree(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.risk_free_rate = 0.03
+        cls.size = 800
+        cls.max_index = 9
+        cls.strike = 20
 
     def test_step_back(self):
         dt_eval = datetime.date(2017, 1, 1)
@@ -19,7 +21,7 @@ class TestBinomialTree(TestCase):
         volatility = 0.3  # the historical vols or implied vols
         dividend_rate = 0
         risk_free_rate = 0.03
-        steps = 800
+        steps = self.size
 
         american_binomial_tree = BinomialTree(steps, dt_eval, dt_maturity,
                                               OptionType.PUT, OptionExerciseType.AMERICAN, spot_price, strike_price, volatility)
@@ -79,4 +81,22 @@ class TestBinomialTree(TestCase):
         european_option.setPricingEngine(black_engine)
         print("european quantlib price(blackcalculator)", european_option.NPV())
 
-
+    def test_estimate_vol(self):
+        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
+                                              OptionType.PUT, OptionExerciseType.AMERICAN, 3224, 3200, 0.1755)
+        american_binomial_tree.initialize()
+        vol, price = american_binomial_tree.estimate_vol(105.5)
+        print(vol)
+        print(price)
+        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
+                                              OptionType.PUT, OptionExerciseType.AMERICAN, 3224, 3200, 0.3)
+        american_binomial_tree.initialize()
+        vol, price = american_binomial_tree.estimate_vol(105.5)
+        print(vol)
+        print(price)
+        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
+                                              OptionType.CALL, OptionExerciseType.AMERICAN, 3224, 3200, 0.1755)
+        american_binomial_tree.initialize()
+        vol, price = american_binomial_tree.estimate_vol(139.5)
+        print(vol)
+        print(price)
