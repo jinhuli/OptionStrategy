@@ -3,13 +3,15 @@ from PricingLibrary.BinomialModel import BinomialTree
 from PricingLibrary.BlackCalculator import BlackCalculator
 from back_test.model.constant import OptionType, OptionExerciseType
 import datetime
-import QuantLib as ql
+
+
+# import QuantLib as ql
 
 
 class TestBinomialTree(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.size =800
+        cls.size = 800
         cls.max_index = 9
         cls.strike = 20
 
@@ -25,7 +27,7 @@ class TestBinomialTree(TestCase):
         european_binomial_tree.step_back(0)
         print("european binomial_tree price", european_binomial_tree.NPV())
 
-        black = BlackCalculator(datetime.date(2017, 1, 1), datetime.date(2017, 4, 1),120,OptionType.PUT,120,0.3)
+        black = BlackCalculator(datetime.date(2017, 1, 1), datetime.date(2017, 4, 1), 120, OptionType.PUT, 120, 0.3)
         print("european blackcalculator price", black.NPV())
 
         maturity_date = ql.Date(1, 4, 2017)
@@ -75,4 +77,16 @@ class TestBinomialTree(TestCase):
         european_option.setPricingEngine(black_engine)
         print("european quantlib price(blackcalculator)", european_option.NPV())
 
-
+    def test_estimate_vol(self):
+        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
+                                              OptionType.PUT, OptionExerciseType.AMERICAN, 3224, 3200, 0.1755)
+        american_binomial_tree.initialize()
+        vol, price = american_binomial_tree.estimate_vol(105.5)
+        print(vol)
+        print(price)
+        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
+                                              OptionType.CALL, OptionExerciseType.AMERICAN, 3224, 3200, 0.1755)
+        american_binomial_tree.initialize()
+        vol, price = american_binomial_tree.estimate_vol(139.5)
+        print(vol)
+        print(price)
