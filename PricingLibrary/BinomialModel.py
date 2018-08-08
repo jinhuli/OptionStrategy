@@ -118,10 +118,10 @@ class BinomialTree(object):
         self.discount = math.exp(-1 * self.rf * self.t)
         self.populate_asset()
 
-    def estimate_vol(self, price: float):
-        l = 0.00001
-        r = 2
-        while l < r and round((r - l), 5) > 0.00001:
+    def estimate_vol(self, price: float, presion:float=0.00001,max_vol:float=2.0):
+        l = presion
+        r = max_vol
+        while l < r and round((r - l), 5) > presion:
             m = round(l + (r - l) / 2, 5)
             self.reset(m)
             p = self.NPV()

@@ -4,7 +4,7 @@ from PricingLibrary.BlackCalculator import BlackCalculator
 from back_test.model.constant import OptionType, OptionExerciseType, QuantlibUtil
 import datetime
 import QuantLib as ql
-
+from PricingLibrary.EngineQuantlib import QlBinomial
 
 class TestBinomialTree(TestCase):
     @classmethod
@@ -82,21 +82,28 @@ class TestBinomialTree(TestCase):
         print("european quantlib price(blackcalculator)", european_option.NPV())
 
     def test_estimate_vol(self):
-        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
-                                              OptionType.PUT, OptionExerciseType.AMERICAN, 3224, 3200, 0.1755)
+        dt_eval = datetime.date(2018, 8, 7)
+        dt_maturity = datetime.date(2018, 12, 7)
+        spot_price = 3224
+        strike_price = 3200
+        init_vol = 0.1755  # the historical vols or implied vols
+        risk_free_rate = 0.03
+        steps = self.size
+        american_binomial_tree = BinomialTree(steps,dt_eval,dt_maturity,OptionType.PUT,OptionExerciseType.AMERICAN,spot_price,strike_price,init_vol,risk_free_rate)
         american_binomial_tree.initialize()
         vol, price = american_binomial_tree.estimate_vol(105.5)
         print(vol)
         print(price)
-        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
-                                              OptionType.PUT, OptionExerciseType.AMERICAN, 3224, 3200, 0.3)
-        american_binomial_tree.initialize()
-        vol, price = american_binomial_tree.estimate_vol(105.5)
+        american_ql = QlBinomial(steps,dt_eval,dt_maturity,OptionType.PUT,OptionExerciseType.AMERICAN,spot_price,strike_price,init_vol,risk_free_rate)
+        vol, price = american_ql.estimate_vol(105.5)
         print(vol)
         print(price)
-        american_binomial_tree = BinomialTree(self.size, datetime.date(2018, 8, 7), datetime.date(2018, 12, 7),
-                                              OptionType.CALL, OptionExerciseType.AMERICAN, 3224, 3200, 0.1755)
+        american_binomial_tree = BinomialTree(steps,dt_eval,dt_maturity,OptionType.CALL,OptionExerciseType.AMERICAN,spot_price,strike_price,init_vol,risk_free_rate)
         american_binomial_tree.initialize()
         vol, price = american_binomial_tree.estimate_vol(139.5)
+        print(vol)
+        print(price)
+        american_ql = QlBinomial(steps,dt_eval,dt_maturity,OptionType.CALL,OptionExerciseType.AMERICAN,spot_price,strike_price,init_vol,risk_free_rate)
+        vol, price = american_ql.estimate_vol(139.5)
         print(vol)
         print(price)
