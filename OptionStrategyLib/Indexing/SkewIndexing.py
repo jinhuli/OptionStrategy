@@ -1,7 +1,6 @@
 from data_access.get_data import get_50option_mktdata as option_data
 from back_test.model.base_option_set import BaseOptionSet
-from back_test.model.constant import Util,OptionType, OptionUtil
-from PricingLibrary.Util import PricingUtil
+from back_test.model.constant import Util, OptionUtil
 import datetime
 import math
 import pandas as pd
@@ -11,12 +10,6 @@ class SkewIndexing(BaseOptionSet):
     def __init__(self, start_date, end_date):
         df_metrics = option_data(start_date, end_date)
         super().__init__(df_metrics, rf=0.03)
-
-    # def select_eligible_contracts(self, df_data, eval_date):
-    #     if df_data.empty: return
-    #     df_metrics = Util.get_duplicate_strikes_dropped(df_data,eval_date)
-    #     # TODO: add other criterion
-    #     return df_metrics
 
     def fun_otm_quote(self, df):
         if df[Util.AMT_APPLICABLE_STRIKE] > df['mid_k']:
@@ -222,6 +215,6 @@ skew_indexing = SkewIndexing(start_date, end_date)
 skew_indexing.init()
 skew_indexing.run()
 res = skew_indexing.df_res.sort_index(ascending=False)
-res.to_csv('../skew.csv')
+res.to_csv('../../data/skew.csv')
 
 

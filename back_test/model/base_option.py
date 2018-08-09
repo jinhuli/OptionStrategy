@@ -250,7 +250,7 @@ class BaseOption(BaseProduct):
 
     def is_valid_option(self) -> bool:
         if self.name_code() in Util.NAME_CODE_159:
-            return int(self.id_underlying()[-2, :]) in Util.MAIN_CONTRACT_159
+            return int(self.id_underlying()[-2:]) in Util.MAIN_CONTRACT_159
         return True
 
     def execute_order(self, order: Order, slippage=1):

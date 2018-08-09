@@ -1,12 +1,12 @@
-import pandas as pd
 import datetime
 from collections import deque
-from back_test.model.abstract_base_product_set import AbstractBaseProductSet
-from back_test.model.base_option import BaseOption
-from back_test.model.constant import FrequentType, Util, PricingType, EngineType, LongShort, UnderlyingPriceType, \
-    MoneynessMethod, OptionFilter, OptionType, OptionUtil, TradeType,Option50ETF
 from typing import Dict, List, Tuple
 
+import pandas as pd
+
+from back_test.model.abstract_base_product_set import AbstractBaseProductSet
+from back_test.model.base_option import BaseOption
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF
 
 
 class BaseOptionSet(AbstractBaseProductSet):
@@ -42,6 +42,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.eligible_options = deque()
         self.update_contract_month_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
         self.eligible_maturities: List(datetime.date) = None # To be fulled in NEXT() method
+        self.OptionUtilClass = OptionUtil.get_option_util_class(self._name_code)
 
     def init(self) -> None:
         self._generate_required_columns_if_missing()  # 补充行权价等关键信息（high frequency data就可能没有）
@@ -190,10 +191,15 @@ class BaseOptionSet(AbstractBaseProductSet):
             .sort_values(by=Util.NAME_CONTRACT_MONTH).reset_index(drop=True) \
             [[Util.NAME_CONTRACT_MONTH, Util.DT_MATURITY]]
 
-    """ 
-    Dictionary of options : Orgize Options base on maturity dates or contract months as keys
-    if 'get_orgnized_option_dict_for_moneyness_ranking' is not used, the following 3 methods will be useful.
-    """
+
+    def get_maturities_list(self) -> List[datetime.date]:
+        list_maturities = []
+        for option in self.eligible_options:
+            maturitydt = option.maturitydt()
+            if maturitydt not in list_maturities: list_maturities.append(maturitydt)
+        list_maturities = sorted(list_maturities)
+        return list_maturities
+
     # get Dictionary <contract month, List[option]>
     def get_dict_options_by_contract_months(self):
         dic = {}
@@ -217,36 +223,22 @@ class BaseOptionSet(AbstractBaseProductSet):
     # 根据到期日或合约月份查找标的价格，需重新计算（暂未用到）
     def get_underlying_close(self, contract_month=None, maturitydt=None):
         # 对于商品期权，underlying要从对应的月份合约中找。
-        if contract_month is not None:
-            option_list = self.get_dict_options_by_contract_months()[contract_month]
-            spot = option_list[0].underlying_close()
-        elif maturitydt is not None:
-            option_list = self.get_dict_options_by_maturities()[maturitydt]
-            spot = option_list[0].underlying_close()
+        if self._name_code == Util.STR_50ETF:
+            spot = self.eligible_options[0].underlying_close()
         else:
-            if self._name_code == Util.STR_50ETF:
-                spot = self.eligible_options[0].underlying_close()
+            if contract_month is not None:
+                option_list = self.get_dict_options_by_contract_months()[contract_month]
+                spot = option_list[0].underlying_close()
+            elif maturitydt is not None:
+                option_list = self.get_dict_options_by_maturities()[maturitydt]
+                spot = option_list[0].underlying_close()
             else:
+                print('No contract month or maturity specified for commodity option.')
                 maturitydt = sorted(self.get_dict_options_by_maturities().keys())[0]
                 option_list = self.get_dict_options_by_maturities()[maturitydt]
                 spot = option_list[0].underlying_close()
         return spot
 
-    # 返回的option放在list里，是因为50ETF option可能有相近行权价的期权同时处于一个nearest strike
-    def get_put_by_moneyness(self, moneyness_rank: int, mdt: datetime.date = None, contract_month=None):
-        # spot = self.get_underlying_close(mdt, contract_month)
-        if mdt is None:
-            mdt = self.eligible_maturities[0]
-        options = self.get_options_list_by_moneyness_mthd1(moneyness_rank, mdt, OptionType.PUT)
-        return options
-
-    def get_maturities_list(self) -> List[datetime.date]:
-        list_maturities = []
-        for option in self.eligible_options:
-            maturitydt = option.maturitydt()
-            if maturitydt not in list_maturities: list_maturities.append(maturitydt)
-        list_maturities = sorted(list_maturities)
-        return list_maturities
 
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
@@ -265,8 +257,7 @@ class BaseOptionSet(AbstractBaseProductSet):
     """
 
     def get_orgnized_option_dict_for_moneyness_ranking(self) -> \
-            Tuple[
-                Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
+            Tuple[Dict[datetime.date, Dict[float, List[BaseOption]]], Dict[datetime.date, Dict[float, List[BaseOption]]]]:
         call_ret = {}
         put_ret = {}
         for option in self.eligible_options:
@@ -286,48 +277,46 @@ class BaseOptionSet(AbstractBaseProductSet):
         # 返回的option放在list里，是因为可能有相邻行权价的期权同时处于一个nearest strike
         return call_ret, put_ret
 
-    # TODO: change type to enum in future
-    """ Mthd1: Determine atm option as the nearest strike from spot. 
+    """ Mthd1: Determine atm option as the NEAREST strike from spot. 
         Get option maturity dictionary from all maturities by given moneyness rank. """
 
-    def get_options_mdt_dict_by_moneyness_mthd1(
-            self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
+    def get_options_dict_by_mdt_moneyness_mthd1(
+            self, moneyness_rank: int) -> List[Dict[datetime.date, List[BaseOption]]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
-        res_mdt_dict = {}
-        if option_type == OptionType.CALL:
-            for mdt in mdt_calls.keys():
-                mdt_options_dict = mdt_calls.get(mdt)
-                idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
-                                                                            list(mdt_options_dict.keys()), option_type)
-                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
-        else:
-            for mdt in mdt_puts.keys():
-                mdt_options_dict = mdt_puts.get(mdt)
-                idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
-                                                                            list(mdt_options_dict.keys()), option_type)
-                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
-        return res_mdt_dict
+        call_mdt_dict = {}
+        put_mdt_dict = {}
+        for mdt in mdt_calls.keys():
+            mdt_options_dict = mdt_calls.get(mdt)
+            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                            list(mdt_options_dict.keys()), OptionType.CALL)
+            call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        for mdt in mdt_puts.keys():
+            mdt_options_dict = mdt_puts.get(mdt)
+            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                            list(mdt_options_dict.keys()), OptionType.PUT)
+            put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        return [call_mdt_dict, put_mdt_dict]
 
-    """ Mthd1: Determine atm option as the nearest strike from spot. 
+    """ Mthd1: Determine atm option as the NEAREST strike from spot. 
         Get options by given moneyness rank and maturity date. """
 
+    # 返回的option放在list里，是因为50ETF option可能有相近行权价的期权同时处于一个nearest strike
     def get_options_list_by_moneyness_mthd1(
-            self, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
-            -> List[BaseOption]:
+            self, moneyness_rank: int, maturity: datetime.date) \
+            -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
-        if option_type == OptionType.CALL:
-            mdt_options_dict = mdt_calls.get(maturity)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
-            idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
-                                                                        list(mdt_options_dict.keys()), option_type)
-            res_list = mdt_options_dict.get(idx)
-        else:
-            mdt_options_dict = mdt_puts.get(maturity)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
-            idx = OptionUtil.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
-                                                                        list(mdt_options_dict.keys()), option_type)
-            res_list = mdt_options_dict.get(idx)
-        return res_list
+        mdt_options_dict = mdt_calls.get(maturity)
+        spot = mdt_options_dict.popitem()[1][0].underlying_close()
+        idx_call = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), OptionType.CALL)
+        call_list = mdt_options_dict.get(idx_call)
+        mdt_options_dict = mdt_puts.get(maturity)
+        idx_put = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), OptionType.PUT)
+        put_list = mdt_options_dict.get(idx_put)
+        return [call_list, put_list]
 
     """ Mthd2: Determine atm option as the nearest OTM strike from spot. 
         Get option maturity dictionary from all maturities by given moneyness rank. 
@@ -336,23 +325,24 @@ class BaseOptionSet(AbstractBaseProductSet):
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档 """
 
-    def get_options_mdt_dict_by_moneyness_mthd2(
-            self, spot: float, moneyness_rank: int, option_type: OptionType) -> Dict[datetime.date, List[BaseOption]]:
+    def get_options_dict_by_mdt_moneyness_mthd2(
+            self, moneyness_rank: int) -> List[Dict[datetime.date, List[BaseOption]]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
-        res_mdt_dict = {}
-        if option_type == OptionType.CALL:
-            for mdt in mdt_calls.keys():
-                mdt_options_dict = mdt_calls.get(mdt)
-                idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                        list(mdt_options_dict.keys()), option_type)
-                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
-        else:
-            for mdt in mdt_puts.keys():
-                mdt_options_dict = mdt_puts.get(mdt)
-                idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                        list(mdt_options_dict.keys()), option_type)
-                res_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
-        return res_mdt_dict
+        call_mdt_dict = {}
+        put_mdt_dict = {}
+        for mdt in mdt_calls.keys():
+            mdt_options_dict = mdt_calls.get(mdt)
+            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), OptionType.CALL)
+            call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        for mdt in mdt_puts.keys():
+            mdt_options_dict = mdt_puts.get(mdt)
+            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                        list(mdt_options_dict.keys()), OptionType.PUT)
+            put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
+        return [call_mdt_dict, put_mdt_dict]
 
     """ Mthd2: Determine atm option as the nearest OTM strike from spot. 
         Get options by given moneyness rank and maturity date. 
@@ -361,21 +351,32 @@ class BaseOptionSet(AbstractBaseProductSet):
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档 """
 
-    def get_options_list_by_moneyness_mthd2(
-            self, spot: float, moneyness_rank: int, maturity: datetime.date, option_type: OptionType) \
-            -> List[BaseOption]:
+
+    def get_options_list_by_moneyness_mthd2(self, moneyness_rank: int, maturity: datetime.date) \
+            -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
-        if option_type == OptionType.CALL:
-            mdt_options_dict = mdt_calls.get(maturity)
-            idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                    list(mdt_options_dict.keys()), option_type)
-            res_list = mdt_options_dict.get(idx)
+        mdt_options_dict = mdt_calls.get(maturity)
+        spot = mdt_options_dict.popitem()[1][0].underlying_close()
+        idx_call = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                    list(mdt_options_dict.keys()), OptionType.CALL)
+        call_list = mdt_options_dict.get(idx_call)
+        mdt_options_dict = mdt_puts.get(maturity)
+        idx_put = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
+                                                                    list(mdt_options_dict.keys()), OptionType.PUT)
+        put_list = mdt_options_dict.get(idx_put)
+        return [call_list,put_list]
+
+
+    def select_maturity_date(self, nbr_maturity, min_holding : int=1):
+        maturities = self.get_maturities_list()
+        idx_start = 0
+        if (maturities[idx_start]-self.eval_date).days <= min_holding:
+            idx_start += 1
+        idx_maturity = idx_start + nbr_maturity
+        if idx_maturity > len(maturities) -1 :
+            return
         else:
-            mdt_options_dict = mdt_puts.get(maturity)
-            idx = OptionUtil.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
-                                                                    list(mdt_options_dict.keys()), option_type)
-            res_list = mdt_options_dict.get(idx)
-        return res_list
+            return maturities[idx_maturity]
 
     # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
     #     * ATM defined as FIRST OTM  """
@@ -1065,12 +1066,12 @@ class BaseOptionSet(AbstractBaseProductSet):
     #         ql_evalDate, self.calendar, ql_maturities, strikes, vol_matrix, self.daycounter)
     #     return black_var_surface
 
-    def calculate_implied_vol(self, df):
-        for (idx, row) in df.iterrows():
-            option = row[self.util.bktoption]
-            iv = option.get_implied_vol()
-            df.loc[idx, self.util.col_implied_vol] = iv
-        return df
+    # def calculate_implied_vol(self, df):
+    #     for (idx, row) in df.iterrows():
+    #         option = row[self.util.bktoption]
+    #         iv = option.get_implied_vol()
+    #         df.loc[idx, self.util.col_implied_vol] = iv
+    #     return df
 
         # def collect_option_metrics(self, hp=30):
         #     res = []

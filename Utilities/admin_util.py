@@ -88,6 +88,10 @@ def table_option_iv_by_moneyness():
 def table_option_atm_iv():
     return Table('option_atm_iv',metadata_metrics, autoload=True)
 
+def table_implied_volatilities():
+    return Table('implied_volatilities_by_moneyness',metadata_metrics, autoload=True)
+
+
 def table_cf_minute_1():
     return Table('cf_minute_1',metadata_dzqh, autoload=True)
 

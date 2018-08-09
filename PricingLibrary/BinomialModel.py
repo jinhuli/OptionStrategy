@@ -23,9 +23,9 @@ class OptionPayoff(object):
 
 class BinomialTree(object):
 
-    def __init__(self, n: int, dt_eval: datetime.date, dt_maturity: datetime.date,
+    def __init__(self, dt_eval: datetime.date, dt_maturity: datetime.date,
                  option_type: constant.OptionType, option_exercise_type: constant.OptionExerciseType,
-                 spot: float, strike: float, vol: float, rf: float = 0.03):
+                 spot: float, strike: float, vol: float, rf: float = 0.03, n: int=800):
 
         self.values: typing.List[typing.List[float]] = []
         self.asset_values: typing.List[typing.List[float]] = []

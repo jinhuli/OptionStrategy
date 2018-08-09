@@ -147,7 +147,7 @@ def get_comoption_mktdata(start_date, end_date, name_code):
         .filter(Option_mkt.name_code == name_code).filter(Option_mkt.flag_night != 1)
 
     query_option = admin.session_mktdata(). \
-        query(options.id_instrument, options.cd_option_type, options.amt_strike,
+        query(options.id_instrument, options.cd_option_type, options.amt_strike,options.name_contract_month,
               options.dt_maturity, options.nbr_multiplier) \
         .filter(and_(options.dt_listed <= end_date, options.dt_maturity >= start_date))
 
