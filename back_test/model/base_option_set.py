@@ -3,7 +3,7 @@ from collections import deque
 from typing import Dict, List, Tuple
 
 import pandas as pd
-
+import numpy as np
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF
@@ -277,6 +277,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         # 返回的option放在list里，是因为可能有相邻行权价的期权同时处于一个nearest strike
         return call_ret, put_ret
 
+
     """ Mthd1: Determine atm option as the NEAREST strike from spot. 
         Get option maturity dictionary from all maturities by given moneyness rank. """
 
@@ -309,13 +310,13 @@ class BaseOptionSet(AbstractBaseProductSet):
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
         spot = mdt_options_dict.popitem()[1][0].underlying_close()
-        idx_call = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+        k_call = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.CALL)
-        call_list = mdt_options_dict.get(idx_call)
+        call_list = mdt_options_dict.get(k_call)
         mdt_options_dict = mdt_puts.get(maturity)
-        idx_put = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
+        k_put = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.PUT)
-        put_list = mdt_options_dict.get(idx_put)
+        put_list = mdt_options_dict.get(k_put)
         return [call_list, put_list]
 
     """ Mthd2: Determine atm option as the nearest OTM strike from spot. 
