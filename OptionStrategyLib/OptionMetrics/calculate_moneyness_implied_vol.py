@@ -35,7 +35,7 @@ while optionset.has_next():
     (iv_call, estimated_call) = binomial_tree.estimate_vol(base_option_call.mktprice_close())
 
     print(iv_call)
-    list_res.append( {
+    res = {
         'dt_date':base_option_call.eval_date,
         'id_underlying':base_option_call.id_underlying(),
         'cd_option_type':'call',
@@ -49,7 +49,13 @@ while optionset.has_next():
         'amt_strike':float(base_option_call.strike()),
         'amt_applicable_strike':float(base_option_call.strike()),
         'amt_underlying_close':float(spot)
-    })
+    }
+    try:
+        admin.conn_metrics().execute(table_iv.insert(), res)
+        print('inserted into data base succefully ', res['dt_date'], 'put')
+    except Exception as e:
+        print(e)
+        continue
     base_option_put = put_list[0]
     binomial_tree = BinomialTree(
         base_option_put.eval_date,
@@ -59,7 +65,7 @@ while optionset.has_next():
         spot,base_option_put.strike(),vol=init_vol,rf=rf,n=1000)
     (iv_put, estimated_put) = binomial_tree.estimate_vol(base_option_put.mktprice_close())
     print(iv_put)
-    list_res.append( {
+    res = {
         'dt_date':base_option_put.eval_date,
         'id_underlying':base_option_put.id_underlying(),
         'cd_option_type':'put',
@@ -73,18 +79,24 @@ while optionset.has_next():
         'amt_strike':float(base_option_put.strike()),
         'amt_applicable_strike':float(base_option_put.strike()),
         'amt_underlying_close':float(spot)
-    })
+    }
+    try:
+        admin.conn_metrics().execute(table_iv.insert(), res)
+        print('inserted into data base succefully ', res['dt_date'], ' put ')
+    except Exception as e:
+        print(e)
+        continue
     optionset.next()
     dt_maturity = optionset.select_maturity_date(0, min_holding=8)
     spot = optionset.get_underlying_close(maturitydt=dt_maturity)
 
 
-
-for res in list_res:
-    try:
-        admin.conn_metrics().execute(table_iv.insert(), res)
-        print('inserted into data base succefully ', res['dt_date'])
-    except Exception as e:
-        print(e)
-        continue
+#
+# for res in list_res:
+#     try:
+#         admin.conn_metrics().execute(table_iv.insert(), res)
+#         print('inserted into data base succefully ', res['dt_date'])
+#     except Exception as e:
+#         print(e)
+#         continue
 

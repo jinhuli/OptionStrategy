@@ -4,8 +4,8 @@ import pandas as pd
 from sqlalchemy import *
 
 from Utilities import admin_util as admin
-from back_test.deprecated.BktUtil import BktUtil
 from data_access.db_tables import DataBaseTables as dbt
+import back_test.model.constant as c
 
 
 def get_eventsdata(start_date, end_date, flag_impact):
@@ -132,7 +132,6 @@ def get_50option_metricdata(start_date, end_date):
     return df_option_metrics
 
 def get_comoption_mktdata(start_date, end_date, name_code):
-    util = BktUtil()
     Future_mkt = dbt.FutureMkt
     Option_mkt = dbt.OptionMkt
     options = dbt.Options
@@ -153,9 +152,9 @@ def get_comoption_mktdata(start_date, end_date, name_code):
 
     query_srf = admin.session_mktdata(). \
         query(Future_mkt.dt_date,
-              Future_mkt.id_instrument.label(util.col_id_underlying),
-              Future_mkt.amt_settlement.label(util.col_underlying_close),
-              Future_mkt.amt_open.label(util.col_underlying_open_price)) \
+              Future_mkt.id_instrument.label(c.Util.ID_UNDERLYING),
+              Future_mkt.amt_settlement.label(c.Util.AMT_UNDERLYING_CLOSE),
+              Future_mkt.amt_open.label(c.Util.AMT_UNDERLYING_OPEN_PRICE)) \
         .filter(Future_mkt.dt_date >= start_date).filter(Future_mkt.dt_date <= end_date) \
         .filter(Future_mkt.name_code == name_code).filter(Future_mkt.flag_night != 1)
 
@@ -165,8 +164,6 @@ def get_comoption_mktdata(start_date, end_date, name_code):
     df_option = df_mkt.join(df_contract.set_index('id_instrument'), how='left', on='id_instrument')
     df_option_metrics = pd.merge(df_option, df_srf, how='left', on=['dt_date', 'id_underlying'], suffixes=['', '_r'])
     return df_option_metrics
-
-
 
 
 def get_future_mktdata(start_date, end_date, name_code):
@@ -235,6 +232,16 @@ def get_dzqh_cf_c1_daily(start_date, end_date, name_code):
     df = utl.get_futures_daily_c1(df)
     return df
 
+def get_dzqh_ih_c1_by_option_minute(start_date, end_date):
+    table_cf = admin.table_cf_minute_1()
+    query = admin.session_dzqh().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
+                                       table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
+        filter(
+        (table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date) & (table_cf.c.name_code == name_code))
+    df = pd.read_sql(query.statement, query.session.bind)
+    df = df[df['id_instrument'].str.contains("_")]
+    df = c.FutureUtil.get_futures_minute_c1(df)
+    return df
 
 def get_50etf_mktdata(start_date, end_date):
     Index_mkt = dbt.IndexMkt
