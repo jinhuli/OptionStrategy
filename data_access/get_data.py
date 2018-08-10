@@ -249,7 +249,7 @@ def get_dzqh_ih_c1_by_option_minute(start_date, end_date,name_code, option_matur
     return df
 
 """ 基于商品期权到期日，构建标的期货c1时间序列 """
-def get_future_c1_by_option_daily(start_date, end_date, name_code):
+def get_future_c1_by_option_daily(start_date, end_date, name_code, min_holding):
     table_option_contracts = admin.table_option_contracts()
     query = admin.session_mktdata().query(table_option_contracts.c.id_underlying,table_option_contracts.c.dt_maturity)
     df_option_maturity = pd.read_sql(query.statement,query.session.bind).drop_duplicates(c.Util.DT_MATURITY)
@@ -257,14 +257,20 @@ def get_future_c1_by_option_daily(start_date, end_date, name_code):
     for id_underlying in dict_option_maturities.keys():
         if id_underlying not in df_option_maturity[c.Util.ID_UNDERLYING]:
             df_option_maturity = df_option_maturity.append({c.Util.ID_UNDERLYING:id_underlying,c.Util.DT_MATURITY:dict_option_maturities[id_underlying]},ignore_index=True)
-    # tmp = df_option_maturity[c.Util.ID_UNDERLYING][-2:]
-    df_option_maturity['is_core'] = df_option_maturity[c.Util.ID_UNDERLYING].apply(lambda x: True if (x[-2:] in c.Util.MAIN_CONTRACT_159) and (x.split('_')[0]==name_code) else False)
+    df_option_maturity['is_core'] = df_option_maturity[c.Util.ID_UNDERLYING].apply(
+        lambda x: True if (x[-2:] in c.Util.MAIN_CONTRACT_159) and (x.split('_')[0] == name_code) else False)
     df_option_maturity = df_option_maturity[df_option_maturity['is_core']]
-    # print(tmp)
+    df_option_maturity[c.Util.DT_MATURITY] = df_option_maturity[c.Util.DT_MATURITY].apply(lambda x: x -datetime.timedelta(days=min_holding))
     df_future = get_future_mktdata(start_date, end_date, name_code)
+    df_future['id_core'] = df_future[c.Util.DT_DATE].apply(lambda x: fun_get_c1_by_option(x,df_option_maturity))
+    df_future = df_future[df_future[c.Util.ID_INSTRUMENT] == df_future['id_core']].reset_index(drop=True)
+    return df_future
+
+def fun_get_c1_by_option(dt_date,df_option_maturity):
     df_option_maturity = df_option_maturity.sort_values(c.Util.DT_MATURITY,ascending=True).reset_index(drop=True)
-    # TODO
-    return
+    df = df_option_maturity[df_option_maturity[c.Util.DT_MATURITY]>=dt_date]
+    id_core = df.iloc[0][c.Util.ID_UNDERLYING]
+    return id_core
 
 def get_iv_by_moneyness(start_date, end_date, name_code, nbr_moneyness=0, cd_mdt_selection='hp_8_1st',cd_atm_criterion='nearest_strike'):
     table_iv = admin.table_implied_volatilities()
