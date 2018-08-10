@@ -240,6 +240,29 @@ class OptionM:
         #     d.update({rank: strike})
         return d
 
+    @staticmethod
+    def generate_commodity_option_maturities():
+        maturity_date = 0
+        dict_option_maturity = {}
+        id_list = ['m_1707', 'm_1708', 'm_1709', 'm_1711', 'm_1712']
+        calendar = ql.China()
+        for contractId in id_list:
+            year = '201' + contractId[3]
+            month = contractId[-2:]
+            date = ql.Date(1, int(month), int(year))
+            maturity_date = calendar.advance(calendar.advance(date, ql.Period(-1, ql.Months)), ql.Period(4, ql.Days))
+            dt_maturity = QuantlibUtil.to_dt_date(maturity_date)
+            dict_option_maturity.update({contractId:dt_maturity})
+        id_list_sr = ['sr_1707','sr_1709','sr_1711','sr_1801']
+        for contractId in id_list_sr:
+            year = '201' + contractId[4]
+            month = contractId[-2:]
+            date = ql.Date(1, int(month), int(year))
+            maturity_date = calendar.advance(calendar.advance(date, ql.Period(-1, ql.Months)), ql.Period(-5, ql.Days))
+            dt_maturity = QuantlibUtil.to_dt_date(maturity_date)
+            dict_option_maturity.update({contractId:dt_maturity})
+        print(dict_option_maturity)
+        return maturity_date
 
 
 class OptionSR:
@@ -487,8 +510,21 @@ class Option50ETF:
 
 
 class OptionFilter:
+
+    dict_maturities = {'m_1707': datetime.date(2017, 6, 7),
+                       'm_1708': datetime.date(2017, 7, 7),
+                       'm_1709': datetime.date(2017, 8, 7),
+                       'm_1711': datetime.date(2017, 10, 13),
+                       'm_1712': datetime.date(2017, 11, 7),
+                       'sr_1707': datetime.date(2017, 5, 23),
+                       'sr_1709': datetime.date(2017, 7, 25),
+                       'sr_1711': datetime.date(2017, 9, 25),
+                       'sr_1801': datetime.date(2017, 11, 24)
+                       }
+
     @staticmethod
-    def fun_option_type_split(self, id_instrument) -> Union[OptionType, None]:
+    def fun_option_type_split(df: pd.Series) -> Union[OptionType, None]:
+        id_instrument = df[Util.ID_INSTRUMENT]
         type_str = id_instrument.split('_')[2]
         if type_str == 'c':
             option_type = OptionType.CALL
@@ -518,25 +554,25 @@ class OptionFilter:
         else:
             return round(round(strike / 0.1) * 0.1, 2)
 
-            # @staticmethod
-            # def fun_strike_before_adj(df: pd.Series) -> float:
-            #     if df[Util.NAME_CODE] == Util.STR_50ETF:
-            #         return Option50ETF.fun_strike_before_adj(df)
-            #     else:
-            #         return df[Util.AMT_STRIKE]
-            #
-            # @staticmethod
-            # def fun_applicable_strike(df: pd.Series) -> float:
-            #     if df[Util.NAME_CODE] == Util.STR_50ETF:
-            #         return Option50ETF.fun_applicable_strike(df)
-            #     else:
-            #         return df[Util.AMT_STRIKE]
+
+    @staticmethod
+    def fun_option_maturity(df):
+        if df[Util.DT_MATURITY] is None or pd.isnull(df[Util.DT_MATURITY]):
+            return OptionFilter.dict_maturities[df[Util.ID_UNDERLYING]]
+        else:
+            return df[Util.DT_MATURITY]
 
 
 class FutureUtil:
     @staticmethod
     def get_contract_shift_cost(c1, c2, long_short: LongShort):
         return
+
+    @staticmethod
+    def get_futures_daily_c1(df):
+        df = df.sort_values(by=[Util.DT_DATE, Util.AMT_TRADING_VOLUME], ascending=False)
+        df_rs = df.drop_duplicates(subset=[Util.DT_DATE]).sort_values(by=Util.DT_DATE, ascending=True).reset_index(drop=True)
+        return df_rs
 
     @staticmethod
     def get_futures_minute_c1(df):
@@ -766,7 +802,7 @@ class Util:
                           AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER, AMT_LAST_SETTLEMENT,
                           AMT_SETTLEMENT]
     NAME_CODE_159 = ['sr', 'm', 'ru']
-    MAIN_CONTRACT_159 = [1, 5, 9]
+    MAIN_CONTRACT_159 = [1, 5, 9,'01','05','09']
     NAME_CODE_1to12 = ['cu']
     # Trade
     LONG = 1

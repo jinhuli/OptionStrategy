@@ -5,15 +5,17 @@ import datetime
 from PricingLibrary.BinomialModel import BinomialTree
 import Utilities.admin_write_util as admin
 
-start_date = datetime.date(2018, 1, 1)
-end_date = datetime.date(2018, 8, 9)
+start_date = datetime.date(2017, 6, 1)
+end_date = datetime.date(2018, 1, 1)
+name_code = c.Util.STR_M
+
 init_vol = 0.2
 rf = 0.03
 steps = 1000
 
 """ namecode : M """
 table_iv = admin.table_implied_volatilities()
-df_metrics = get_comoption_mktdata(start_date, end_date,c.Util.STR_M)
+df_metrics = get_comoption_mktdata(start_date, end_date,name_code)
 exercise_type = c.OptionExerciseType.AMERICAN
 optionset = BaseOptionSet(df_metrics)
 optionset.init()
@@ -37,6 +39,7 @@ while optionset.has_next():
     print(iv_call)
     res = {
         'dt_date':base_option_call.eval_date,
+        'name_code':name_code,
         'id_underlying':base_option_call.id_underlying(),
         'cd_option_type':'call',
         'cd_mdt_selection':'hp_8_1st',
@@ -67,6 +70,7 @@ while optionset.has_next():
     print(iv_put)
     res = {
         'dt_date':base_option_put.eval_date,
+        'name_code':name_code,
         'id_underlying':base_option_put.id_underlying(),
         'cd_option_type':'put',
         'cd_mdt_selection':'hp_8_1st',
