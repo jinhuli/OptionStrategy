@@ -6,6 +6,7 @@ from back_test.model.constant import FrequentType, Util, OptionFilter, OptionTyp
 from back_test.model.base_product import BaseProduct
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.BlackFormular import BlackFormula
+from PricingLibrary.EngineQuantlib import QlBlackFormula
 from back_test.model.trade import Order
 
 
@@ -156,8 +157,17 @@ class BaseOption(BaseProduct):
             option_type = self.option_type()
             option_price = self.mktprice_close()
             spot = self.underlying_close()
-            black_formula = BlackFormula(self.eval_date, dt_maturity, strike, option_type, spot, option_price, self.rf)
-            implied_vol = black_formula.ImpliedVolApproximation()
+            # black_formula = BlackFormula(self.eval_date, dt_maturity, option_type, spot, strike,option_price, self.rf)
+            # implied_vol = black_formula.ImpliedVolApproximation()
+            black_formula = QlBlackFormula(
+                dt_eval=self.eval_date,
+                dt_maturity=dt_maturity,
+                option_type=option_type,
+                spot=spot,
+                strike=strike,
+                rf=self.rf
+            )
+            implied_vol = black_formula.estimate_vol(option_price)
         else:
             implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol

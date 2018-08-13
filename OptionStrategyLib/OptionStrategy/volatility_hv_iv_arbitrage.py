@@ -9,40 +9,47 @@ from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
 
 pu = PlotUtil()
-start_date = datetime.date(2017, 5, 1)
+start_date = datetime.date(2017, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=40)
-name_code = c.Util.STR_M
 min_holding = 8
 
+# name_code = c.Util.STR_M
+# df_metrics = get_data.get_comoption_mktdata(start_date, end_date,c.Util.STR_M)
+# df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
 
-df_metrics = get_data.get_comoption_mktdata(start_date, end_date,c.Util.STR_M)
-df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
+name_code = c.Util.STR_IH
+df_metrics = get_data.get_50option_mktdata(start_date, end_date)
+df_future_c1_daily = get_data.get_dzqh_cf_c1_daily(dt_histvol, end_date, name_code)
+
 """ 历史波动率 """
 df_vol_1m = Histvol.hist_vol(df_future_c1_daily,n=21)
 df_parkinson_1m = Histvol.parkinson_number(df_future_c1_daily)
 df_garman_klass = Histvol.garman_klass(df_future_c1_daily)
-
-df_vol_1m = df_vol_1m[(df_vol_1m.index >=start_date)]
+df_data = df_future_c1_daily.join(df_vol_1m,on=c.Util.DT_DATE,how='left')
+df_data = df_data.dropna()
 """ 隐含波动率 """
 df_iv = get_data.get_iv_by_moneyness(start_date,end_date,name_code)
 df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='call']
 df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put']
-df_iv_call = df_iv_call.join(df_vol_1m,on=c.Util.DT_DATE,how='outer')
-df_iv_put = df_iv_put.join(df_vol_1m,on=c.Util.DT_DATE,how='outer')
-df_iv_put = df_iv_put.join(df_garman_klass,on=c.Util.DT_DATE,how='left')
 
-df_iv_call.loc[:,'amt_diff'] = df_iv_call.loc[:,c.Util.AMT_HISTVOL]-df_iv_call.loc[:,c.Util.PCT_IMPLIED_VOL]
-df_iv_put.loc[:,'amt_diff'] = df_iv_put.loc[:,c.Util.AMT_HISTVOL]-df_iv_put.loc[:,c.Util.PCT_IMPLIED_VOL]
-df_iv_put.to_csv('../../data/df_iv_put.csv')
-df_iv_call.to_csv('../../data/df_iv_call.csv')
-dates = list(df_iv_call[c.Util.DT_DATE])
-ivs_call = list(df_iv_call[c.Util.PCT_IMPLIED_VOL])
-ivs_put = list(df_iv_put[c.Util.PCT_IMPLIED_VOL])
-histvols = list(df_vol_1m[c.Util.AMT_HISTVOL])
-diff_call = list(df_iv_call['amt_diff'])
-pu.plot_line_chart(dates,[ivs_call,ivs_put, histvols],['iv call','iv_put','hist_vol'])
-pu.plot_line_chart(dates,[diff_call],['diff call'])
-print('')
+df_data = df_data.join(df_iv_call[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE),on=c.Util.DT_DATE,how='outer')\
+    .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_call'})
+df_data = df_data.join(df_iv_put[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE),on=c.Util.DT_DATE,how='outer')\
+    .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_put'})
+df_data = df_data.dropna()
 
-plt.show()
+df_data.loc[:,'diff_hist_call_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL]-df_data.loc[:,'iv_call']
+df_data.loc[:,'diff_hist_put_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL]-df_data.loc[:,'iv_put']
+df_data = df_data.sort_values(by='dt_date', ascending=False)
+df_data.to_csv('../../data/df_data.csv')
+
+# dates = list(df_data[c.Util.DT_DATE])
+# ivs_call = list(df_data['iv_call'])
+# ivs_put = list(df_data['iv_put'])
+# histvols = list(df_data[c.Util.AMT_HISTVOL])
+# diff_call = list(df_data['diff_hist_call_iv'])
+# diff_put = list(df_data['diff_hist_put_iv'])
+# pu.plot_line_chart(dates,[ivs_call,ivs_put, histvols],['iv call','iv_put','hist_vol'])
+# pu.plot_line_chart(dates,[diff_call],['diff call'])
+# plt.show()

@@ -786,6 +786,8 @@ class Util:
     STR_50ETF = '50etf'
     STR_INDEX_50ETF = 'index_50etf'
     STR_M = 'm'
+    STR_IH = 'ih'
+    STR_IF = 'iF'
     STR_SR = 'sr'
     STR_ALL = 'all'
     NAN_VALUE = -999.0

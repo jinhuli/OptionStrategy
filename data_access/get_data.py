@@ -201,7 +201,6 @@ def get_dzqh_cf_minute(start_date, end_date, name_code):
 
 
 def get_dzqh_cf_c1_minute(start_date, end_date, name_code):
-    utl = BktUtil()
     table_cf = admin.table_cf_minute_1()
     query = admin.session_dzqh().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
                                        table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
@@ -209,18 +208,23 @@ def get_dzqh_cf_c1_minute(start_date, end_date, name_code):
         (table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date) & (table_cf.c.name_code == name_code))
     df = pd.read_sql(query.statement, query.session.bind)
     df = df[df['id_instrument'].str.contains("_")]
-    df = utl.get_futures_minute_c1(df)
+    df = c.FutureUtil.get_futures_minute_c1(df)
     return df
 
 def get_dzqh_cf_daily(start_date, end_date, name_code):
-    utl = BktUtil()
     table_cf = admin.table_cf_daily()
+    table_contracts = admin.table_future_contracts()
     query = admin.session_dzqh().query(table_cf.c.dt_date, table_cf.c.id_instrument,
                                        table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume, table_cf.c.amt_trading_value). \
         filter((table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date)). \
         filter(table_cf.c.name_code == name_code)
     df = pd.read_sql(query.statement, query.session.bind)
     df = df[df['id_instrument'].str.contains("_")]
+    query_contracts = admin.session_mktdata().query(table_contracts.c.id_instrument, table_contracts.c.dt_maturity)\
+                                                .filter(table_contracts.c.name_code == name_code.upper())
+    df_contracts = pd.read_sql(query_contracts.statement, query_contracts.session.bind)
+    df_contracts.loc[:, c.Util.ID_INSTRUMENT] = df_contracts[c.Util.ID_INSTRUMENT].apply(lambda x:x.lower())
+    df = df.join(df_contracts.set_index(c.Util.ID_INSTRUMENT),on=c.Util.ID_INSTRUMENT,how='left')
     return df
 
 
@@ -235,6 +239,19 @@ def get_dzqh_cf_c1_daily(start_date, end_date, name_code):
     df = df[df['id_instrument'].str.contains("_")]
     df = c.FutureUtil.get_futures_daily_c1(df)
     return df
+
+# def get_dzqh_ih_c1_by_option_daily(start_date, end_date, min_holding):
+#     table_option_contracts = admin.table_option_contracts()
+#     query = admin.session_mktdata().query(table_option_contracts.c.id_underlying, table_option_contracts.c.dt_maturity)\
+#                                     .filter(table_option_contracts.c.id_underlying == c.Util.STR_INDEX_50ETF)
+#     df_option_maturity = pd.read_sql(query.statement, query.session.bind).drop_duplicates(c.Util.DT_MATURITY)
+#     df_option_maturity[c.Util.DT_MATURITY] = df_option_maturity[c.Util.DT_MATURITY].apply(
+#         lambda x: x - datetime.timedelta(days=min_holding))
+#     df_future = get_dzqh_cf_daily(start_date, end_date, 'ih')
+#     df_future['id_core'] = df_future[c.Util.DT_DATE].apply(lambda x: fun_get_c1_by_option(x, df_option_maturity))
+#     df_future = df_future[df_future[c.Util.ID_INSTRUMENT] == df_future['id_core']].reset_index(drop=True)
+#     return df_future
+
 
 def get_dzqh_ih_c1_by_option_minute(start_date, end_date,name_code, option_maturities):
     table_cf = admin.table_cf_minute_1()
@@ -253,10 +270,10 @@ def get_future_c1_by_option_daily(start_date, end_date, name_code, min_holding):
     table_option_contracts = admin.table_option_contracts()
     query = admin.session_mktdata().query(table_option_contracts.c.id_underlying,table_option_contracts.c.dt_maturity)
     df_option_maturity = pd.read_sql(query.statement,query.session.bind).drop_duplicates(c.Util.DT_MATURITY)
-    dict_option_maturities = c.OptionFilter.dict_maturities
-    for id_underlying in dict_option_maturities.keys():
+    for id_underlying in c.OptionFilter.dict_maturities.keys():
         if id_underlying not in df_option_maturity[c.Util.ID_UNDERLYING]:
-            df_option_maturity = df_option_maturity.append({c.Util.ID_UNDERLYING:id_underlying,c.Util.DT_MATURITY:dict_option_maturities[id_underlying]},ignore_index=True)
+            df_option_maturity = df_option_maturity.append({c.Util.ID_UNDERLYING:id_underlying,c.Util.DT_MATURITY:c.OptionFilter.dict_maturities[id_underlying]}
+                                                           ,ignore_index=True)
     df_option_maturity['is_core'] = df_option_maturity[c.Util.ID_UNDERLYING].apply(
         lambda x: True if (x[-2:] in c.Util.MAIN_CONTRACT_159) and (x.split('_')[0] == name_code) else False)
     df_option_maturity = df_option_maturity[df_option_maturity['is_core']]

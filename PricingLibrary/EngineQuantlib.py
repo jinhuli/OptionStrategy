@@ -87,3 +87,67 @@ class QlBinomial(object):
             else:
                 r = m
         return m, p
+
+
+class QlBlackFormula(object):
+    def __init__(self, dt_eval: datetime.date,
+                 dt_maturity: datetime.date,
+                 option_type: constant.OptionType,
+                 spot: float,
+                 strike: float,
+                 vol: float=0.0, rf: float = 0.03, dividend_rate: float = 0.0):
+
+        self.values: typing.List[typing.List[float]] = []
+        self.asset_values: typing.List[typing.List[float]] = []
+        self.exercise_values: typing.List[typing.List[float]] = []
+        self.strike = strike
+        self.spot = spot
+        self.vol = vol
+        self.rf = rf
+        self.dividend_rate = dividend_rate
+        self.maturity_date = constant.QuantlibUtil.to_ql_date(dt_maturity)
+        self.settlement = constant.QuantlibUtil.to_ql_date(dt_eval)
+        ql.Settings.instance().evaluationDate = self.settlement
+        if option_type == constant.OptionType.PUT:
+            self.option_type = ql.Option.Put
+        else:
+            self.option_type = ql.Option.Call
+        payoff = ql.PlainVanillaPayoff(self.option_type, strike)
+        self.exercise = ql.EuropeanExercise(self.maturity_date)
+        self.ql_option = ql.VanillaOption(payoff, self.exercise)
+        self.day_count = ql.ActualActual()
+        self.calendar = ql.NullCalendar()
+        self.spot_handle = ql.QuoteHandle(ql.SimpleQuote(spot))
+        self.flat_ts = ql.YieldTermStructureHandle(
+            ql.FlatForward(self.settlement, rf, self.day_count)
+        )
+        self.dividend_yield = ql.YieldTermStructureHandle(
+            ql.FlatForward(self.settlement, self.dividend_rate, self.day_count)
+        )
+        self.flat_vol_ts = ql.BlackVolTermStructureHandle(
+            ql.BlackConstantVol(self.settlement, self.calendar, self.vol, self.day_count)
+        )
+        self.bsm_process = ql.BlackScholesMertonProcess(self.spot_handle,
+                                                        self.dividend_yield,
+                                                        self.flat_ts,
+                                                        self.flat_vol_ts)
+
+    def NPV(self) -> float:
+        engine = ql.AnalyticEuropeanEngine(self.bsm_process)
+        self.ql_option.setPricingEngine(engine)
+        price = self.ql_option.NPV()
+        return price
+
+    def reset_vol(self, vol):
+        self.flat_vol_ts = ql.BlackVolTermStructureHandle(
+            ql.BlackConstantVol(self.settlement, self.calendar, vol, self.day_count)
+        )
+        self.bsm_process = ql.BlackScholesMertonProcess(self.spot_handle,
+                                                        self.dividend_yield,
+                                                        self.flat_ts,
+                                                        self.flat_vol_ts)
+
+    def estimate_vol(self, price: float, presion:float=0.00001,max_vol:float=2.0):
+        implied_vol = self.ql_option.impliedVolatility(price, self.bsm_process, 1.0e-5, 300, 0.01, 5.0)
+        # self.reset_vol(implied_vol)
+        return implied_vol
