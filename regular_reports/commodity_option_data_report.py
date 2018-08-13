@@ -15,6 +15,7 @@ from Utilities.calculate import calculate_histvol
 from Utilities import admin_util as admin
 from regular_reports.report_util import *
 
+
 """成交持仓认沽认购比P/C"""
 def pcr(df_pcr):
     # 按期权合约持仓量最大选取主力合约
@@ -365,6 +366,7 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 dt_date = datetime.date(2018, 8, 7)  # Set as Friday
 dt_last_week = datetime.date(2018, 7, 20)
 dt_start = dt_date - datetime.timedelta(days=30*8)
+
 # current_core_underlying = 'sr_1809'
 # namecode = 'sr'
 # exchange_code = 'czce'
