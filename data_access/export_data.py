@@ -101,16 +101,20 @@ def get_index_mktdata(start_date, end_date, id_index):
     df_index = pd.read_sql(query_etf.statement, query_etf.session.bind)
     return df_index
 
+def get_50option_minute(start_date, end_date):
+    OptionIntra = table_option_mktdata_intraday()
+    query = session_intraday().query(OptionIntra.c.dt_datetime,
+                                           OptionIntra.c.dt_date,
+                                           OptionIntra.c.id_instrument,
+                                           OptionIntra.c.amt_close,
+                                           OptionIntra.c.amt_trading_volume,
+                                           OptionIntra.c.amt_trading_value) \
+        .filter(OptionIntra.c.dt_date >= start_date).filter(OptionIntra.c.dt_date <= end_date)
+    df = pd.read_sql(query.statement, query.session.bind)
+    return df
 
-dt1 = datetime.date(2018, 4, 5)
-dt2 = datetime.date(2018, 5, 13)
-name_code = 'IF'
-id_index = 'index_300sh'
-# IF分钟数据
-# res = cf_minute(dt1,dt2,name_code)
-# print(res)
-res2 = get_index_minute(dt1,dt2,id_index)
-print(res2)
-# index 300sh 日频数据
-res1 = get_index_mktdata(dt1,dt2,id_index)
-print(res1)
+dt1 = datetime.date(2018, 5, 5)
+dt2 = datetime.date(2018, 5, 7)
+# data : 50etf 期权分钟数据
+data = get_50option_minute(dt1, dt2)
+print(data)

@@ -1,17 +1,13 @@
-import datetime
-import pandas as pd
-import numpy as np
-import math
 import matplotlib.pyplot as plt
-from back_test.BktUtil import BktUtil
-from data_access.get_data import get_future_mktdata, get_index_mktdata, get_index_intraday, get_dzqh_cf_minute, \
-    get_dzqh_cf_daily, get_vix
-from Utilities.PlotUtil import PlotUtil
-from OptionStrategyLib.OptionReplication.replication import Replication
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator, EuropeanOption
+from OptionStrategyLib.OptionPricing.BlackCalculator import EuropeanOption
 
-from Utilities.calculate import *
+from OptionStrategyLib.OptionReplication.replication import Replication
+from PricingLibrary.Options import EuropeanOption
 from Utilities import Analysis
+from Utilities.PlotUtil import PlotUtil
+from Utilities.calculate import *
+from back_test.deprecated.BktUtil import BktUtil
+
 utl = BktUtil()
 
 
@@ -72,7 +68,7 @@ def syncetic_payoff(dt_issue, df_daily, vol, N):
     dt_list = sorted(df_daily[(df_daily[utl.col_date] >= dt_issue) &
                               (df_daily[utl.col_date] <= dt_maturity)][utl.col_date].unique())
     dt1 = dt_list[0]
-    s0 = df_daily[df_daily[utl.col_date] == dt1][utl.col_close].values[0]
+    spot = df_daily[df_daily[utl.col_date] == dt1][utl.col_close].values[0]
     dict_replicates = {}
     dict_options = {}
     dict_options2 = {}

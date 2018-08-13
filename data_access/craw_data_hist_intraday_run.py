@@ -1,11 +1,11 @@
 # encoding: utf-8
 
-from sqlalchemy import create_engine, MetaData, Table, Column, TIMESTAMP
 import datetime
+
 from WindPy import w
+from sqlalchemy import create_engine, MetaData, Table
+
 from data_access.db_data_collection import DataCollection
-from data_access.get_data import get_50option_mktdata
-from back_test.BktOptionSet import BktOptionSet
 
 w.start()
 

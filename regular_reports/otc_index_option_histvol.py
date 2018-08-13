@@ -78,7 +78,7 @@ for indexid in index_ids:
     f2.savefig('../save_figure/otc_realizedvol_' + indexid + '_' + str(startDate) + ' - ' + str(evalDate) + '.png',
                dpi=300, format='png')
     histvols_3M.append(merged_df['histvol_60'].tolist())
-    merged_df.to_csv('../save_figure/index_vols'+indexid+'.csv')
+    merged_df.to_csv('../data/index_vols'+indexid+'.csv')
 
 
 

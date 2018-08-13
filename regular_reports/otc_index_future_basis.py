@@ -99,7 +99,7 @@ for idx_index,indexid in enumerate(index_ids):
     host.legend(bbox_to_anchor=(0., 1.02, 1., .202), loc=3,
                ncol=3, mode="expand", borderaxespad=0.)
     fig1.set_size_inches((8, 6))
-    fig1.savefig('../save_figure/otc_basis_' + indexid + '_' + str(hist_date) + ' - ' + str(evalDate) + '.png', dpi=300,
+    fig1.savefig('../data/otc_basis_' + indexid + '_' + str(hist_date) + ' - ' + str(evalDate) + '.png', dpi=300,
                format='png')
 
 plt.show()
