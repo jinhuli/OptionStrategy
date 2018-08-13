@@ -7,18 +7,16 @@ import pandas as pd
 import numpy as np
 from data_access import db_utilities as du
 import math
+import Utilities.admin_util as admin_read
+import Utilities.admin_write_util as admin_write
 
 
 class DataCollection():
     class table_options():
 
-        def get_option_contracts(self, datestr):
-            engine = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/mktdata',
-                                   echo=False)
-            metadata = MetaData(engine)
-            option_contracts = Table('option_contracts', metadata, autoload=True)
-            Session = sessionmaker(bind=engine)
-            sess = Session()
+        def get_option_contracts(self, datestr, id_underlying='index_50etf'):
+            option_contracts = admin_read.table_option_contracts()
+            sess = admin_read.session_mktdata()
             query = sess.query(option_contracts.c.dt_listed,
                                option_contracts.c.dt_maturity,
                                option_contracts.c.windcode,
@@ -28,7 +26,7 @@ class DataCollection():
                                ) \
                 .filter(option_contracts.c.dt_listed <= datestr) \
                 .filter(option_contracts.c.dt_maturity >= datestr) \
-                .filter(option_contracts.c.id_underlying == 'index_50etf')
+                .filter(option_contracts.c.id_underlying == id_underlying)
             df_optionchain = pd.read_sql(query.statement, query.session.bind)
             return df_optionchain
 

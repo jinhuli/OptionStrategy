@@ -325,5 +325,5 @@ text_2 = '隐含波动率方面，豆粕期权{}合约隐含波动率较前一�
 )
 text += text_2
 print(text)
-with open("../morning_report.txt", "w") as text_file:
+with open("../data/morning_report.txt", "w") as text_file:
     text_file.write(text)

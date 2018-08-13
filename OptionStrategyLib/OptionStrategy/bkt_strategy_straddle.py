@@ -1,8 +1,10 @@
-from back_test.BktOptionStrategy import BktOptionStrategy
-import pandas as pd
-import QuantLib as ql
 import datetime
-from data_access.get_data import get_50option_mktdata, get_index_ma, get_index_mktdata,get_pciv_ratio,get_comoption_mktdata
+
+import QuantLib as ql
+import pandas as pd
+
+from back_test.deprecated.BktOptionStrategy import BktOptionStrategy
+from data_access.get_data import get_comoption_mktdata
 
 
 class BktStrategyStraddle(BktOptionStrategy):

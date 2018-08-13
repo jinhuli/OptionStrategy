@@ -1,6 +1,9 @@
-from back_test.BktUtil import BktUtil
-import numpy as np
 import copy
+
+import numpy as np
+
+from back_test.deprecated.BktUtil import BktUtil
+
 
 class OptionPortfolio(object):
 

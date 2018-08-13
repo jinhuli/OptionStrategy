@@ -1,21 +1,13 @@
-import datetime
-import pandas as pd
-import numpy as np
-import math
 import matplotlib.pyplot as plt
-from back_test.BktUtil import BktUtil
-from data_access.get_data import get_future_mktdata, get_index_mktdata, get_index_intraday, get_dzqh_cf_minute, \
-    get_dzqh_cf_daily, get_vix
-from Utilities.PlotUtil import PlotUtil
+from OptionStrategyLib.OptionPricing.BlackCalculator import EuropeanOption
+
 from OptionStrategyLib.OptionReplication.replication import Replication
-from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.Options import EuropeanOption
-
-from OptionStrategyLib.OptionReplication.replication import Replication
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator, EuropeanOption
-
-from Utilities.calculate import *
 from Utilities import Analysis
+from Utilities.PlotUtil import PlotUtil
+from Utilities.calculate import *
+from back_test.deprecated.BktUtil import BktUtil
+
 utl = BktUtil()
 
 

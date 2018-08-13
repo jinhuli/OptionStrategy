@@ -10,7 +10,7 @@ from back_test.model.constant import Util, OptionType, LongShort, ExecuteType, C
 from back_test.model.trade import Trade
 from data_access.get_data import get_dzqh_cf_daily, get_dzqh_cf_c1_daily, \
     get_dzqh_cf_c1_minute, get_index_mktdata
-from OptionStrategyLib.VolatilityModel.historical_volatility import historical_volatility_model as Histvol
+from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVolatilityModels as Histvol
 from Utilities import Analysis
 
 
@@ -39,7 +39,7 @@ class SyntheticOptionHedgedPortfolio():
         # df_parkinson_1m = Histvol.parkinson_number(df_future_c1_daily)
         self.df_garman_klass = Histvol.garman_klass(df_future_c1_daily)
         # df_hist_vol = self.df_vol_1m.join(self.df_garman_klass, how='left')
-        # df_hist_vol.to_csv('df_hist_vol.csv')
+        # df_hist_vol.to_csv('../../data/df_hist_vol.csv')
         self.underlying = BaseInstrument(df_data=df_index)
         self.underlying.init()
         self.synthetic_option = SytheticOption(df_c1_minute=df_future_c1,
@@ -298,12 +298,12 @@ class SyntheticOptionHedgedPortfolio():
 
     def save_results(self):
 
-        self.df_records.to_csv('trade_records.csv')
-        self.account.account.to_csv('account.csv')
+        self.df_records.to_csv('../../data/trade_records.csv')
+        self.account.account.to_csv('../../data/account.csv')
         # self.df_hedge_info = pd.DataFrame(self.list_hedge_info)
-        # self.df_hedge_info.to_csv('hedge_info.csv')
-        self.df_analysis.to_csv('df_analysis.csv')
-        self.account.trade_book_daily.to_csv('trade_book_daily.csv')
+        # self.df_hedge_info.to_csv('../../data/hedge_info.csv')
+        self.df_analysis.to_csv('../../data/df_analysis.csv')
+        self.account.trade_book_daily.to_csv('../../data/trade_book_daily.csv')
 
     def disp(self):
         if self.synthetic_option.eval_date != self.underlying.eval_date:
@@ -386,7 +386,7 @@ class SyntheticOptionHedgedPortfolio():
         # print(analysis)
 
 
-start_date = datetime.date(2015, 1, 1)
+start_date = datetime.date(2018, 1, 1)
 end_date = datetime.date(2018, 8, 1)
 port = SyntheticOptionHedgedPortfolio(start_date, end_date)
 calendar = Calendar(port.trade_dates)

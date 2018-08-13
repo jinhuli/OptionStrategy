@@ -1,6 +1,7 @@
 import datetime
 import math
-from back_test.BktUtil import BktUtil
+
+from back_test.deprecated.BktUtil import BktUtil
 
 
 class PricingUtil:

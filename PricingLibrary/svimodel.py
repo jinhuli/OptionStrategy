@@ -1,4 +1,4 @@
-from pricing_engines.blackcalculator import blackcalculator
+from PricingLibrary.BlackCalculator import BlackCalculator
 import numpy as np
 import math
 class svimodel:
@@ -36,7 +36,7 @@ class svimodel:
         f_minus = s_minus / discount
         stdDev_plus = self.svi_iv_function(math.log(strike / f_plus, math.e)) * math.sqrt(self.ttm)
         stdDev_minus = self.svi_iv_function(math.log(strike / f_plus, math.e)) * math.sqrt(self.ttm)
-        black_splus = blackcalculator(strike, f_plus, stdDev_plus, discount, iscall)
-        black_sminus = blackcalculator(strike, f_minus, stdDev_minus, discount, iscall)
+        black_splus = BlackCalculator(strike, f_plus, stdDev_plus, discount, iscall)
+        black_sminus = BlackCalculator(strike, f_minus, stdDev_minus, discount, iscall)
         delta_eff = (black_splus.value() - black_sminus.value()) / (s_plus - s_minus)
         return delta_eff

@@ -47,7 +47,7 @@ def pcr(df_pcr):
                                   suffixes=['', '_r'])
 
     df_pcr = df_pcr.sort_values(by='dt_date',ascending=False)
-    df_pcr.to_csv('../save_results/'+namecode+'_pcr_data.csv')
+    df_pcr.to_csv('../data/'+namecode+'_pcr_data.csv')
     print('part [PCR] completed')
 
     return df_underlying_core
@@ -62,7 +62,7 @@ def hist_vol(df_underlying_core):
     df_histvol = df_underlying_core[df_underlying_core['dt_date'] >= startDate]
     df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
     df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
-    df_histvol.to_csv('../save_results/' + namecode + '_future_hist_vols.csv')
+    df_histvol.to_csv('../data/' + namecode + '_future_hist_vols.csv')
 
 """隐含波动率期限结构"""
 def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
@@ -158,8 +158,8 @@ def implied_vol_analysis(evalDate,w,nameCode,exchangeCode):
     ax1.set_xticks(range(len(contracts)))
     ax1.set_xticklabels(contracts)
     f1.set_size_inches((12,6))
-    optiondata_atm_df.to_csv('../save_results/'+nameCode+'_implied_vol_term_structure.csv')
-    f1.savefig('../save_figure/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
+    optiondata_atm_df.to_csv('../data/'+nameCode+'_implied_vol_term_structure.csv')
+    f1.savefig('../data/'+nameCode+'_iv_term_structure_' + str(evalDate) + '.png', dpi=300, format='png')
 
 """历史隐含波动率"""
 def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,df_future):
@@ -260,7 +260,7 @@ def hist_atm_ivs(evalDate,dt_last_week,w,nameCode,exchangeCode,df_future):
     # f1.set_size_inches((12,6))
     # f1.savefig('../save_figure/'+nameCode+'_hist_atm_ivs_' + str(evalDate) + '.png', dpi=300, format='png')
 
-    df_iv_results.to_csv('../save_results/'+nameCode+'_hist_atm_ivs.csv')
+    df_iv_results.to_csv('../data/'+nameCode+'_hist_atm_ivs.csv')
 
 """当日成交持仓数据"""
 def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
@@ -337,7 +337,7 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
         '9 put delta_holding': put_deltas,
         '91 put iv': df_put['pct_implied_vol'].tolist()
     })
-    df_results.to_csv('../save_figure/'+nameCode+'_holdings_'+evalDate+'.csv')
+    df_results.to_csv('../data/'+nameCode+'_holdings_'+evalDate+'.csv')
 
     ldgs = ['持仓量（看涨）','持仓量（看跌）','成交量（看涨）','成交量（看跌）']
 
@@ -355,20 +355,20 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
     ax3.xaxis.set_ticks_position('bottom')
     f3.set_size_inches((12,8))
 
-    f3.savefig('../save_figure/'+nameCode+'_holdings_' + evalDate + '.png', dpi=300,
+    f3.savefig('../data/'+nameCode+'_holdings_' + evalDate + '.png', dpi=300,
                  format='png',bbox_inches='tight')
 
 
 ############################################################################################
 # Eval Settings
-dt_date = datetime.date(2018, 7, 13)  # Set as Friday
+dt_date = datetime.date(2018, 8, 7)  # Set as Friday
 dt_last_week = datetime.date(2018, 7, 6)
-current_core_underlying = 'sr_1809'
-namecode = 'sr'
-exchange_code = 'czce'
-# current_core_underlying = 'm_1809'
-# namecode = 'm'
-# exchange_code = 'dce'
+# current_core_underlying = 'sr_1809'
+# namecode = 'sr'
+# exchange_code = 'czce'
+current_core_underlying = 'm_1809'
+namecode = 'm'
+exchange_code = 'dce'
 
 ############################################################################################
 w.start()

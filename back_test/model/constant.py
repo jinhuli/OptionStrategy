@@ -6,6 +6,7 @@ import math
 import datetime
 import typing
 
+
 class FrequentType(Enum):
     DAILY = 1
     WEEKLY = 2
@@ -41,17 +42,21 @@ class OptionType(Enum):
     CALL = 1
     PUT = -1
 
+
 class OptionExerciseType(Enum):
     AMERICAN = 0
     EUROPEAN = 1
+
 
 class DeltaBound(Enum):
     WHALLEY_WILLMOTT = 0
     NONE = -1
 
+
 class BuyWrite(Enum):
     BUY = 1
     WRITE = -1
+
 
 class TradeType(Enum):
     OPEN_LONG = 1
@@ -60,17 +65,214 @@ class TradeType(Enum):
     CLOSE_SHORT = -2
     CLOSE_OUT = -3
 
+
 class ExecuteType(Enum):
     EXECUTE_ALL_UNITS = 0
     EXECUTE_WITH_MAX_VOLUME = 1
 
+
 class OptionUtil:
-    MONEYNESS_POINT = 3.0
+    @staticmethod
+    def get_option_util_class(name_code):
+        if name_code == Util.STR_50ETF:
+            return Option50ETF
+        elif name_code == Util.STR_M:
+            return OptionM
+        elif name_code == Util.STR_SR:
+            return OptionSR
+        else:
+            return None
+
+    @staticmethod
+    def get_df_by_mdt(df, mdt):
+        df = df[df[Util.DT_MATURITY] == mdt].reset_index(drop=True)
+        return df
+
+
+class OptionM:
+    MONEYNESS_POINT_LOW = 2000
+    MONEYNESS_POINT_HIGH = 5000
 
     @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
                                                    option_type: OptionType) -> float:
-        d = OptionUtil.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
+        d = OptionM.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
+        return d.get(moneyness_rank, None)
+
+    @staticmethod
+    def get_strike_monenyes_rank_dict_nearest_strike(spot: float, strikes: List[float],
+                                                     option_type: OptionType) -> dict:
+        d = {}
+        min_strike = strikes[0]
+        max_strike = strikes[0]
+        for strike in strikes:
+            if strike < min_strike:
+                min_strike = strike
+            if strike > max_strike:
+                max_strike = strike
+        if spot < min_strike:
+            spot = min_strike
+        elif spot > max_strike:
+            spot = max_strike
+        for strike in strikes:
+            if strike <= OptionM.MONEYNESS_POINT_LOW:
+                if spot <= OptionM.MONEYNESS_POINT_LOW:
+                    # strike = 1900, spot=1800, moneyness = (1800-1900)/25
+                    rank = int(option_type.value * round((spot - strike) / 25))
+                elif spot <= OptionM.MONEYNESS_POINT_HIGH:
+                    # strike = 1900, spot = 2100, moneyness = (2000 - 1900)/25 + (2100 - 2000)/50
+                    rank = int(option_type.value * round((OptionM.MONEYNESS_POINT_LOW - strike) / 25
+                                                         + (spot - OptionM.MONEYNESS_POINT_LOW) / 50))
+                else:
+                    # strike = 1900, spot = 5100, moneyness = (5100 - 5000)/100 + (5000 - 2000)/50+(2000-1900)/25
+                    rank = int(option_type.value * round((OptionM.MONEYNESS_POINT_LOW - strike) / 25 + \
+                                                         (
+                                                                     OptionM.MONEYNESS_POINT_HIGH - OptionM.MONEYNESS_POINT_LOW) / 50 \
+                                                         + (spot - OptionM.MONEYNESS_POINT_HIGH) / 100))
+            elif strike <= OptionM.MONEYNESS_POINT_HIGH:
+                if spot <= OptionM.MONEYNESS_POINT_LOW:
+                    # strike = 2100, spot=1800, moneyness = (2000-2100)/50 + (1800-2000)/25
+                    rank = int(option_type.value * round((OptionM.MONEYNESS_POINT_LOW - strike) / 50 + \
+                                                         (spot - OptionM.MONEYNESS_POINT_LOW) / 25))
+                elif spot <= OptionM.MONEYNESS_POINT_HIGH:
+                    # strike = 2100, spot = 3000, moneyness = (3000 - 2100)/50
+                    rank = int(option_type.value * round((spot - strike) / 50))
+                else:
+                    # strike = 2100, spot = 5100, moneyness = (5100 - 5000)/100 + (5000 - 2100)/50
+                    rank = int(option_type.value * round((OptionM.MONEYNESS_POINT_HIGH - strike) / 50 \
+                                                         + (spot - OptionM.MONEYNESS_POINT_HIGH) / 100))
+            else:
+                if spot <= OptionM.MONEYNESS_POINT_LOW:
+                    # strike = 5100, spot=1800, moneyness = (5000-5100)/100 + (2000-5000)/50 + (1800-2000)/25
+                    rank = int(option_type.value * round((OptionM.MONEYNESS_POINT_HIGH - strike) / 100 + \
+                                                         (
+                                                                     OptionM.MONEYNESS_POINT_LOW - OptionM.MONEYNESS_POINT_HIGH) / 50 + \
+                                                         (spot - OptionM.MONEYNESS_POINT_LOW) / 25))
+                elif spot <= OptionM.MONEYNESS_POINT_HIGH:
+                    # strike = 5100, spot = 3000, moneyness = (3000 - 5000)/50 + (5000-5100)/100
+                    rank = int(option_type.value * round((spot - OptionM.MONEYNESS_POINT_HIGH) / 50) + \
+                               (OptionM.MONEYNESS_POINT_HIGH - strike) / 100)
+                else:
+                    # strike = 5100, spot = 5300, moneyness = (5300-5100)/100
+                    rank = int(option_type.value * round((spot - strike) / 100))
+            d.update({rank: strike})
+        return d
+
+    @staticmethod
+    def get_strike_by_monenyes_rank_otm_strike(spot: float, moneyness_rank: int, strikes: List[float],
+                                               option_type: OptionType) -> float:
+        d = OptionM.get_strike_monenyes_rank_dict_otm_strike(spot, strikes, option_type)
+        return d.get(moneyness_rank, None)
+
+    @staticmethod
+    def get_strike_monenyes_rank_dict_otm_strike(spot: float, strikes: List[float], option_type: OptionType) -> dict:
+        d = {}
+        min_strike = strikes[0]
+        max_strike = strikes[0]
+        for strike in strikes:
+            if strike < min_strike:
+                min_strike = strike
+            if strike > max_strike:
+                max_strike = strike
+        if spot < min_strike:
+            spot = min_strike
+        elif spot > max_strike:
+            spot = max_strike
+        for strike in strikes:
+            if strike <= OptionM.MONEYNESS_POINT_LOW:
+                if spot <= OptionM.MONEYNESS_POINT_LOW:
+                    # strike = 1900, spot=1800, moneyness = (1800-1900)/25
+                    rank = int(np.floor(option_type.value * (spot - strike) / 25) + 1)
+                elif spot <= OptionM.MONEYNESS_POINT_HIGH:
+                    # strike = 1900, spot = 2100, moneyness = (2000 - 1900)/25 + (2100 - 2000)/50
+                    rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT_LOW - strike) / 25
+                                                             + (spot - OptionM.MONEYNESS_POINT_LOW) / 50)) + 1)
+                else:
+                    # strike = 1900, spot = 5100, moneyness = (5100 - 5000)/100 + (5000 - 2000)/50+(2000-1900)/25
+                    rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT_LOW - strike) / 25
+                                                             + (
+                                                                         OptionM.MONEYNESS_POINT_HIGH - OptionM.MONEYNESS_POINT_LOW) / 50
+                                                             + (spot - OptionM.MONEYNESS_POINT_HIGH) / 100)) + 1)
+            elif strike <= OptionM.MONEYNESS_POINT_HIGH:
+                if spot <= OptionM.MONEYNESS_POINT_LOW:
+                    # strike = 2100, spot=1800, moneyness = (2000-2100)/50 + (1800-2000)/25
+                    rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT_LOW - strike) / 50 + (
+                                spot - OptionM.MONEYNESS_POINT_LOW) / 25)) + 1)
+                elif spot <= OptionM.MONEYNESS_POINT_HIGH:
+                    # strike = 2100, spot = 3000, moneyness = (3000 - 2100)/50
+                    rank = int(np.floor(option_type.value * (spot - strike) / 50) + 1)
+                else:
+                    # strike = 2100, spot = 5100, moneyness = (5100 - 5000)/100 + (5000 - 2100)/50
+                    rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT_HIGH - strike) / 50 + (
+                                spot - OptionM.MONEYNESS_POINT_HIGH) / 100)) + 1)
+            else:
+                if spot <= OptionM.MONEYNESS_POINT_LOW:
+                    # strike = 5100, spot=1800, moneyness = (5000-5100)/100 + (2000-5000)/50 + (1800-2000)/25
+                    rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT_HIGH - strike) / 100
+                                                             + (
+                                                                         OptionM.MONEYNESS_POINT_LOW - OptionM.MONEYNESS_POINT_HIGH) / 50
+                                                             + (spot - OptionM.MONEYNESS_POINT_LOW) / 25)) + 1)
+                elif spot <= OptionM.MONEYNESS_POINT_HIGH:
+                    # strike = 5100, spot = 3000, moneyness = (3000 - 5000)/50 + (5000-5100)/100
+                    rank = int(np.floor(option_type.value * ((spot - OptionM.MONEYNESS_POINT_HIGH) / 50 + (
+                                OptionM.MONEYNESS_POINT_HIGH - strike) / 100)) + 1)
+                else:
+                    # strike = 5100, spot = 5300, moneyness = (5300-5100)/100
+                    rank = int(np.floor(option_type.value * (spot - strike) / 100) + 1)
+            d.update({rank: strike})
+        # for strike in strikes:
+        #     if strike <= OptionM.MONEYNESS_POINT_LOW:
+        #         if spot <= OptionM.MONEYNESS_POINT_LOW:
+        #             # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+        #             rank = int(np.floor(option_type.value * (spot - strike) / 25) + 1)
+        #         else:
+        #             # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.05
+        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.1)) + 1)
+        #     else:
+        #         if spot <= OptionM.MONEYNESS_POINT:
+        #             # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.1
+        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.05)) + 1)
+        #         else:
+        #             # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+        #             rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
+        #     d.update({rank: strike})
+        return d
+
+    @staticmethod
+    def generate_commodity_option_maturities():
+        maturity_date = 0
+        dict_option_maturity = {}
+        id_list = ['m_1707', 'm_1708', 'm_1709', 'm_1711', 'm_1712']
+        calendar = ql.China()
+        for contractId in id_list:
+            year = '201' + contractId[3]
+            month = contractId[-2:]
+            date = ql.Date(1, int(month), int(year))
+            maturity_date = calendar.advance(calendar.advance(date, ql.Period(-1, ql.Months)), ql.Period(4, ql.Days))
+            dt_maturity = QuantlibUtil.to_dt_date(maturity_date)
+            dict_option_maturity.update({contractId:dt_maturity})
+        id_list_sr = ['sr_1707','sr_1709','sr_1711','sr_1801']
+        for contractId in id_list_sr:
+            year = '201' + contractId[4]
+            month = contractId[-2:]
+            date = ql.Date(1, int(month), int(year))
+            maturity_date = calendar.advance(calendar.advance(date, ql.Period(-1, ql.Months)), ql.Period(-5, ql.Days))
+            dt_maturity = QuantlibUtil.to_dt_date(maturity_date)
+            dict_option_maturity.update({contractId:dt_maturity})
+        print(dict_option_maturity)
+        return maturity_date
+
+
+class OptionSR:
+    MONEYNESS_POINT_LOW = 3000
+    MONEYNESS_POINT_HIGH = 10000
+
+    @staticmethod
+    def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        d = OptionSR.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
         return d.get(moneyness_rank, None)
 
     @staticmethod
@@ -78,61 +280,108 @@ class OptionUtil:
                                                      option_type: OptionType) -> dict:
         d = {}
         for strike in strikes:
-            if strike <= OptionUtil.MONEYNESS_POINT:
-                if spot <= OptionUtil.MONEYNESS_POINT:
-                    # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
-                    rank = int(option_type.value * round((spot - strike) / 0.05))
+            if strike <= OptionSR.MONEYNESS_POINT_LOW:
+                if spot <= OptionSR.MONEYNESS_POINT_LOW:
+                    rank = int(option_type.value * round((spot - strike) / 50))
+                elif spot <= OptionSR.MONEYNESS_POINT_HIGH:
+                    rank = int(option_type.value * round((OptionSR.MONEYNESS_POINT_LOW - strike) / 50
+                                                         + (spot - OptionSR.MONEYNESS_POINT_LOW) / 100))
                 else:
-                    # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
-                    rank = int(option_type.value * round((OptionUtil.MONEYNESS_POINT - strike) / 0.05
-                                                         + (spot - OptionUtil.MONEYNESS_POINT) / 0.1))
+                    rank = int(option_type.value * round((OptionSR.MONEYNESS_POINT_LOW - strike) / 50 + \
+                                                         (OptionSR.MONEYNESS_POINT_HIGH - OptionSR.MONEYNESS_POINT_LOW) / 100 \
+                                                         + (spot - OptionSR.MONEYNESS_POINT_HIGH) / 200))
+            elif strike <= OptionSR.MONEYNESS_POINT_HIGH:
+                if spot <= OptionSR.MONEYNESS_POINT_LOW:
+                    rank = int(option_type.value * round((OptionSR.MONEYNESS_POINT_LOW - strike) / 100 + \
+                                                            (spot-OptionSR.MONEYNESS_POINT_LOW) / 50))
+                elif spot <= OptionSR.MONEYNESS_POINT_HIGH:
+                    rank = int(option_type.value * round((spot - strike) / 100))
+                else:
+                    rank = int(option_type.value * round((OptionSR.MONEYNESS_POINT_HIGH - strike) / 100 \
+                                                         + (spot - OptionSR.MONEYNESS_POINT_HIGH) / 200))
             else:
-                if spot <= OptionUtil.MONEYNESS_POINT:
-                    # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
-                    rank = int(option_type.value * round((OptionUtil.MONEYNESS_POINT - strike) / 0.1
-                                                         + (spot - OptionUtil.MONEYNESS_POINT) / 0.05))
+                if spot <= OptionSR.MONEYNESS_POINT_LOW:
+                    rank = int(option_type.value * round((OptionSR.MONEYNESS_POINT_HIGH - strike) / 200 + \
+                                                            (OptionSR.MONEYNESS_POINT_LOW - OptionSR.MONEYNESS_POINT_HIGH) / 100 + \
+                                                            (spot-OptionSR.MONEYNESS_POINT_LOW) / 50))
+                elif spot <= OptionSR.MONEYNESS_POINT_HIGH:
+                    rank = int(option_type.value * round( (spot - OptionSR.MONEYNESS_POINT_HIGH) / 100) +\
+                                                            (OptionSR.MONEYNESS_POINT_HIGH-strike) / 200)
                 else:
-                    # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
-                    rank = int(option_type.value * round((spot - strike) / 0.1))
+                    rank = int(option_type.value * round((spot - strike) / 200))
             d.update({rank: strike})
         return d
 
     @staticmethod
     def get_strike_by_monenyes_rank_otm_strike(spot: float, moneyness_rank: int, strikes: List[float],
                                                option_type: OptionType) -> float:
-        d = OptionUtil.get_strike_monenyes_rank_dict_otm_strike(spot, strikes, option_type)
+        d = OptionSR.get_strike_monenyes_rank_dict_otm_strike(spot, strikes, option_type)
         return d.get(moneyness_rank, None)
 
     @staticmethod
     def get_strike_monenyes_rank_dict_otm_strike(spot: float, strikes: List[float], option_type: OptionType) -> dict:
         d = {}
         for strike in strikes:
-            if strike <= OptionUtil.MONEYNESS_POINT:
-                if spot <= OptionUtil.MONEYNESS_POINT:
-                    # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
-                    rank = int(np.floor(option_type.value * (spot - strike) / 0.05) + 1)
+            if strike <= OptionSR.MONEYNESS_POINT_LOW:
+                if spot <= OptionSR.MONEYNESS_POINT_LOW:
+                    # strike = 1900, spot=1800, moneyness = (1800-1900)/25
+                    rank = int(np.floor(option_type.value * (spot - strike) / 25) + 1)
+                elif spot <= OptionSR.MONEYNESS_POINT_HIGH:
+                    # strike = 1900, spot = 2100, moneyness = (2000 - 1900)/25 + (2100 - 2000)/50
+                    rank = int(np.floor(option_type.value * ((OptionSR.MONEYNESS_POINT_LOW - strike) / 25
+                                                         + (spot - OptionSR.MONEYNESS_POINT_LOW) / 50)) + 1)
                 else:
-                    # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
-                    rank = int(np.floor(option_type.value * ((OptionUtil.MONEYNESS_POINT - strike) / 0.05
-                                                             + (spot - OptionUtil.MONEYNESS_POINT) / 0.1)) + 1)
+                    # strike = 1900, spot = 5100, moneyness = (5100 - 5000)/100 + (5000 - 2000)/50+(2000-1900)/25
+                    rank = int(np.floor(option_type.value * ((OptionSR.MONEYNESS_POINT_LOW - strike) / 25
+                                                             + (OptionSR.MONEYNESS_POINT_HIGH - OptionSR.MONEYNESS_POINT_LOW) / 50
+                                                             + (spot - OptionSR.MONEYNESS_POINT_HIGH) / 100)) + 1)
+            elif strike <= OptionSR.MONEYNESS_POINT_HIGH:
+                if spot <= OptionSR.MONEYNESS_POINT_LOW:
+                    # strike = 2100, spot=1800, moneyness = (2000-2100)/50 + (1800-2000)/25
+                    rank = int(np.floor(option_type.value * ((OptionSR.MONEYNESS_POINT_LOW - strike) / 50 + (spot-OptionSR.MONEYNESS_POINT_LOW) / 25)) + 1)
+                elif spot <= OptionSR.MONEYNESS_POINT_HIGH:
+                    # strike = 2100, spot = 3000, moneyness = (3000 - 2100)/50
+                    rank = int(np.floor(option_type.value * (spot - strike) / 50) + 1)
+                else:
+                    # strike = 2100, spot = 5100, moneyness = (5100 - 5000)/100 + (5000 - 2100)/50
+                    rank = int(np.floor(option_type.value * ((OptionSR.MONEYNESS_POINT_HIGH - strike) / 50+ (spot - OptionSR.MONEYNESS_POINT_HIGH) / 100))+1)
             else:
-                if spot <= OptionUtil.MONEYNESS_POINT:
-                    # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
-                    rank = int(np.floor(option_type.value * ((OptionUtil.MONEYNESS_POINT - strike) / 0.1
-                                                             + (spot - OptionUtil.MONEYNESS_POINT) / 0.05)) + 1)
+                if spot <= OptionSR.MONEYNESS_POINT_LOW:
+                    # strike = 5100, spot=1800, moneyness = (5000-5100)/100 + (2000-5000)/50 + (1800-2000)/25
+                    rank = int(np.floor(option_type.value * ((OptionSR.MONEYNESS_POINT_HIGH - strike) / 100
+                                                             + (OptionSR.MONEYNESS_POINT_LOW - OptionSR.MONEYNESS_POINT_HIGH) / 50
+                                                             + (spot-OptionSR.MONEYNESS_POINT_LOW) / 25)) + 1)
+                elif spot <= OptionSR.MONEYNESS_POINT_HIGH:
+                    # strike = 5100, spot = 3000, moneyness = (3000 - 5000)/50 + (5000-5100)/100
+                    rank = int(np.floor(option_type.value * ((spot - OptionSR.MONEYNESS_POINT_HIGH) / 50 + (OptionSR.MONEYNESS_POINT_HIGH-strike) / 100)) + 1)
                 else:
-                    # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
-                    rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
+                    # strike = 5100, spot = 5300, moneyness = (5300-5100)/100
+                    rank = int(np.floor(option_type.value * (spot - strike) / 100) + 1)
             d.update({rank: strike})
+        # for strike in strikes:
+        #     if strike <= OptionM.MONEYNESS_POINT_LOW:
+        #         if spot <= OptionM.MONEYNESS_POINT_LOW:
+        #             # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+        #             rank = int(np.floor(option_type.value * (spot - strike) / 25) + 1)
+        #         else:
+        #             # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.05
+        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.1)) + 1)
+        #     else:
+        #         if spot <= OptionM.MONEYNESS_POINT:
+        #             # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.1
+        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.05)) + 1)
+        #         else:
+        #             # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+        #             rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
+        #     d.update({rank: strike})
         return d
-
-    @staticmethod
-    def get_df_by_mdt(df,mdt):
-        df = df[df[Util.DT_MATURITY]==mdt].reset_index(drop=True)
-        return df
 
 
 class Option50ETF:
+    MONEYNESS_POINT = 3.0
+
     DIVIDEND_DATES = {
         datetime.date(2016, 11, 29): [
             '1612', '1701', '1703', '1706'
@@ -178,10 +427,104 @@ class Option50ETF:
             #     else:
             #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
 
+    @staticmethod
+    def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        d = Option50ETF.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
+        return d.get(moneyness_rank, None)
+
+    @staticmethod
+    def get_strike_monenyes_rank_dict_nearest_strike(spot: float, strikes: List[float],
+                                                     option_type: OptionType) -> dict:
+        d = {}
+        min_strike = strikes[0]
+        max_strike = strikes[0]
+        for strike in strikes:
+            if strike < min_strike:
+                min_strike = strike
+            if strike > max_strike:
+                max_strike = strike
+        if spot < min_strike:
+            spot = min_strike
+        elif spot > max_strike:
+            spot = max_strike
+        for strike in strikes:
+            if strike <= Option50ETF.MONEYNESS_POINT:
+                if spot <= Option50ETF.MONEYNESS_POINT:
+                    # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+                    rank = int(option_type.value * round((spot - strike) / 0.05))
+                else:
+                    # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+                    rank = int(option_type.value * round((Option50ETF.MONEYNESS_POINT - strike) / 0.05
+                                                         + (spot - Option50ETF.MONEYNESS_POINT) / 0.1))
+            else:
+                if spot <= Option50ETF.MONEYNESS_POINT:
+                    # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+                    rank = int(option_type.value * round((Option50ETF.MONEYNESS_POINT - strike) / 0.1
+                                                         + (spot - Option50ETF.MONEYNESS_POINT) / 0.05))
+                else:
+                    # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+                    rank = int(option_type.value * round((spot - strike) / 0.1))
+            d.update({rank: strike})
+        return d
+
+    @staticmethod
+    def get_strike_by_monenyes_rank_otm_strike(spot: float, moneyness_rank: int, strikes: List[float],
+                                               option_type: OptionType) -> float:
+        d = Option50ETF.get_strike_monenyes_rank_dict_otm_strike(spot, strikes, option_type)
+        return d.get(moneyness_rank, None)
+
+    @staticmethod
+    def get_strike_monenyes_rank_dict_otm_strike(spot: float, strikes: List[float], option_type: OptionType) -> dict:
+        d = {}
+        min_strike = strikes[0]
+        max_strike = strikes[0]
+        for strike in strikes:
+            if strike < min_strike:
+                min_strike = strike
+            if strike > max_strike:
+                max_strike = strike
+        if spot < min_strike:
+            spot = min_strike
+        elif spot > max_strike:
+            spot = max_strike
+        for strike in strikes:
+            if strike <= Option50ETF.MONEYNESS_POINT:
+                if spot <= Option50ETF.MONEYNESS_POINT:
+                    # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+                    rank = int(np.floor(option_type.value * (spot - strike) / 0.05) + 1)
+                else:
+                    # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+                    rank = int(np.floor(option_type.value * ((Option50ETF.MONEYNESS_POINT - strike) / 0.05
+                                                             + (spot - Option50ETF.MONEYNESS_POINT) / 0.1)) + 1)
+            else:
+                if spot <= Option50ETF.MONEYNESS_POINT:
+                    # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+                    rank = int(np.floor(option_type.value * ((Option50ETF.MONEYNESS_POINT - strike) / 0.1
+                                                             + (spot - Option50ETF.MONEYNESS_POINT) / 0.05)) + 1)
+                else:
+                    # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+                    rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
+            d.update({rank: strike})
+        return d
+
 
 class OptionFilter:
+
+    dict_maturities = {'m_1707': datetime.date(2017, 6, 7),
+                       'm_1708': datetime.date(2017, 7, 7),
+                       'm_1709': datetime.date(2017, 8, 7),
+                       'm_1711': datetime.date(2017, 10, 13),
+                       'm_1712': datetime.date(2017, 11, 7),
+                       'sr_1707': datetime.date(2017, 5, 23),
+                       'sr_1709': datetime.date(2017, 7, 25),
+                       'sr_1711': datetime.date(2017, 9, 25),
+                       'sr_1801': datetime.date(2017, 11, 24)
+                       }
+
     @staticmethod
-    def fun_option_type_split(self, id_instrument) -> Union[OptionType, None]:
+    def fun_option_type_split(df: pd.Series) -> Union[OptionType, None]:
+        id_instrument = df[Util.ID_INSTRUMENT]
         type_str = id_instrument.split('_')[2]
         if type_str == 'c':
             option_type = OptionType.CALL
@@ -211,30 +554,43 @@ class OptionFilter:
         else:
             return round(round(strike / 0.1) * 0.1, 2)
 
-    # @staticmethod
-    # def fun_strike_before_adj(df: pd.Series) -> float:
-    #     if df[Util.NAME_CODE] == Util.STR_50ETF:
-    #         return Option50ETF.fun_strike_before_adj(df)
-    #     else:
-    #         return df[Util.AMT_STRIKE]
-    #
-    # @staticmethod
-    # def fun_applicable_strike(df: pd.Series) -> float:
-    #     if df[Util.NAME_CODE] == Util.STR_50ETF:
-    #         return Option50ETF.fun_applicable_strike(df)
-    #     else:
-    #         return df[Util.AMT_STRIKE]
+
+    @staticmethod
+    def fun_option_maturity(df):
+        if df[Util.DT_MATURITY] is None or pd.isnull(df[Util.DT_MATURITY]):
+            return OptionFilter.dict_maturities[df[Util.ID_UNDERLYING]]
+        else:
+            return df[Util.DT_MATURITY]
 
 
 class FutureUtil:
-
     @staticmethod
     def get_contract_shift_cost(c1, c2, long_short: LongShort):
         return
 
+    @staticmethod
+    def get_futures_daily_c1(df):
+        df = df.sort_values(by=[Util.DT_DATE, Util.AMT_TRADING_VOLUME], ascending=False)
+        df_rs = df.drop_duplicates(subset=[Util.DT_DATE]).sort_values(by=Util.DT_DATE, ascending=True).reset_index(drop=True)
+        return df_rs
+
+    @staticmethod
+    def get_futures_minute_c1(df):
+        tmp = df.groupby([Util.DT_DATE,Util.ID_INSTRUMENT]).sum()[Util.AMT_TRADING_VOLUME].to_frame()
+        tmp = tmp.reset_index(level=[Util.DT_DATE,Util.ID_INSTRUMENT]).sort_values(by=Util.AMT_TRADING_VOLUME,ascending=False)
+        tmp = tmp.drop_duplicates(subset=[Util.DT_DATE]).sort_values(by=Util.DT_DATE, ascending=True)
+        df0 = tmp[[Util.DT_DATE,Util.ID_INSTRUMENT]].rename(columns={Util.ID_INSTRUMENT: 'id_core'})
+        df2 = pd.merge(df, df0, on=Util.DT_DATE, how='left')
+        df2 = df2[df2[Util.ID_INSTRUMENT] == df2['id_core']].reset_index(drop=True)
+        return df2
+
+    # TODO
+    @staticmethod
+    def get_future_c1_by_option_mdt_minute(df, option_maturities):
+
+        return
 
 class Hedge:
-
     @staticmethod
     def whalley_wilmott(ttm, gamma, spot, rho=1, fee=5.0 / 10000.0, rf=0.03):
         # ttm = self.pricing_utl.get_ttm(eval_date, option.dt_maturity)
@@ -242,10 +598,7 @@ class Hedge:
         return H
 
 
-
-
 class Calendar(object):
-
     def __init__(self, date_list: typing.List[datetime.date]):
         self.date_list = sorted(date_list)
         self.max_year = self.date_list[-1].year
@@ -277,9 +630,9 @@ class Calendar(object):
             for month, month_list in year_map.items():
                 year_map[month] = sorted(year_map[month])
 
-    def next(self,dt):
-        if dt<self.date_list[-1]:
-            return self.date_list[self.date_list.index(dt)+1]
+    def next(self, dt):
+        if dt < self.date_list[-1]:
+            return self.date_list[self.date_list.index(dt) + 1]
         else:
             return
 
@@ -304,6 +657,7 @@ class Calendar(object):
         else:
             return last_business_day_this_month
 
+
 # dl = [datetime.date(2017, 1, 4), datetime.date(2017, 1, 2), datetime.date(2018, 1, 1), datetime.date(2018, 1, 2),datetime.date(2017, 2, 6),
 #       datetime.date(2017, 3, 6), datetime.date(2017, 3, 3), datetime.date(2017, 3, 5), datetime.date(2017, 4, 2),
 #       datetime.date(2017, 4, 5)]
@@ -312,10 +666,7 @@ class Calendar(object):
 # print(c.firstBusinessDayNextMonth(datetime.date(2017,1,1)))
 
 
-
 class PricingUtil:
-
-
     @staticmethod
     def payoff(spot: float, strike: float, option_type: OptionType):
         return abs(max(option_type.value * (spot - strike), 0.0))
@@ -341,17 +692,17 @@ class PricingUtil:
     def get_maturity_metrics(self, dt_date, spot, option):
         strike = option.strike
         if option.option_type == OptionType.PUT:
-            if strike > spot: # ITM
+            if strike > spot:  # ITM
                 delta = -1.0
-            elif strike < spot: # OTM
+            elif strike < spot:  # OTM
                 delta = 0.0
             else:
                 delta = 0.5
             option_price = max(strike - spot, 0)
         else:
-            if strike < spot: # ITM
+            if strike < spot:  # ITM
                 delta = 1.0
-            elif strike > spot: # OTM
+            elif strike > spot:  # OTM
                 delta = 0.0
             else:
                 delta = 0.5
@@ -434,11 +785,11 @@ class Util:
     STR_PUT = 'put'
     STR_50ETF = '50etf'
     STR_INDEX_50ETF = 'index_50etf'
+    STR_M = 'm'
+    STR_SR = 'sr'
     STR_ALL = 'all'
     NAN_VALUE = -999.0
 
-    STR_SR = 'sr'
-    STR_m = 'm'
     LOW_FREQUENT = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]
     PRODUCT_COLUMN_LIST = [ID_INSTRUMENT, AMT_CLOSE, AMT_OPEN, AMT_SETTLEMENT, AMT_MORNING_OPEN_15MIN,
                            AMT_MORNING_CLOSE_15MIN, AMT_AFTERNOON_CLOSE_15MIN, AMT_MORNING_AVG, AMT_AFTERNOON_AVG,
@@ -451,7 +802,7 @@ class Util:
                           AMT_UNDERLYING_OPEN_PRICE, PCT_IMPLIED_VOL, NBR_MULTIPLIER, AMT_LAST_SETTLEMENT,
                           AMT_SETTLEMENT]
     NAME_CODE_159 = ['sr', 'm', 'ru']
-    MAIN_CONTRACT_159 = [1, 5, 9]
+    MAIN_CONTRACT_159 = [1, 5, 9,'01','05','09']
     NAME_CODE_1to12 = ['cu']
     # Trade
     LONG = 1
@@ -486,17 +837,17 @@ class Util:
     MARGIN_UNREALIZED_PNL = 'margin_unrealized_pnl'
     NONMARGIN_UNREALIZED_PNL = 'nonmargin_unrealized_pnl'
     BILLION = 1000000000.0
-    TRADE_BOOK_COLUMN_LIST = [DT_DATE,TRADE_LONG_SHORT, TRADE_UNIT,
+    TRADE_BOOK_COLUMN_LIST = [DT_DATE, TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
                               TRADE_BOOK_VALUE, AVERAGE_POSITION_COST,
                               TRADE_REALIZED_PNL, NBR_MULTIPLIER,
-                              POSITION_CURRENT_VALUE,PORTFOLIO_UNREALIZED_PNL
+                              POSITION_CURRENT_VALUE, PORTFOLIO_UNREALIZED_PNL
                               ]  # ID_INSTRUMENR是df的index
     ACCOUNT_COLUMNS = [DT_DATE, CASH, PORTFOLIO_MARGIN_CAPITAL, PORTFOLIO_TRADES_VALUE,
-                        PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
+                       PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
                        PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
-                       PORTFOLIO_SHORT_POSITION_SCALE,PORTFOLIO_LONG_POSITION_SCALE,
-                       MARGIN_UNREALIZED_PNL,NONMARGIN_UNREALIZED_PNL
+                       PORTFOLIO_SHORT_POSITION_SCALE, PORTFOLIO_LONG_POSITION_SCALE,
+                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL
                        ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
@@ -548,10 +899,11 @@ class Util:
         'if': 0.2,
         'ih': 0.2,
         'ic': 0.2,
-        'index':0
+        'index': 0
     }
 
-    DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017,12,28),datetime.date(2017,12,29),datetime.date(2018,1,26),datetime.date(2018,5,4)]
+    DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017, 12, 28), datetime.date(2017, 12, 29), datetime.date(2018, 1, 26),
+                                  datetime.date(2018, 5, 4)]
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
@@ -583,7 +935,6 @@ import QuantLib as ql
 
 
 class QuantlibUtil:
-
     @staticmethod
     def to_dt_dates(ql_dates):
         datetime_dates = []
@@ -630,7 +981,6 @@ class QuantlibUtil:
     #         print('Error def -- get_curve_treasury_bond in \'svi_read_data\' on date : ', evalDate)
     #         return
     #     return curve
-
 
     #
     # @staticmethod
