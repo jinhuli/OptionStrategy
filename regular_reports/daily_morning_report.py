@@ -1,3 +1,4 @@
+
 from sqlalchemy import *
 import datetime
 import pandas as pd
@@ -327,3 +328,4 @@ text += text_2
 print(text)
 with open("../data/morning_report.txt", "w") as text_file:
     text_file.write(text)
+
