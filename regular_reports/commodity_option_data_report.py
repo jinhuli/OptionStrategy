@@ -15,6 +15,7 @@ from Utilities.calculate import calculate_histvol
 from Utilities import admin_util as admin
 from regular_reports.report_util import *
 
+
 """成交持仓认沽认购比P/C"""
 def pcr(df_pcr):
     # 按期权合约持仓量最大选取主力合约
@@ -59,8 +60,8 @@ def hist_vol(df_underlying_core):
     df_underlying_core['4近三月'] = list(calculate_histvol(df_underlying_core['amt_close'],60)*100)
     df_underlying_core['3近两月'] = list(calculate_histvol(df_underlying_core['amt_close'],40)*100)
     df_underlying_core['2近一月'] = list(calculate_histvol(df_underlying_core['amt_close'],20)*100)
-    df_histvol = df_underlying_core[df_underlying_core['dt_date'] >= startDate]
-    df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
+    df_histvol = df_underlying_core.dropna()
+    # df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
     df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
     df_histvol.to_csv('../data/' + namecode + '_future_hist_vols.csv')
 
@@ -363,8 +364,9 @@ def trade_volume(dt_date,dt_last_week,w,nameCode,core_instrumentid):
 # Eval Settings
 
 dt_date = datetime.date(2018, 8, 7)  # Set as Friday
-dt_last_week = datetime.date(2018, 7, 6)
-# current_core_underlying = 'sr_1809'
+dt_last_week = datetime.date(2018, 7, 20)
+dt_start = dt_date - datetime.timedelta(days=30*8)
+# current_core_underlying = 'sr_1901'
 # namecode = 'sr'
 # exchange_code = 'czce'
 current_core_underlying = 'm_1809'
@@ -375,8 +377,8 @@ exchange_code = 'dce'
 w.start()
 endDate = dt_date
 evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
-startDate = datetime.date(2017, 1, 1)
-hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
+# startDate = datetime.date(2017, 1, 1)
+# hist_date = w.tdaysoffset(-7, startDate, "Period=M").Data[0][0].date()
 bd_1m = 21
 bd_2m = 2 * bd_1m
 bd_3m = 3 * bd_1m
@@ -398,14 +400,14 @@ query_pcr = admin.session_mktdata().query(optionMkt.dt_date, optionMkt.cd_option
                            func.sum(optionMkt.amt_holding_volume).label('total_holding_volume'),
                            func.sum(optionMkt.amt_trading_volume).label('total_trading_volume')
                            ) \
-    .filter(optionMkt.dt_date >= startDate) \
+    .filter(optionMkt.dt_date >= dt_start) \
     .filter(optionMkt.name_code == namecode) \
     .group_by(optionMkt.cd_option_type, optionMkt.dt_date,optionMkt.id_underlying)
 
 query_srf = admin.session_mktdata().query(futureMkt.dt_date, futureMkt.id_instrument,
                         futureMkt.amt_close, futureMkt.amt_trading_volume,
                         futureMkt.amt_settlement) \
-    .filter(futureMkt.dt_date >= hist_date).filter(futureMkt.name_code == namecode)\
+    .filter(futureMkt.dt_date >= dt_start).filter(futureMkt.name_code == namecode)\
     .filter(futureMkt.flag_night != 1)
 
 df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
@@ -419,7 +421,7 @@ print('Part [隐含波动率期限结构] completed')
 
 df_iv,x = df_iv_at_the_money(dt_date, dt_last_week, namecode, df_srf)
 df_iv = df_iv.sort_values(by='dt_date',ascending=False)
-df_iv.to_csv('../save_results/'+namecode+'_hist_atm_ivs.csv')
+df_iv.to_csv('../data/'+namecode+'_hist_atm_ivs.csv')
 print('Part [历史隐含波动率] completed')
 trade_volume(dt_date,dt_last_week,w,namecode,current_core_underlying)
 print('Part [当日成交持仓量] completed')
