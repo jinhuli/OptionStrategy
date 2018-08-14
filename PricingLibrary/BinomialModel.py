@@ -136,4 +136,4 @@ class BinomialTree(object):
                 l = m
             else:
                 r = m
-        return m, p
+        return m

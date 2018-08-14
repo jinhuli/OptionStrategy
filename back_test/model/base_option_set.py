@@ -22,7 +22,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                  df_daily_data: pd.DataFrame = None,
                  df_underlying: pd.DataFrame = None,
                  frequency: FrequentType = FrequentType.DAILY,
-                 flag_calculate_iv: bool = True, rf: float = 0.03):
+                 flag_calculate_iv: bool = True,
+                 rf: float = 0.03):
         super().__init__()
         self._name_code: str = df_data.loc[0, Util.ID_INSTRUMENT].split('_')[0]
         self.df_data: pd.DataFrame = df_data

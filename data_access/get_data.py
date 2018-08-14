@@ -289,7 +289,8 @@ def fun_get_c1_by_option(dt_date,df_option_maturity):
     id_core = df.iloc[0][c.Util.ID_UNDERLYING]
     return id_core
 
-def get_iv_by_moneyness(start_date, end_date, name_code, nbr_moneyness=0, cd_mdt_selection='hp_8_1st',cd_atm_criterion='nearest_strike'):
+def get_iv_by_moneyness(start_date, end_date, name_code, nbr_moneyness=0,
+                        cd_mdt_selection='hp_8_1st',cd_atm_criterion='nearest_strike'):
     table_iv = admin.table_implied_volatilities()
     query = admin.session_metrics().query(table_iv).filter(table_iv.c.dt_date >= start_date)\
                                                     .filter(table_iv.c.dt_date <= end_date)\

@@ -9,16 +9,19 @@ from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
 
 pu = PlotUtil()
-start_date = datetime.date(2017, 1, 1)
+start_date = datetime.date(2015, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=40)
 min_holding = 8
 
-# name_code = c.Util.STR_M
-# df_metrics = get_data.get_comoption_mktdata(start_date, end_date,c.Util.STR_M)
+""" commodity option """
+# name_code = name_code_option = c.Util.STR_M
+# df_metrics = get_data.get_comoption_mktdata(start_date, end_date,name_code)
 # df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
 
+""" 50ETF option """
 name_code = c.Util.STR_IH
+name_code_option = c.Util.STR_50ETF
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_future_c1_daily = get_data.get_dzqh_cf_c1_daily(dt_histvol, end_date, name_code)
 
@@ -29,7 +32,7 @@ df_garman_klass = Histvol.garman_klass(df_future_c1_daily)
 df_data = df_future_c1_daily.join(df_vol_1m,on=c.Util.DT_DATE,how='left')
 df_data = df_data.dropna()
 """ 隐含波动率 """
-df_iv = get_data.get_iv_by_moneyness(start_date,end_date,name_code)
+df_iv = get_data.get_iv_by_moneyness(start_date,end_date,name_code_option)
 df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='call']
 df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put']
 
