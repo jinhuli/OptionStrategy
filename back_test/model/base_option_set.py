@@ -302,13 +302,13 @@ class BaseOptionSet(AbstractBaseProductSet):
         put_mdt_dict = {}
         for mdt in mdt_calls.keys():
             mdt_options_dict = mdt_calls.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                             list(mdt_options_dict.keys()), OptionType.CALL)
             call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         for mdt in mdt_puts.keys():
             mdt_options_dict = mdt_puts.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                             list(mdt_options_dict.keys()), OptionType.PUT)
             put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
@@ -323,7 +323,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
-        spot = mdt_options_dict.popitem()[1][0].underlying_close()
+        spot = list(mdt_options_dict.values())[0][0].underlying_close()
         k_call = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.CALL)
         call_list = mdt_options_dict.get(k_call)
@@ -347,13 +347,13 @@ class BaseOptionSet(AbstractBaseProductSet):
         put_mdt_dict = {}
         for mdt in mdt_calls.keys():
             mdt_options_dict = mdt_calls.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.CALL)
             call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         for mdt in mdt_puts.keys():
             mdt_options_dict = mdt_puts.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.PUT)
             put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
@@ -371,7 +371,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
-        spot = mdt_options_dict.popitem()[1][0].underlying_close()
+        spot = list(mdt_options_dict.values())[0][0].underlying_close()
         idx_call = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                     list(mdt_options_dict.keys()), OptionType.CALL)
         call_list = mdt_options_dict.get(idx_call)
