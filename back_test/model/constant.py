@@ -904,8 +904,9 @@ class Util:
         'index': 0
     }
 
-    DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017, 12, 28), datetime.date(2017, 12, 29), datetime.date(2018, 1, 26),
-                                  datetime.date(2018, 5, 4)]
+    # DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017, 12, 28), datetime.date(2017, 12, 29), datetime.date(2018, 1, 26),
+    #                               datetime.date(2018, 5, 4)]
+    DZQH_CF_DATA_MISSING_DATES = []
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:

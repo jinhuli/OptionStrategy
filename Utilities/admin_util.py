@@ -18,6 +18,10 @@ engine_dzqh = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/d
 
 metadata_dzqh = MetaData(engine_dzqh)
 
+engine_gc = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/golden_copy', echo=False)
+
+metadata_gc = MetaData(engine_gc)
+
 def conn_dzqh():
     return engine_dzqh.connect()
 
@@ -44,6 +48,10 @@ def session_intraday():
 
 def session_metrics():
     Session = sessionmaker(bind=engine_metrics)
+    return Session()
+
+def session_gc():
+    Session = sessionmaker(bind=engine_gc)
     return Session()
 
 def table_options_mktdata():
@@ -91,9 +99,10 @@ def table_option_atm_iv():
 def table_implied_volatilities():
     return Table('implied_volatilities_by_moneyness',metadata_metrics, autoload=True)
 
-
-def table_cf_minute_1():
-    return Table('cf_minute_1',metadata_dzqh, autoload=True)
+def table_cf_minute():
+    return Table('cf_minute',metadata_gc, autoload=True)
 
 def table_cf_daily():
     return Table('cf_day',metadata_dzqh, autoload=True)
+
+
