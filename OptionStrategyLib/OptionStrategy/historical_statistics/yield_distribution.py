@@ -1,0 +1,62 @@
+from data_access import get_data
+import back_test.model.constant as c
+import matplotlib
+from matplotlib import pylab as plt
+import datetime
+import numpy as np
+from OptionStrategyLib.VolatilityModel.kernel_density import kde_sklearn
+from Utilities.PlotUtil import PlotUtil
+from scipy.stats import norm
+
+pu = PlotUtil()
+start_date = datetime.date(2010, 1, 1)
+end_date = datetime.date(2018, 8, 8)
+dt_histvol = start_date
+
+""" 50ETF option """
+name_code = c.Util.STR_IH
+name_code_index = c.Util.STR_INDEX_50ETF
+df_future_c1_daily = get_data.get_dzqh_cf_c1_daily(dt_histvol, end_date, name_code)
+df_index = get_data.get_index_mktdata(start_date,end_date,name_code_index)
+
+df_future_c1_daily[c.Util.AMT_YIELD] =  np.log(df_future_c1_daily[c.Util.AMT_CLOSE]).diff(periods=20)
+df_index[c.Util.AMT_YIELD] =  np.log(df_index[c.Util.AMT_CLOSE]).diff(periods=20)
+df_future_c1_daily = df_future_c1_daily.dropna()
+df_index = df_index.dropna()
+
+r_future = np.array(df_future_c1_daily[c.Util.AMT_YIELD])
+r_index = np.array(df_index[c.Util.AMT_YIELD])
+s = np.random.normal(0, 0.15, 1000)
+
+plt.figure(1)
+x_f = np.linspace(min(r_future), max(r_future), 1000)
+mu, sigma = norm.fit(r_index)
+pdf_norm = norm.pdf(x_f, mu, sigma)
+pdf_f = kde_sklearn(r_future, x_f, bandwidth=0.03)
+plt.plot(x_f, pdf_norm, 'r--', linewidth=2, label='正态分布')
+plt.plot(x_f, pdf_f,'black', label='kernel density')
+plt.hist(r_future, bins=100, normed=True, label='IH回报率分布（月）')
+plt.legend()
+
+# plt.figure(2)
+# x_indx = np.linspace(min(r_index), max(r_index), 1000)
+# pdf_indx = kde_sklearn(r_index, x_indx, bandwidth=0.03)
+# plt.plot(x_indx, pdf_indx,'r--', label='kernel density')
+# plt.hist(r_index, bins=100, normed=True, label='50ETF月回报率分布')
+# plt.legend()
+
+plt.figure(2)
+x_indx = np.linspace(min(r_index), max(r_index), 1000)
+
+mu, sigma = norm.fit(r_index)
+pdf_norm = norm.pdf(x_indx, mu, sigma)
+pdf_indx = kde_sklearn(r_index, x_indx, bandwidth=0.03)
+plt.plot(x_indx, pdf_norm, 'r--', linewidth=2, label='正态分布')
+plt.plot(x_indx, pdf_indx,'black', label='kernel density')
+plt.hist(r_index, bins=100, density=True, label='50ETF回报率分布(月）')
+# plt.hist(r_index, bins=100, normed=True, label='Histogram index')
+plt.legend()
+
+# plt.figure(4)
+# pu.plot_line_chart(x_indx,[pdf_f,pdf_indx],['kde IH c1','kde 50ETF'])
+plt.show()

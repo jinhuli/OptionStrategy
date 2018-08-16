@@ -7,6 +7,9 @@ from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVo
 import Utilities.admin_util as admin
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
+import numpy as np
+import pandas as pd
 
 pu = PlotUtil()
 start_date = datetime.date(2015, 1, 1)
@@ -26,10 +29,12 @@ df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_future_c1_daily = get_data.get_dzqh_cf_c1_daily(dt_histvol, end_date, name_code)
 
 """ 历史波动率 """
-df_vol_1m = Histvol.hist_vol(df_future_c1_daily,n=21)
+df_vol_1m = Histvol.hist_vol(df_future_c1_daily)
 df_parkinson_1m = Histvol.parkinson_number(df_future_c1_daily)
 df_garman_klass = Histvol.garman_klass(df_future_c1_daily)
 df_data = df_future_c1_daily.join(df_vol_1m,on=c.Util.DT_DATE,how='left')
+df_data = df_data.join(df_garman_klass,on=c.Util.DT_DATE,how='left')
+df_data = df_data.join(df_parkinson_1m,on=c.Util.DT_DATE,how='left')
 df_data = df_data.dropna()
 """ 隐含波动率 """
 df_iv = get_data.get_iv_by_moneyness(start_date,end_date,name_code_option)
@@ -42,17 +47,9 @@ df_data = df_data.join(df_iv_put[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_in
     .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_put'})
 df_data = df_data.dropna()
 
-df_data.loc[:,'diff_hist_call_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL]-df_data.loc[:,'iv_call']
-df_data.loc[:,'diff_hist_put_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL]-df_data.loc[:,'iv_put']
+df_data.loc[:,'diff_hist_call_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL+'_20']-df_data.loc[:,'iv_call']
+df_data.loc[:,'diff_hist_put_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL+'_20']-df_data.loc[:,'iv_put']
 df_data = df_data.sort_values(by='dt_date', ascending=False)
 df_data.to_csv('../../data/df_data.csv')
 
-# dates = list(df_data[c.Util.DT_DATE])
-# ivs_call = list(df_data['iv_call'])
-# ivs_put = list(df_data['iv_put'])
-# histvols = list(df_data[c.Util.AMT_HISTVOL])
-# diff_call = list(df_data['diff_hist_call_iv'])
-# diff_put = list(df_data['diff_hist_put_iv'])
-# pu.plot_line_chart(dates,[ivs_call,ivs_put, histvols],['iv call','iv_put','hist_vol'])
-# pu.plot_line_chart(dates,[diff_call],['diff call'])
-# plt.show()
+

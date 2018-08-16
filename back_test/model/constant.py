@@ -776,6 +776,7 @@ class Util:
     RISK_FREE_RATE = 'risk_free_rate'
     AMT_APPLICABLE_STRIKE = 'amt_applicable_strike'
     AMT_APPLICABLE_MULTIPLIER = 'amt_applicable_multiplier'
+    AMT_YIELD = 'amt_yield'
     AMT_HISTVOL = 'amt_hist_vol'
     AMT_PARKINSON_NUMBER = 'amt_parkinson_number'
     AMT_GARMAN_KLASS = 'amt_garman_klass'
