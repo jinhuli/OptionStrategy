@@ -33,7 +33,7 @@ plt.plot(x_grid, pdf_p,'r--', label='Estimate')
 plt.hist(parkinson_vols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
 
 plt.figure(4)
-pu.plot_line_chart(x_grid,[pdf_cc,pdf_gk,pdf_p],['colse-close','garman_klass','parkinson'])
+pu.plot_line_chart(x_grid,[pdf_cc,pdf_gk,pdf_p],['Close-to-close','Garman_Klass','Parkinson'])
 
 
 plt.figure(5)
@@ -44,7 +44,7 @@ vols_1m = np.array(df_data[c.Util.AMT_HISTVOL+'_20'])
 pdf_1m = kde_sklearn(vols_1m, x_grid, bandwidth=0.03)
 vols_3m = np.array(df_data[c.Util.AMT_HISTVOL+'_60'])
 pdf_3m = kde_sklearn(vols_3m, x_grid, bandwidth=0.03)
-pu.plot_line_chart(x_grid,[pdf_1w,pdf_1m,pdf_3m],['1W','1M','3M'])
+pu.plot_line_chart(x_grid,[pdf_1w,pdf_1m,pdf_3m],['Weekly kde','Monthly kde','Quarterly kde'])
 
 
 plt.show()
