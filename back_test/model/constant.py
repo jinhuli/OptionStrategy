@@ -392,6 +392,7 @@ class Option50ETF:
 
     }
 
+    @staticmethod
     def fun_strike_before_adj(df: pd.Series) -> float:
         return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)
 
@@ -781,6 +782,10 @@ class Util:
     AMT_PARKINSON_NUMBER = 'amt_parkinson_number'
     AMT_GARMAN_KLASS = 'amt_garman_klass'
     AMT_HEDHE_UNIT = 'amt_hedge_unit'
+    AMT_CALL_QUOTE = 'amt_call_quote'
+    AMT_PUT_QUOTE = 'amt_put_quote'
+    AMT_TTM = 'amt_ttm'
+    AMT_IMPLIED_RF='amt_implied_rf'
     NAME_CODE = 'name_code'
     STR_CALL = 'call'
     STR_PUT = 'put'

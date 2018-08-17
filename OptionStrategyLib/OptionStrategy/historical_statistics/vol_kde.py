@@ -16,27 +16,27 @@ logvols = np.log(histvols)
 
 x_grid = np.linspace(min(histvols), max(histvols), 1000)
 
-plt.figure(1)
+# plt.figure(1)
 pdf_cc = kde_sklearn(histvols, x_grid, bandwidth=0.03)
-plt.plot(x_grid, pdf_cc,'r--', label='Estimate')
-plt.hist(histvols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
+# plt.plot(x_grid, pdf_cc,'r--', label='Estimate')
+# plt.hist(histvols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
 
-plt.figure(2)
+# plt.figure(2)
 pdf_gk = kde_sklearn(garman_klass_vols, x_grid, bandwidth=0.03)
-plt.plot(x_grid, pdf_gk,'r--', label='Estimate')
-plt.hist(garman_klass_vols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
+# plt.plot(x_grid, pdf_gk,'r--', label='Estimate')
+# plt.hist(garman_klass_vols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
 
 
-plt.figure(3)
+# plt.figure(3)
 pdf_p = kde_sklearn(parkinson_vols, x_grid, bandwidth=0.03)
-plt.plot(x_grid, pdf_p,'r--', label='Estimate')
-plt.hist(parkinson_vols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
+# plt.plot(x_grid, pdf_p,'r--', label='Estimate')
+# plt.hist(parkinson_vols, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
 
-plt.figure(4)
+plt.figure(1)
 pu.plot_line_chart(x_grid,[pdf_cc,pdf_gk,pdf_p],['Close-to-close','Garman_Klass','Parkinson'])
 
 
-plt.figure(5)
+plt.figure(2)
 
 vols_1w = np.array(df_data[c.Util.AMT_HISTVOL+'_5'])
 pdf_1w = kde_sklearn(vols_1w, x_grid, bandwidth=0.03)

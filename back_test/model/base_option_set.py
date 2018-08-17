@@ -255,6 +255,24 @@ class BaseOptionSet(AbstractBaseProductSet):
         return spot
 
 
+    def get_T_quotes(self, nbr_maturity:int=0):
+        dt_maturity = self.get_maturities_list()[0]
+        df_current = self.get_current_state()
+        df_mdt = df_current[df_current[Util.DT_MATURITY]==dt_maturity].reset_index(drop=True)
+        df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
+            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE})
+        df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
+            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE})
+        df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        df = pd.merge(df_call[[Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_STRIKE,
+                               Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE]],
+                      df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE]],
+                      how='inner', on=Util.AMT_APPLICABLE_STRIKE)
+        ttm = ((dt_maturity - self.eval_date).total_seconds() / 60.0) / (365.0 * 1440)
+        df['amt_ttm'] = ttm
+        return df
+
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
     Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.

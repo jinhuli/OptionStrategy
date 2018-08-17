@@ -9,7 +9,7 @@ from Utilities.PlotUtil import PlotUtil
 from scipy.stats import norm
 
 pu = PlotUtil()
-start_date = datetime.date(2010, 1, 1)
+start_date = datetime.date(2015, 5, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date
 
@@ -56,6 +56,6 @@ plt.plot(x_indx, pdf_indx,'black', label='kernel density')
 plt.hist(r_index, bins=100, density=True,facecolor="#8C8C8C", label='50ETF回报率分布(月）')
 plt.legend()
 
-# plt.figure(4)
-# pu.plot_line_chart(x_indx,[pdf_f,pdf_indx],['kde IH c1','kde 50ETF'])
+plt.figure(3)
+pu.plot_line_chart(x_indx,[pdf_f,pdf_indx],['IH月度回报率 kernel density','50ETF月度回报率 kernel density'])
 plt.show()
