@@ -317,6 +317,20 @@ class BaseAccount():
                           time_signal, long_short)
         return order
 
+    def create_close_order(self, base_product:BaseProduct):
+        id_instrument = base_product.id_instrument()
+        if id_instrument not in self.trade_book.index:
+            return
+        else:
+            trade_unit = self.trade_book.loc[id_instrument,Util.TRADE_UNIT]
+            if trade_unit == 0: return
+            if self.trade_book.loc[id_instrument,Util.TRADE_LONG_SHORT] == LongShort.LONG:
+                long_short = LongShort.SHORT
+            else:
+                long_short = LongShort.LONG
+            order = Order(base_product.eval_date, id_instrument, trade_unit, base_product.mktprice_close(),
+                          base_product.eval_datetime, long_short)
+        return order
 
     def creat_close_out_order(self):
         if self.trade_book.empty:

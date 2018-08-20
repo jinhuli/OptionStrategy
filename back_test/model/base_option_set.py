@@ -1,13 +1,12 @@
 import datetime
 from collections import deque
 from typing import Dict, List, Tuple
-
 import pandas as pd
 import numpy as np
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF
-
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, ExecuteType, LongShort
+from back_test.model.trade import Order
 
 class BaseOptionSet(AbstractBaseProductSet):
     """
@@ -411,6 +410,15 @@ class BaseOptionSet(AbstractBaseProductSet):
             return
         else:
             return maturities[idx_maturity]
+
+    def select_higher_volume(self, options:List[BaseOption]) -> BaseOption:
+        volume0 = 0.0
+        res_option = None
+        for option in options:
+            volume = option.trading_volume()
+            if volume > volume0: res_option = option
+            volume0 = volume
+        return res_option
 
     # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
     #     * ATM defined as FIRST OTM  """

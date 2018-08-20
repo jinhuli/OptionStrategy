@@ -27,7 +27,7 @@ class BaseFutureCoutinuous(BaseProduct):
         self.df_underlying_index_daily = df_underlying_index_daily
         self.df_all_futures_daily = df_futures_all_daily
         self.idx_underlying_index = -1
-        self.underlying_index_state_daily = None
+        self.underlying_state_daily = None
 
     def __repr__(self) -> str:
         return 'BaseInstrument(id_instrument: {0},eval_date: {1},frequency: {2})' \
@@ -35,9 +35,10 @@ class BaseFutureCoutinuous(BaseProduct):
 
     def next(self):
         super().next()
-        if self.underlying_index_state_daily is None or self.eval_date != self.eval_datetime.date():
+        if self.df_underlying_index_daily is None: return
+        if self.underlying_state_daily is None or self.eval_date != self.eval_datetime.date():
             self.idx_underlying_index += 1
-            self.underlying_index_state_daily = self.df_underlying_index_daily.loc[self.idx_underlying_index]
+            self.underlying_state_daily = self.df_underlying_index_daily.loc[self.idx_underlying_index]
 
     """ getters """
 
