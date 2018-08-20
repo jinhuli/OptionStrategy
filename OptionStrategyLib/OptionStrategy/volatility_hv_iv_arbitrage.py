@@ -18,7 +18,7 @@ import pandas as pd
 
 pu = PlotUtil()
 # start_date = datetime.date(2016, 6, 1)
-start_date = datetime.date(2017, 10, 17)
+start_date = datetime.date(2018, 1, 17)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=40)
 min_holding = 15
@@ -79,7 +79,8 @@ account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
 maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 empty_position = True
 
-# TODO: CASH DECREASES WHEN NPV INCREASED.
+# TODO: CASH DECREASES WHEN NPV INCREASED:
+# 原因应该是option execute order的时候对longshort分开处理吗，但平仓的时候没有加回来之前short的保证金.
 print(optionset.eval_date, hedging.eval_date)
 while maturity1 <= end_date:
     k0 = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)[0][0].strike()
@@ -87,11 +88,12 @@ while maturity1 <= end_date:
     for option in account.dict_holding.values():
         if isinstance(option, BaseOption):
             if optionset.eval_date >= maturity1 - datetime.timedelta(days=1) or abs(option.strike() - k0) > 1.0:
+                print('REBALANCED : ', optionset.eval_date)
                 order = account.create_close_order(option)
                 record = option.execute_order(order,slippage=slippage)
                 account.add_record(record, option)
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
-        empty_position = True
+                maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+                empty_position = True
     if empty_position:
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)
         atm_call = optionset.select_higher_volume(list_atm_call)
@@ -99,7 +101,7 @@ while maturity1 <= end_date:
         hedging.amt_option = amt_option = np.floor(account.cash / atm_call.strike()) / 1000  # 50ETF与IH点数之比
         unit_c = np.floor(amt_option / atm_call.multiplier())
         unit_p = np.floor(amt_option / atm_put.multiplier())
-        print(amt_option,unit_c,unit_p)
+        print(account.cash, amt_option, unit_c, unit_p)
         order_c = account.create_trade_order(atm_call, c.LongShort.SHORT, unit_c)
         order_p = account.create_trade_order(atm_put, c.LongShort.SHORT, unit_p)
         record_call = atm_call.execute_order(order_c, slippage=slippage)
