@@ -411,6 +411,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         else:
             return maturities[idx_maturity]
 
+    # TODO: MOVE TO CONSTENT
     def select_higher_volume(self, options:List[BaseOption]) -> BaseOption:
         volume0 = 0.0
         res_option = None
@@ -419,6 +420,10 @@ class BaseOptionSet(AbstractBaseProductSet):
             if volume > volume0: res_option = option
             volume0 = volume
         return res_option
+
+    # TODO: USE TOLYER'S EXPANSION.
+    def yield_decomposition(self):
+        return
 
     # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
     #     * ATM defined as FIRST OTM  """

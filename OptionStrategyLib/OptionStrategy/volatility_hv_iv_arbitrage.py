@@ -17,7 +17,8 @@ from scipy.stats import gaussian_kde
 import pandas as pd
 
 pu = PlotUtil()
-start_date = datetime.date(2016, 6, 1)
+# start_date = datetime.date(2016, 6, 1)
+start_date = datetime.date(2017, 10, 17)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=40)
 min_holding = 15
@@ -78,13 +79,17 @@ account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
 maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 empty_position = True
 
+# TODO: CASH DECREASES WHEN NPV INCREASED.
 print(optionset.eval_date, hedging.eval_date)
 while maturity1 <= end_date:
-
-    if optionset.eval_date >= maturity1 - datetime.timedelta(days=1):
-        for option in account.dict_holding.values():
-            if isinstance(option, BaseOption):
-                account.create_close_order(option)
+    k0 = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)[0][0].strike()
+    # k1 = optionset.get_options_list_by_moneyness_mthd1(1, maturity1)[0][0].strike()
+    for option in account.dict_holding.values():
+        if isinstance(option, BaseOption):
+            if optionset.eval_date >= maturity1 - datetime.timedelta(days=1) or abs(option.strike() - k0) > 1.0:
+                order = account.create_close_order(option)
+                record = option.execute_order(order,slippage=slippage)
+                account.add_record(record, option)
         maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
         empty_position = True
     if empty_position:
@@ -94,6 +99,7 @@ while maturity1 <= end_date:
         hedging.amt_option = amt_option = np.floor(account.cash / atm_call.strike()) / 1000  # 50ETF与IH点数之比
         unit_c = np.floor(amt_option / atm_call.multiplier())
         unit_p = np.floor(amt_option / atm_put.multiplier())
+        print(amt_option,unit_c,unit_p)
         order_c = account.create_trade_order(atm_call, c.LongShort.SHORT, unit_c)
         order_p = account.create_trade_order(atm_put, c.LongShort.SHORT, unit_p)
         record_call = atm_call.execute_order(order_c, slippage=slippage)
@@ -118,7 +124,8 @@ while maturity1 <= end_date:
     account.add_record(record_u, hedging)
 
     account.daily_accounting(optionset.eval_date)
-    print(optionset.eval_date,hedging.eval_date, account.account.loc[optionset.eval_date, c.Util.PORTFOLIO_NPV],hedge_unit)
+    print(optionset.eval_date,hedging.eval_date,
+          account.account.loc[optionset.eval_date, c.Util.PORTFOLIO_NPV],options_delta, hedge_unit, account.cash)
     optionset.next()
     hedging.next()
 

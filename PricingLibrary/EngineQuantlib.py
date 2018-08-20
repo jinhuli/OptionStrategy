@@ -171,4 +171,6 @@ class QlBlackFormula(object):
                                          targetValue,
                                          self.rf)
             implied_vol = black_formula.ImpliedVolApproximation()
+            self.reset_vol(implied_vol)
+            print(implied_vol,self.NPV(),'--target value :',targetValue)
         return implied_vol
