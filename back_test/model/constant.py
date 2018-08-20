@@ -888,7 +888,7 @@ class Util:
         'm': 10,
         'if': 300,
         'ih': 300,
-        'ic': 200,
+        'ic': 200
     }
     DICT_OPTION_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,

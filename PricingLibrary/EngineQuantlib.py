@@ -1,8 +1,8 @@
 import typing
-import math
 import datetime
 import back_test.model.constant as constant
 import QuantLib as ql
+from PricingLibrary.BlackFormular import BlackFormula
 
 """
                  dt_eval: datetime.date,
@@ -25,7 +25,7 @@ class QlBinomial(object):
                  strike: float,
                  vol: float,
                  rf: float = 0.03,
-                 n: int=800,
+                 n: int = 800,
                  dividend_rate: float = 0.0):
 
         self.values: typing.List[typing.List[float]] = []
@@ -83,7 +83,7 @@ class QlBinomial(object):
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
 
-    def estimate_vol(self, price: float, presion:float=0.00001,max_vol:float=2.0):
+    def estimate_vol(self, price: float, presion: float = 0.00001, max_vol: float = 2.0):
         l = presion
         r = max_vol
         while l < r and round((r - l), 5) > presion:
@@ -103,8 +103,10 @@ class QlBlackFormula(object):
                  option_type: constant.OptionType,
                  spot: float,
                  strike: float,
-                 vol: float=0.0, rf: float = 0.03, dividend_rate: float = 0.0):
-
+                 vol: float = 0.0, rf: float = 0.03, dividend_rate: float = 0.0):
+        self.dt_eval = dt_eval
+        self.dt_maturity = dt_maturity
+        self.option_type = option_type
         self.values: typing.List[typing.List[float]] = []
         self.asset_values: typing.List[typing.List[float]] = []
         self.exercise_values: typing.List[typing.List[float]] = []
@@ -117,10 +119,10 @@ class QlBlackFormula(object):
         self.settlement = constant.QuantlibUtil.to_ql_date(dt_eval)
         ql.Settings.instance().evaluationDate = self.settlement
         if option_type == constant.OptionType.PUT:
-            self.option_type = ql.Option.Put
+            self.ql_option_type = ql.Option.Put
         else:
-            self.option_type = ql.Option.Call
-        payoff = ql.PlainVanillaPayoff(self.option_type, strike)
+            self.ql_option_type = ql.Option.Call
+        payoff = ql.PlainVanillaPayoff(self.ql_option_type, strike)
         self.exercise = ql.EuropeanExercise(self.maturity_date)
         self.ql_option = ql.VanillaOption(payoff, self.exercise)
         self.day_count = ql.ActualActual()
@@ -155,7 +157,18 @@ class QlBlackFormula(object):
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
 
-    def estimate_vol(self, price: float, presion:float=0.00001,max_vol:float=2.0):
-        implied_vol = self.ql_option.impliedVolatility(price, self.bsm_process, 1.0e-5, 300, 0.01, 5.0)
-        # self.reset_vol(implied_vol)
+    def estimate_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
+        try:
+            implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
+                                                           minVol, maxVol)
+        except RuntimeError as e:
+            print(e)
+            black_formula = BlackFormula(self.dt_eval,
+                                         self.dt_maturity,
+                                         self.option_type,
+                                         self.spot,
+                                         self.strike,
+                                         targetValue,
+                                         self.rf)
+            implied_vol = black_formula.ImpliedVolApproximation()
         return implied_vol

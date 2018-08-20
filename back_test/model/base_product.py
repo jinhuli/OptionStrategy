@@ -20,7 +20,7 @@ class BaseProduct(AbstractBaseProduct):
         self.df_daily_data: pd.DataFrame = df_daily_data  # Used in high frequency data
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
-        self._name_code: str = self._id_instrument.split('_')[0]
+        self._name_code: str = self._id_instrument.split('_')[0].lower()
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.eval_date: datetime.date = None
