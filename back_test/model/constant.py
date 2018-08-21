@@ -882,6 +882,7 @@ class Util:
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
+        # 'ih': 0.0,
         'ic': 6.9 / 10000.0,
     }
     DICT_CONTRACT_MULTIPLIER = {  # 合约乘数

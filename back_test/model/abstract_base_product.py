@@ -1,7 +1,7 @@
 from pandas import Series
 from abc import ABC, abstractmethod
 from back_test.model.trade import Order
-
+from back_test.model.constant import LongShort,ExecuteType
 """
     AbstractBaseProduct: an abstract class of base product.
 """
@@ -59,13 +59,30 @@ class AbstractBaseProduct(ABC):
     def get_current_state(self) -> Series:
         pass
 
-    """
-    excecute_order: execute an order
-    """
-    @abstractmethod
-    def execute_order(self, order: Order, slippage=0) -> bool:
-        pass
+
 
     @abstractmethod
     def validate_data(self):
+        pass
+
+
+    @abstractmethod
+    def execute_order(self, order: Order, slippage:int=0,execute_type:ExecuteType=ExecuteType.EXECUTE_ALL_UNITS) -> bool:
+        # 执行交易指令
+        pass
+
+
+    @abstractmethod
+    def get_current_value(self, long_short:LongShort) -> float:
+        # 保证金交易当前价值为零/基础证券交易不包含保证金current value为当前价格
+        pass
+
+    @abstractmethod
+    def is_margin_trade(self, long_short:LongShort) -> bool:
+        # 标记是否为保证金交易
+        pass
+
+    @abstractmethod
+    def is_mtm(self) -> bool:
+        # 标记该证券是否逐日盯市
         pass

@@ -62,15 +62,16 @@ class SytheticOption(BaseFutureCoutinuous):
         hold_unit = self.synthetic_unit
         synthetic_unit = self.get_synthetic_unit(delta, buywrite)
         d_unit = -(synthetic_unit - hold_unit)
-        if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
-            if vol is None or spot is None or gamma is None or dt_maturity is None: return
-            bound = self.whalley_wilmott2(self.eval_date, vol, spot, gamma, dt_maturity) * self.amt_option / self.multiplier()
-            if abs(d_unit) > bound:
-                return d_unit
-            else:
-                return 0
-        else:
-            return d_unit
+        return d_unit
+        # if delta_bound == DeltaBound.WHALLEY_WILLMOTT:
+        #     if vol is None or spot is None or gamma is None or dt_maturity is None: return
+        #     bound = self.whalley_wilmott2(self.eval_date, vol, spot, gamma, dt_maturity) * self.amt_option / self.multiplier()
+        #     if abs(d_unit) > bound:
+        #         return d_unit
+        #     else:
+        #         return 0
+        # else:
+        #     return d_unit
 
     def get_rebalancing_unit(self, delta: float,
                              option: EuropeanOption,

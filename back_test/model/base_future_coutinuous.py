@@ -70,6 +70,12 @@ class BaseFutureCoutinuous(BaseProduct):
     def get_current_value(self, long_short):
         return 0.0
 
+    def is_margin_trade(self, long_short):
+        return True
+
+    def is_mtm(self):
+        return True
+
     """ Intraday Weighted Average Price """
 
     def volume_weigted_average_price(self) -> Union[float, None]:

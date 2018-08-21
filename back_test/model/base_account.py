@@ -23,7 +23,9 @@ class BaseAccount():
         self.actual_leverage = 0.0
         self.realized_pnl = 0.0
         self.trade_book_daily = pd.DataFrame(columns=Util.TRADE_BOOK_COLUMN_LIST)
+        self.portfolio_total_value = init_fund
         self.realized_pnl_from_closed_out_positions = 0.0
+        # self.cashed_unrealized_pnl_from_mtm_positions = 0.0
         # self.total_mtm_position = 0.0  # 总多空持仓市值(abs value)加总
         # self.total_margin_trade_mtm_position = 0.0
 
@@ -54,10 +56,10 @@ class BaseAccount():
                                     book_series[Util.AVERAGE_POSITION_COST])
                     # This position total realized pnl.
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
-                    if base_product.get_current_value(trade_long_short) == 0.0:
+                    if base_product.is_margin_trade(trade_long_short):
                         # 开仓为保证金交易，将已实现损益加入现金账户
                         self.cash += book_series[Util.TRADE_MARGIN_CAPITAL] + realized_pnl
-                    else: # 无保证金交易（期权买方、股票等）最终平仓收入（- execution_record[Util.TRADE_BOOK_VALUE]）加入现金账户。
+                    else: # 无保证金交易（期权买方、股票等）最终平仓收入（- execution_record[Util.TRADE_BOOK_VALUE]）加入现金账户
                         self.cash += - execution_record[Util.TRADE_BOOK_VALUE]
                     position_current_value = 0.0
                     # self.dict_holding.pop(id_instrument, None)
@@ -77,7 +79,7 @@ class BaseAccount():
                                    (execution_record[Util.TRADE_PRICE] - book_series[Util.AVERAGE_POSITION_COST])
                     # This position total realized pnl.
                     trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL] + realized_pnl
-                    if base_product.get_current_value(trade_long_short) == 0.0:
+                    if base_product.is_margin_trade(trade_long_short):
                         # 开仓为保证金交易，将已实现损益加入现金账户
                         self.cash += realized_pnl + margin_released
                     else: # 无保证金交易（期权买方、股票等）最终平仓收入（- execution_record[Util.TRADE_BOOK_VALUE]）加入现金账户。
@@ -105,7 +107,7 @@ class BaseAccount():
                         open_long_short = LongShort.SHORT
                     else:
                         open_long_short = LongShort.LONG
-                    if base_product.get_current_value(open_long_short) == 0.0:
+                    if base_product.is_margin_trade(open_long_short):
                         # 开仓为保证金交易，将已实现损益加入现金账户。如果初始开仓为卖出期权，当前反向买入更多的期权无需保证金，
                         # 因而账户需支出权利金（-trade_book_value），返还之前的保证金（margin_released），
                         # 收入之前保证金卖出期权的实际损益（realized_pnl）。
@@ -136,7 +138,7 @@ class BaseAccount():
                                         (execution_record[Util.TRADE_UNIT] + book_series[Util.TRADE_UNIT])
                 realized_pnl = 0.0
                 trade_realized_pnl = book_series[Util.TRADE_REALIZED_PNL]  # No added realized pnl
-                if base_product.get_current_value(trade_long_short) == 0.0:
+                if base_product.is_margin_trade(trade_long_short):
                     # 开仓为保证金交易: 加仓仅需要加保证金
                     self.cash -= margin_add
                 else:
@@ -164,11 +166,12 @@ class BaseAccount():
                 Util.TRADE_LONG_SHORT: trade_long_short,
                 Util.AVERAGE_POSITION_COST: average_position_cost,
                 Util.TRADE_REALIZED_PNL: 0.0,
+                'mtm_cashed_unrealized_pnl':0.0,
                 Util.NBR_MULTIPLIER: base_product.multiplier()
             })
             realized_pnl = 0.0
             self.trade_book.loc[id_instrument] = book_series
-            if base_product.get_current_value(trade_long_short) == 0.0:
+            if base_product.is_margin_trade(trade_long_short):
                 # 开仓为保证金交易: 加仓仅需要加保证金
                 self.cash -= execution_record[Util.TRADE_MARGIN_CAPITAL]
             else:
@@ -183,35 +186,24 @@ class BaseAccount():
         self.list_records.append(execution_record)
         # self.update_account_status()
 
-    # 股票与购买期权杠杆率计算方法不一样：base_product加入current value(不包含保证金)？？
-    # 保证金交易的future、期权卖方为零，股票、ETF、期权买方为当前MTM value
-    # def update_account_status(self):
-    #     total_mtm_position = (self.trade_book.loc[:, Util.TRADE_UNIT] * self.trade_book.loc[:, Util.LAST_PRICE]
-    #                           * self.trade_book[Util.NBR_MULTIPLIER]).sum()
-    #     total_margin = self.trade_book[Util.TRADE_MARGIN_CAPITAL].sum()
-    #     total_current_value = self.trade_book[Util.POSITION_CURRENT_VALUE].sum()
-    #     self.actual_leverage = total_mtm_position / (self.cash + total_margin + total_current_value)
-    #     # self.total_mtm_position = total_mtm_position
-
-    # Option write position current value is unrealized pnl, option buy position is the premium.
+    # 用于衡量投资组合中非保证金交易部分的市值。
     def get_position_value(self, id_instrument, trade_unit, long_short):
         base_product = self.dict_holding[id_instrument]
-        if base_product.get_current_value(long_short) == 0.0:
-            # 对于保证金交易，头寸价值为未实现损益（unrealized pnl）：每日净额结算后，将浮盈浮亏入账，用average_position_cost计算有问题
-            # 暂定：保证金交易头寸价值为零，暂不考虑日内的浮动盈亏。
+        if base_product.is_margin_trade(long_short):
+            # 对于保证金交易，头寸价值为未实现损益（unrealized pnl）
             position_current_value = 0.0
         else:
-            # 对于购买股票/期权买方等，头寸价值为当前市值
+            # 对于非保证金交易：购买股票/期权买方等，头寸价值为当前市值（close price）
             position_current_value = base_product.get_current_value(long_short) * trade_unit * base_product.multiplier()
         return position_current_value
 
-    # 总保证金交易的市值（按照last trade price，不考虑日内未实现损益），多空绝对市值相加，用于仓位控制。
+    # 用于杠杆率计算：总保证金交易的市值（按照last trade price，不考虑日内未实现损益），多空绝对市值相加。
     def get_portfolio_margin_trade_scale(self):
         portfolio_margin_trade_scale = 0.0
         for (id_instrument, row) in self.trade_book.iterrows():
             long_short = row[Util.TRADE_LONG_SHORT]
             base_product = self.dict_holding[id_instrument]
-            if base_product.get_current_value(long_short) == 0.0:
+            if base_product.is_margin_trade(long_short):
                 portfolio_margin_trade_scale += row[Util.TRADE_UNIT] * row[Util.NBR_MULTIPLIER] * row[
                     Util.LAST_PRICE]
         return portfolio_margin_trade_scale
@@ -258,7 +250,7 @@ class BaseAccount():
                 return order
         if trade_unit is None:
             raise ValueError("trade_unit is None when opening position !")
-        if base_product.get_current_value(long_short) == 0.0:
+        if base_product.is_margin_trade(long_short):
             investable_market_value = self.get_investable_cash()
         else:
             investable_market_value = self.get_investable_cash() * self.max_leverage
@@ -369,20 +361,23 @@ class BaseAccount():
                 total_long_scale += trade_unit*price*base_product.multiplier()
             unrealized_pnl = trade_long_short.value * (price - row[Util.AVERAGE_POSITION_COST]) * row[Util.TRADE_UNIT] * \
                              row[Util.NBR_MULTIPLIER]
-            # 开仓为保证金交易，将已实现损益加入现金账户/ 非保证金交易（买股票、期权）不需要计算未实现损益，将头寸以当前市值计价即可。
-            if base_product.get_current_value(trade_long_short) == 0.0:
+            # # 逐日盯市：当日损益计入现金账户
+            # if base_product.is_mtm():
+            #     self.cash += unrealized_pnl
+            #     self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
+            #     # add mtm_cashed_unrealized_pnl column 测算总共的已入账的未实现损益，用于衡量头寸的损益情况。
+            #     self.trade_book.loc[id_instrument, 'mtm_cashed_unrealized_pnl'] = unrealized_pnl
+            # else:
+            #     # 否则，单独测算当日的未实现损益（区分margin/nonmargin只是为了reporting/两种portfolio_total_value测算方法）
+            #     if base_product.is_margin_trade(trade_long_short):
+            #         margin_unrealized_pnl += unrealized_pnl
+            #     else:
+            #         nonmargin_unrealized_pnl += unrealized_pnl
+            if base_product.is_margin_trade(trade_long_short):
                 margin_unrealized_pnl += unrealized_pnl
             else:
                 nonmargin_unrealized_pnl += unrealized_pnl
-            # self.trade_book.loc[id_instrument, Util.PORTFOLIO_UNREALIZED_PNL] = unrealized_pnl
-            # 逐日盯市净额结算（期货合约制度）：在上次（昨收盘）价格的基础上计算今日净额结算的现金账户收支。
-            # TODO: UNRALIED PNL CALCULATION SHOULD NOT BASED ON LAST PRICE; CONSIDER SEQUENT OPEN SAME DIRECTION
-            # if isinstance(base_product, BaseFuture) or isinstance(base_product,BaseFutureCoutinuous):
-            # unrealized value add to cash
-            # self.cash += unrealized_pnl
-            # self.trade_book.loc[id_instrument, Util.AVERAGE_POSITION_COST] = price
-
-            # Calculate margin capital added to/from cash account.
+            # TODO：ONLY SHORT OPTION HAS MARGIN REQUIREMENT.
             trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[
                 Util.TRADE_MARGIN_CAPITAL]
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] += trade_margin_capital_add
@@ -400,16 +395,20 @@ class BaseAccount():
         portfolio_total_value = self.cash + portfolio_margin_capital + \
                                 portfolio_trades_value + margin_unrealized_pnl
         total_realized_pnl = self.trade_book[Util.TRADE_REALIZED_PNL].sum()
+        self.realized_pnl_from_closed_out_positions += self.trade_book[self.trade_book[Util.TRADE_UNIT] == 0.0][Util.TRADE_REALIZED_PNL].sum()
+        # self.cashed_unrealized_pnl_from_mtm_positions += self.trade_book[self.trade_book[Util.TRADE_UNIT] == 0.0]['mtm_cashed_unrealized_pnl'].sum()
+        tmp = self.cash + portfolio_margin_capital
         portfolio_total_value2 = self.init_fund + margin_unrealized_pnl + nonmargin_unrealized_pnl + \
                                  total_realized_pnl+ self.realized_pnl_from_closed_out_positions
 
         portfolio_total_scale = self.get_portfolio_total_scale()
         npv = portfolio_total_value / self.init_fund
         npv2 = portfolio_total_value2 / self.init_fund
-        # print("\n")
         # print('#############',npv,npv2,'#############')
+        # print("\n")
+
         actual_leverage = portfolio_total_scale / portfolio_total_value
-        self.cash = self.cash*(1+self.rf*(1.0/252.0))
+        # self.cash = self.cash*(1+self.rf*(1.0/252.0))
         account_today = pd.Series({
             Util.DT_DATE: eval_date,
             Util.CASH: self.cash,
@@ -427,9 +426,9 @@ class BaseAccount():
         })
         self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK
-        self.realized_pnl_from_closed_out_positions += self.trade_book[self.trade_book[Util.TRADE_UNIT] == 0.0][Util.TRADE_REALIZED_PNL].sum()
         self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
         self.realized_pnl = 0.0
+        self.portfolio_total_value = portfolio_total_value
 
     """ getters from trade book """
 
