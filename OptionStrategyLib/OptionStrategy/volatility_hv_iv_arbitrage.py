@@ -100,10 +100,10 @@ while optionset.eval_date <= end_date:
               account.account.loc[optionset.eval_date, c.Util.PORTFOLIO_NPV],
               int(account.cash))
         break
-    k0 = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)[0][0].strike()
-    # k1 = optionset.get_options_list_by_moneyness_mthd1(1, maturity1)[0][0].strike()
+    # k0 = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)[0][0].strike()
     if not empty_position:
-        if optionset.eval_date >= maturity1 - datetime.timedelta(days=1) or abs(atm_strike - k0) > 1.0:
+        # if optionset.eval_date >= maturity1 - datetime.timedelta(days=1) or abs(atm_strike - k0) > 1.0:
+        if optionset.eval_date >= maturity1 - datetime.timedelta(days=1):
             for option in account.dict_holding.values():
                 if isinstance(option, BaseOption):
                     print('REBALANCED : ', optionset.eval_date)
@@ -156,7 +156,8 @@ while optionset.eval_date <= end_date:
 account.account.to_csv('account.csv')
 df_records = pd.DataFrame(account.list_records)
 df_records.to_csv('df_records.csv')
-
+res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
+print(res)
 dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])
 pu.plot_line_chart(dates,[npv],['npv'])
