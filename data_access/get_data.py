@@ -199,7 +199,7 @@ def get_dzqh_cf_minute(start_date, end_date, name_code):
     df = df[df['id_instrument'].str.contains("_")]
     return df
 
-
+# TODO: deprecated, use 'get_cf_c1_minute'
 def get_dzqh_cf_c1_minute(start_date, end_date, name_code):
     table_cf = admin.table_cf_minute()
     query = admin.session_gc().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
@@ -264,9 +264,21 @@ def get_mktdata_cf_c1_daily(start_date, end_date, name_code):
 #     df_future['id_core'] = df_future[c.Util.DT_DATE].apply(lambda x: fun_get_c1_by_option(x, df_option_maturity))
 #     df_future = df_future[df_future[c.Util.ID_INSTRUMENT] == df_future['id_core']].reset_index(drop=True)
 #     return df_future
+#
+#
+# def get_dzqh_ih_c1_by_option_minute(start_date, end_date,name_code, option_maturities):
+#     table_cf = admin.table_cf_minute()
+#     query = admin.session_gc().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
+#                                        table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
+#         filter(
+#         (table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date) & (table_cf.c.name_code == name_code))
+#     df = pd.read_sql(query.statement, query.session.bind)
+#     df = df[df['id_instrument'].str.contains("_")]
+#     # TODO
+#     df = c.FutureUtil.get_future_c1_by_option_mdt_minute(df, option_maturities)
+#     return df
 
-
-def get_dzqh_ih_c1_by_option_minute(start_date, end_date,name_code, option_maturities):
+def get_cf_c1_minute(start_date, end_date, name_code):
     table_cf = admin.table_cf_minute()
     query = admin.session_gc().query(table_cf.c.dt_datetime, table_cf.c.id_instrument, table_cf.c.dt_date,
                                        table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_trading_volume). \
@@ -274,9 +286,9 @@ def get_dzqh_ih_c1_by_option_minute(start_date, end_date,name_code, option_matur
         (table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date) & (table_cf.c.name_code == name_code))
     df = pd.read_sql(query.statement, query.session.bind)
     df = df[df['id_instrument'].str.contains("_")]
-    # TODO
-    df = c.FutureUtil.get_future_c1_by_option_mdt_minute(df, option_maturities)
+    df = c.FutureUtil.get_futures_minute_c1(df)
     return df
+
 
 """ 基于商品期权到期日，构建标的期货c1时间序列 """
 def get_future_c1_by_option_daily(start_date, end_date, name_code, min_holding):

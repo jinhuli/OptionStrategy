@@ -17,7 +17,7 @@ import pandas as pd
 
 pu = PlotUtil()
 # start_date = datetime.date(2016, 6, 1)
-start_date = datetime.date(2016, 1, 1)
+start_date = datetime.date(2018, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15
@@ -35,6 +35,7 @@ name_code_option = c.Util.STR_50ETF
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 # df_future_c1_daily = get_data.get_dzqh_cf_c1_daily(dt_histvol, end_date, name_code)
 df_future_c1_daily = get_data.get_mktdata_cf_c1_daily(dt_histvol, end_date, name_code)
+df_future_c1_minute = get_data.get_cf_c1_minute(dt_histvol, end_date, name_code)
 
 """ 历史波动率 """
 # df_vol_1m = Histvol.hist_vol(df_future_c1_daily)
@@ -112,7 +113,8 @@ def close_signal_ma(dt_date,option_maturity,df_stats,k_straddle=None,k0=None)->b
 optionset = BaseOptionSet(df_metrics)
 optionset.init()
 d1 = optionset.eval_date
-df_c1 = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= d1].reset_index(drop=True)
+# df_c1 = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= d1].reset_index(drop=True)
+df_c1 = df_future_c1_minute[df_future_c1_minute[c.Util.DT_DATE] >= d1].reset_index(drop=True)
 df_c1 = df_c1.rename(columns={c.Util.ID_INSTRUMENT:'id_future'})
 df_c1.loc[:,c.Util.ID_INSTRUMENT] = 'ih'
 # df_tmp = df_metrics.drop_duplicates(c.Util.DT_DATE).join(df_c1[[c.Util.DT_DATE, c.Util.ID_INSTRUMENT]].set_index(c.Util.DT_DATE).rename(columns={c.Util.ID_INSTRUMENT:'id_future'}),
@@ -123,7 +125,8 @@ df_c1.loc[:,c.Util.ID_INSTRUMENT] = 'ih'
 # check_data2 = df_tmp[df_tmp2['dt_date'].isnull()]
 # print(check_data)
 
-hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY)
+# hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY)
+hedging = SytheticOption(df_c1, frequency=c.FrequentType.MINUTE)
 hedging.init()
 
 account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
