@@ -1018,3 +1018,27 @@ class QuantlibUtil:
     def get_dividend_ts(evalDate, daycounter):
         dividend_ts = ql.YieldTermStructureHandle(ql.FlatForward(evalDate, 0.0, daycounter))
         return dividend_ts
+
+
+
+class Statistics:
+
+    @staticmethod
+    def moving_average(df_series, n):
+        ma = df_series.rolling(window=n).mean()
+        return ma
+
+    @staticmethod
+    def standard_deviation(df_series, n):
+        std = df_series.rolling(window=n).std()
+        return std
+
+    @staticmethod
+    def percentile(df_series, n, percent):
+        return df_series.rolling(window=n).quantile(percent)
+
+    @staticmethod
+    def volatility_by_closes(df_series_closes,n=20):
+        series = np.log(df_series_closes).diff()
+        vol= series.rolling(window=n).std() * math.sqrt(252)
+        return vol

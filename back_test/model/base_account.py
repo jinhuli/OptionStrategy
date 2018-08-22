@@ -344,7 +344,7 @@ class BaseAccount():
             return order_list
 
     def daily_accounting(self, eval_date):
-        if self.trade_book.empty: return
+        # if self.trade_book.empty: return
         margin_unrealized_pnl = 0.0
         total_short_scale = 0.0
         total_long_scale = 0.0
@@ -408,7 +408,7 @@ class BaseAccount():
         # print("\n")
 
         actual_leverage = portfolio_total_scale / portfolio_total_value
-        # self.cash = self.cash*(1+self.rf*(1.0/252.0))
+        self.cash = self.cash*(1+self.rf*(1.0/252.0))
         account_today = pd.Series({
             Util.DT_DATE: eval_date,
             Util.CASH: self.cash,
@@ -513,7 +513,7 @@ class BaseAccount():
         # 年化波动率
         volatility_yr = np.std(returns, ddof=0) * np.sqrt(oneyear)
         # 夏普比率
-        sharpe = (return_yr - 0.024) / volatility_yr
+        sharpe = (return_yr - self.rf) / volatility_yr
         # 回撤
         drawdowns = self.get_maxdrawdown(netvalue)
         # 最大回撤

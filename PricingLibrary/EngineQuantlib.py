@@ -162,7 +162,7 @@ class QlBlackFormula(object):
             implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
                                                            minVol, maxVol)
         except RuntimeError as e:
-            print(e)
+            # print(e)
             black_formula = BlackFormula(self.dt_eval,
                                          self.dt_maturity,
                                          self.option_type,
@@ -172,5 +172,5 @@ class QlBlackFormula(object):
                                          self.rf)
             implied_vol = black_formula.ImpliedVolApproximation()
             self.reset_vol(implied_vol)
-            print(implied_vol,self.NPV(),'--target value :',targetValue)
+            # print(implied_vol,self.NPV(),'--target value :',targetValue)
         return implied_vol
