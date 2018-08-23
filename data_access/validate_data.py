@@ -35,7 +35,7 @@ def validate_date(date: datetime.date, daily_df):
     query = session.query(option_mktdata_intraday).filter(option_mktdata_intraday.c.dt_date == date)
     df = pd.read_sql(query.statement, query.session.bind)
     if df.isnull().values.any():
-        print("NAN - date: {0}".format(date))
+        print("NAN - intraday - date: {0}".format(date))
     for index, row in daily_df.iterrows():
         id_instrument = row['id_instrument']
         product_df = df[df.id_instrument == id_instrument].reset_index(drop=True)
@@ -62,5 +62,5 @@ for date in date_list:
     q = mktdata_session.query(options_mktdata).filter(options_mktdata.c.dt_date == date)
     daily_df = pd.read_sql(q.statement, q.session.bind)
     if daily_df.isnull().values.any():
-        print("NAN - date: {0}".format(date))
+        print("NAN - daily - date: {0}".format(date))
     validate_date(date, daily_df)
