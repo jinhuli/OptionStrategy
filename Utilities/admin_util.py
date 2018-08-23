@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine, MetaData, Table
 from sqlalchemy.orm import sessionmaker
 
-
 engine = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/mktdata', echo=False)
 # conn = engine.connect()
 metadata = MetaData(engine)
@@ -18,82 +17,119 @@ engine_dzqh = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/d
 
 metadata_dzqh = MetaData(engine_dzqh)
 
+engine_golden_copy = create_engine('mysql+pymysql://readonly:passw0rd@101.132.148.152/golden_copy', echo=False)
+
+metadata_golden_copy = MetaData(engine_golden_copy)
+
+
 def conn_dzqh():
     return engine_dzqh.connect()
+
 
 def conn_mktdata():
     return engine.connect()
 
+
 def conn_intraday():
     return engine_intraday.connect()
 
+
 def conn_metrics():
     return engine_metrics.connect()
+
 
 def session_dzqh():
     Session = sessionmaker(bind=engine_dzqh)
     return Session()
 
+
 def session_mktdata():
     Session = sessionmaker(bind=engine)
     return Session()
+
 
 def session_intraday():
     Session = sessionmaker(bind=engine_intraday)
     return Session()
 
+
 def session_metrics():
     Session = sessionmaker(bind=engine_metrics)
     return Session()
 
+
+def session_golden_copy():
+    Session = sessionmaker(bind=engine_golden_copy)
+    return Session()
+
+
 def table_options_mktdata():
     return Table('options_mktdata', metadata, autoload=True)
+
 
 def table_futures_mktdata():
     return Table('futures_mktdata', metadata, autoload=True)
 
+
 def table_futures_institution_positions():
     return Table('futures_institution_positions', metadata, autoload=True)
+
 
 def table_indexes_mktdata():
     return Table('indexes_mktdata', metadata, autoload=True)
 
+
 def table_option_contracts():
     return Table('option_contracts', metadata, autoload=True)
+
 
 def table_future_contracts():
     return Table('future_contracts', metadata, autoload=True)
 
+
 def table_stocks_mktdata():
     return Table('stocks_mktdata', metadata, autoload=True)
+
 
 def table_events():
     return Table('events', metadata, autoload=True)
 
+
 def table_index_mktdata_intraday():
     return Table('equity_index_mktdata_intraday', metadata_intraday, autoload=True)
+
 
 def table_option_mktdata_intraday():
     return Table('option_mktdata_intraday', metadata_intraday, autoload=True)
 
+
 def table_option_metrics():
     return Table('option_metrics', metadata_metrics, autoload=True)
+
 
 def table_moving_average():
     return Table('moving_average', metadata_metrics, autoload=True)
 
+
 def table_option_iv_by_moneyness():
     return Table('option_iv_by_moneyness', metadata_metrics, autoload=True)
 
+
 def table_option_atm_iv():
-    return Table('option_atm_iv',metadata_metrics, autoload=True)
+    return Table('option_atm_iv', metadata_metrics, autoload=True)
+
 
 def table_implied_volatilities():
-    return Table('implied_volatilities_by_moneyness',metadata_metrics, autoload=True)
+    return Table('implied_volatilities_by_moneyness', metadata_metrics, autoload=True)
 
 
 def table_cf_minute_1():
-    return Table('cf_minute_1',metadata_dzqh, autoload=True)
+    return Table('cf_minute_1', metadata_dzqh, autoload=True)
+
 
 def table_cf_daily():
-    return Table('cf_day',metadata_dzqh, autoload=True)
+    return Table('cf_day', metadata_dzqh, autoload=True)
+
+
+def table_cf_minute_golden_copy():
+    return Table('cf_minute', metadata_golden_copy, autoload=True)
