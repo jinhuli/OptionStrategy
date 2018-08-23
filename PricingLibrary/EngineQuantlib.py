@@ -163,14 +163,15 @@ class QlBlackFormula(object):
                                                            minVol, maxVol)
         except RuntimeError as e:
             # print(e)
-            black_formula = BlackFormula(self.dt_eval,
-                                         self.dt_maturity,
-                                         self.option_type,
-                                         self.spot,
-                                         self.strike,
-                                         targetValue,
-                                         self.rf)
-            implied_vol = black_formula.ImpliedVolApproximation()
-            self.reset_vol(implied_vol)
+            # black_formula = BlackFormula(self.dt_eval,
+            #                              self.dt_maturity,
+            #                              self.option_type,
+            #                              self.spot,
+            #                              self.strike,
+            #                              targetValue,
+            #                              self.rf)
+            # implied_vol = black_formula.ImpliedVolApproximation()
+            # self.reset_vol(implied_vol)
             # print(implied_vol,self.NPV(),'--target value :',targetValue)
+            implied_vol = None
         return implied_vol
