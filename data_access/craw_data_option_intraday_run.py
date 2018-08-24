@@ -22,50 +22,34 @@ sess_intraday = Session_intraday()
 metadata_intraday = MetaData(engine_intraday)
 option_mktdata_intraday = Table('option_mktdata_intraday', metadata_intraday, autoload=True)
 
-engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
-Session_metrics = sessionmaker(bind=engine_metrics)
-sess_metrics = Session_metrics()
-metadata_metrics = MetaData(engine_metrics)
-options_golden = Table('options_mktdata_goldencopy', metadata_metrics, autoload=True)
+# engine_metrics = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/metrics', echo=False)
+# Session_metrics = sessionmaker(bind=engine_metrics)
+# sess_metrics = Session_metrics()
+# metadata_metrics = MetaData(engine_metrics)
+# options_golden = Table('options_mktdata_goldencopy', metadata_metrics, autoload=True)
 
 dc = DataCollection()
 
-beg_date = datetime.date(2016, 11, 1)
-end_date = datetime.date(2016, 11, 28)
 
-############################################# OPTION MKT INTRADAY #############################################
+# dates = ['2016-01-18']
 
+miss_data = {
+    '2016-01-18':['50etf_1602_p_1.95', '50etf_1606_c_1.95', '50etf_1606_p_1.95'],
+    '2016-01-27':['50etf_1601_c_1.85','50etf_1601_p_1.85','50etf_1606_c_1.9','50etf_1606_p_1.9'],
+             }
 
-query_mkt = sess_metrics.query(options_golden) \
-    .filter(options_golden.c.amt_daily_avg == -999.0)
-
-dataset = pd.read_sql_query(query_mkt.statement,query_mkt.session.bind)
-dates = dataset['dt_date'].unique()
-
-for date in dates:
-    df = dataset[dataset['dt_date'] == date]
-
-    for index, row in df.iterrows():
-        cur = row['dt_date']
-        next_day = row['dt_date'] + datetime.timedelta(days=1)
-        id = row['id_instrument']
-        windcode = row['code_instrument']
-        dt_date = date.strftime("%Y-%m-%d")
-        db_data = dc.table_option_intraday().wind_data_50etf_option_intraday2(dt_date, windcode,id)
-
-        if len(db_data)>0:
+for dt_date in miss_data.keys():
+    df = dc.table_options().get_option_contracts(dt_date)
+    for (idx_oc, row) in df.iterrows():
+        id_instrument = row['id_instrument']
+        if id_instrument not in miss_data[dt_date]: continue
+        db_data_list = dc.table_option_intraday().wind_data_50etf_option_intraday(dt_date, row)
+        for db_data in db_data_list:
             try:
-                option_mktdata_intraday.delete(
-                    (option_mktdata_intraday.c.dt_datetime >= dt_date + " 09:25:00")&
-                    (option_mktdata_intraday.c.dt_datetime <= dt_date + " 15:00:00")&
-                    (option_mktdata_intraday.c.id_instrument == id)).execute()
+                conn_intraday.execute(option_mktdata_intraday.insert(), db_data)
+                print(dt_date , id_instrument,' -- inserted into data base succefully')
             except Exception as e:
                 print(e)
                 pass
-            try:
-                conn_intraday.execute(option_mktdata_intraday.insert(), db_data)
-                print(date,' -- option_mktdata_intraday -- inserted into data base succefully')
-            except Exception as e:
-                print(e)
-        else:
-            print('wind collect data failed')
+
+

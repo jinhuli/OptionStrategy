@@ -208,7 +208,7 @@ class SkewIndexing(BaseOptionSet):
 
 
 # start_date = datetime.date(2015, 1, 11)
-start_date = datetime.date(2018, 8, 1)
+start_date = datetime.date.today() - datetime.timedelta(days=3)
 end_date = datetime.date.today()
 skew_indexing = SkewIndexing(start_date, end_date)
 skew_indexing.init()

@@ -1047,7 +1047,7 @@ class DataCollection():
                     db_data.append(db_row)
             except Exception as e:
                 print(e)
-                print(datestr, ' , ', id_instrument)
+                # print(datestr, ' , ', id_instrument)
             return db_data
 
         def wind_data_50etf_option_intraday2(self, datestr, windcode,id_instrument):
