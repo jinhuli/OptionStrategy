@@ -1,8 +1,10 @@
 import datetime
 import pandas as pd
 import numpy as np
+import math
 from typing import Union
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType,Option50ETF,ExecuteType, LongShort,OptionExerciseType
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType,\
+    Option50ETF,ExecuteType, LongShort,OptionExerciseType,PricingUtil
 from back_test.model.base_product import BaseProduct
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.BlackFormular import BlackFormula
@@ -191,15 +193,17 @@ class BaseOption(BaseProduct):
         if self.implied_vol is None: self.update_implied_vol()
         return self.implied_vol
 
-    def get_implied_vol_adjusted_by_pcr(self, adjusted_rf) -> float:
+    def get_implied_vol_adjusted_by_htbr(self, htb_r) -> float:
+        ttm = PricingUtil.get_ttm(self.eval_date,self.maturitydt())
+        spot_htb = self.underlying_close() * math.exp(-htb_r * ttm)
         if self.exercise_type == OptionExerciseType.EUROPEAN:
             black_formula = QlBlackFormula(
                 dt_eval=self.eval_date,
                 dt_maturity=self.maturitydt(),
                 option_type=self.option_type(),
-                spot=self.underlying_close(),
+                spot=spot_htb,
                 strike=self.applicable_strike(),
-                rf=adjusted_rf
+                rf=self.rf
             )
             implied_vol = black_formula.estimate_vol(self.mktprice_close())
         else:
@@ -208,10 +212,9 @@ class BaseOption(BaseProduct):
                 dt_maturity=self.maturitydt(),
                 option_type=self.option_type(),
                 option_exercise_type=OptionExerciseType.AMERICAN,
-                spot=self.underlying_close(),
+                spot=spot_htb,
                 strike=self.strike(),
-                rf=adjusted_rf,
-                n=800
+                rf=self.rf
             )
             implied_vol = binomial.estimate_vol(self.mktprice_close())
         return implied_vol

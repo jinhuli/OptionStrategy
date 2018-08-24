@@ -275,25 +275,38 @@ class BaseOptionSet(AbstractBaseProductSet):
         df['amt_ttm'] = ttm
         return df
 
-    def get_implied_rf_vwpcr(self,nbr_maturity):
+    # def get_implied_rf_vwpcr(self,nbr_maturity):
+    #     t_qupte = self.get_T_quotes(nbr_maturity)
+    #     t_qupte[Util.AMT_HTB_RATE] = t_qupte.apply(self.fun_implied_rf, axis=1)
+    #     implied_rf = (t_qupte.loc[:, Util.AMT_HTB_RATE] * t_qupte.loc[:, Util.AMT_TRADING_VOLUME]).sum() \
+    #            / t_qupte.loc[:,Util.AMT_TRADING_VOLUME].sum()
+    #     return implied_rf
+    #
+    # def get_implied_rf_mink_pcr(self,nbr_maturity):
+    #     t_qupte = self.get_T_quotes(nbr_maturity)
+    #     min_k_series = t_qupte.loc[t_qupte[Util.AMT_APPLICABLE_STRIKE].idxmin()]
+    #     implied_rf = self.fun_implied_rf(min_k_series)
+    #     return implied_rf
+    #
+    # def fun_implied_rf(self,df_series):
+    #     rf = math.log(df_series[Util.AMT_APPLICABLE_STRIKE] /
+    #                   (df_series[Util.AMT_UNDERLYING_CLOSE] + df_series[Util.AMT_PUT_QUOTE]
+    #                    - df_series[Util.AMT_CALL_QUOTE]), math.e) / df_series[Util.AMT_TTM]
+    #     return rf
+
+    def get_htb_rate(self, nbr_maturity):
         t_qupte = self.get_T_quotes(nbr_maturity)
-        t_qupte[Util.AMT_HTB_RATE] = t_qupte.apply(self.fun_implied_rf, axis=1)
-        implied_rf = (t_qupte.loc[:, Util.AMT_HTB_RATE] * t_qupte.loc[:, Util.AMT_TRADING_VOLUME]).sum() \
-               / t_qupte.loc[:,Util.AMT_TRADING_VOLUME].sum()
-        return implied_rf
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        return htb_r
 
-    def get_implied_rf_mink_pcr(self,nbr_maturity):
-        t_qupte = self.get_T_quotes(nbr_maturity)
-        min_k_series = t_qupte.loc[t_qupte[Util.AMT_APPLICABLE_STRIKE].idxmin()]
-        implied_rf = self.fun_implied_rf(min_k_series)
-        return implied_rf
-
-    def fun_implied_rf(self,df_series):
-        rf = math.log(df_series[Util.AMT_APPLICABLE_STRIKE] /
-                      (df_series[Util.AMT_UNDERLYING_CLOSE] + df_series[Util.AMT_PUT_QUOTE]
-                       - df_series[Util.AMT_CALL_QUOTE]), math.e) / df_series[Util.AMT_TTM]
-        return rf
-
+    def fun_htb_rate(self,df_series, rf):
+        r = -math.log((df_series[Util.AMT_CALL_QUOTE] - df_series[Util.AMT_PUT_QUOTE]
+                       + df_series[Util.AMT_APPLICABLE_STRIKE] * math.exp(-rf * df_series[Util.AMT_TTM]))
+                      / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
+        return r
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
     Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.

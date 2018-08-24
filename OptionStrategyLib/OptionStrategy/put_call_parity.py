@@ -83,7 +83,6 @@ t_qupte.loc[:,'diff'] = abs(t_qupte.loc[:,c.Util.AMT_APPLICABLE_STRIKE]-t_qupte.
 atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
 htb_r_atm = fun_htb_rate(atm_series,rf)
 # htb_r_vw = optionset.get_implied_rf_vwpcr(nbr_maturity)
-# htb_r_mp = optionset.get_implied_rf_mink_pcr(nbr_maturity)
 
 t_qupte['amt_iv_adj_call'] = t_qupte.apply(lambda x: fun_pcp_adjusted_iv(x,c.OptionType.CALL,rf,htb_r=0.388),axis=1)
 t_qupte['amt_iv_adj_put'] = t_qupte.apply(lambda x: fun_pcp_adjusted_iv(x,c.OptionType.PUT,rf,htb_r=0.388),axis=1)
@@ -105,9 +104,10 @@ print(t_qupte)
 print('htb_r_vw : ',htb_r_vw)
 print('htb_r_mp : ',htb_r_mp)
 print('htb_r_atm : ',htb_r_atm)
-# for option in optionset.get_dict_options_by_maturities()[mdt1]:
-#     iv = option.get_implied_vol_adjusted_by_pcr(implied_rf2_mdt1)
-#     print(option.id_instrument(),iv)
+
+for option in optionset.get_dict_options_by_maturities()[mdt1]:
+    iv = option.get_implied_vol_adjusted_by_htbr(optionset.get_htb_rate(nbr_maturity))
+    print(option.id_instrument(),iv)
 
 k = list(t_qupte['amt_strike'])
 iv_call = list(t_qupte['amt_iv_call'])
@@ -125,10 +125,6 @@ iv_adj_put_atm = list(t_qupte['amt_iv_adj_put_atm'])
 implied_ivs = list(t_qupte[c.Util.AMT_HTB_RATE])
 # plt.figure()
 pu.plot_line_chart(k,[iv_call,iv_put],['iv_call','iv_put'])
-# plt.figure()
-pu.plot_line_chart(k,[iv_adj_call_vw,iv_adj_put_vw],['iv_adj_call_vw','iv_adj_put_vw'])
-pu.plot_line_chart(k,[iv_adj_call_pk,iv_adj_put_pk],['iv_adj_call_per_strike','iv_adj_put_per_strike'])
-pu.plot_line_chart(k,[iv_adj_call_mk,iv_adj_put_mk],['iv_adj_call_min_strike','iv_adj_put_min_strike'])
 pu.plot_line_chart(k,[iv_adj_call_atm,iv_adj_put_atm],['iv_adj_call_atm','iv_adj_put_atm'])
 pu.plot_line_chart(k,[implied_ivs],['implied_ivs'])
 
