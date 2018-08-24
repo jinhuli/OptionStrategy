@@ -3,10 +3,12 @@ from collections import deque
 from typing import Dict, List, Tuple
 import pandas as pd
 import numpy as np
+import math
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, ExecuteType, LongShort
 from back_test.model.trade import Order
+
 
 class BaseOptionSet(AbstractBaseProductSet):
     """
@@ -255,22 +257,42 @@ class BaseOptionSet(AbstractBaseProductSet):
 
 
     def get_T_quotes(self, nbr_maturity:int=0):
-        dt_maturity = self.get_maturities_list()[0]
+        dt_maturity = self.get_maturities_list()[nbr_maturity]
         df_current = self.get_current_state()
         df_mdt = df_current[df_current[Util.DT_MATURITY]==dt_maturity].reset_index(drop=True)
         df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
-            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE})
+            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME:Util.AMT_CALL_TRADING_VOLUME})
         df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
-            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE})
+            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME:Util.AMT_PUT_TRADING_VOLUME})
         df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         df = pd.merge(df_call[[Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_STRIKE,
-                               Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE]],
-                      df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE]],
+                               Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_CALL_TRADING_VOLUME]],
+                      df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE,Util.AMT_PUT_TRADING_VOLUME]],
                       how='inner', on=Util.AMT_APPLICABLE_STRIKE)
+        df[Util.AMT_TRADING_VOLUME] = df[Util.AMT_CALL_TRADING_VOLUME] + df[Util.AMT_PUT_TRADING_VOLUME]
         ttm = ((dt_maturity - self.eval_date).total_seconds() / 60.0) / (365.0 * 1440)
         df['amt_ttm'] = ttm
         return df
+
+    def get_implied_rf_vwpcr(self,nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte[Util.AMT_HTB_RATE] = t_qupte.apply(self.fun_implied_rf, axis=1)
+        implied_rf = (t_qupte.loc[:, Util.AMT_HTB_RATE] * t_qupte.loc[:, Util.AMT_TRADING_VOLUME]).sum() \
+               / t_qupte.loc[:,Util.AMT_TRADING_VOLUME].sum()
+        return implied_rf
+
+    def get_implied_rf_mink_pcr(self,nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        min_k_series = t_qupte.loc[t_qupte[Util.AMT_APPLICABLE_STRIKE].idxmin()]
+        implied_rf = self.fun_implied_rf(min_k_series)
+        return implied_rf
+
+    def fun_implied_rf(self,df_series):
+        rf = math.log(df_series[Util.AMT_APPLICABLE_STRIKE] /
+                      (df_series[Util.AMT_UNDERLYING_CLOSE] + df_series[Util.AMT_PUT_QUOTE]
+                       - df_series[Util.AMT_CALL_QUOTE]), math.e) / df_series[Util.AMT_TTM]
+        return rf
 
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
@@ -424,6 +446,8 @@ class BaseOptionSet(AbstractBaseProductSet):
     # TODO: USE TOLYER'S EXPANSION.
     def yield_decomposition(self):
         return
+
+
 
     # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
     #     * ATM defined as FIRST OTM  """

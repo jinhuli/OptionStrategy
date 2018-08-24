@@ -2,11 +2,11 @@ import datetime
 import pandas as pd
 import numpy as np
 from typing import Union
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType,Option50ETF,ExecuteType, LongShort
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType,Option50ETF,ExecuteType, LongShort,OptionExerciseType
 from back_test.model.base_product import BaseProduct
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.BlackFormular import BlackFormula
-from PricingLibrary.EngineQuantlib import QlBlackFormula
+from PricingLibrary.EngineQuantlib import QlBlackFormula,QlBinomial
 from back_test.model.trade import Order
 
 
@@ -22,6 +22,8 @@ class BaseOption(BaseProduct):
         self.implied_vol: float = None
         self.fee_rate = Util.DICT_OPTION_TRANSACTION_FEE_RATE[self.name_code()]
         self.fee_per_unit = Util.DICT_OPTION_TRANSACTION_FEE[self.name_code()]
+        if self.name_code() in ['m','sr']: self.exercise_type = OptionExerciseType.AMERICAN
+        else: self.exercise_type = OptionExerciseType.EUROPEAN
 
     def next(self) -> None:
         self._destroy_black_calculater()
@@ -159,15 +161,28 @@ class BaseOption(BaseProduct):
             spot = self.underlying_close()
             # black_formula = BlackFormula(self.eval_date, dt_maturity, option_type, spot, strike,option_price, self.rf)
             # implied_vol = black_formula.ImpliedVolApproximation()
-            black_formula = QlBlackFormula(
-                dt_eval=self.eval_date,
-                dt_maturity=dt_maturity,
-                option_type=option_type,
-                spot=spot,
-                strike=strike,
-                rf=self.rf
-            )
-            implied_vol = black_formula.estimate_vol(option_price)
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                black_formula = QlBlackFormula(
+                    dt_eval=self.eval_date,
+                    dt_maturity=dt_maturity,
+                    option_type=option_type,
+                    spot=spot,
+                    strike=strike,
+                    rf=self.rf
+                )
+                implied_vol = black_formula.estimate_vol(option_price)
+            else:
+                binomial = QlBinomial(
+                    dt_eval=self.eval_date,
+                    dt_maturity=dt_maturity,
+                    option_type=option_type,
+                    option_exercise_type=OptionExerciseType.AMERICAN,
+                    spot=spot,
+                    strike=strike,
+                    rf=self.rf,
+                    n=800
+                )
+                implied_vol = binomial.estimate_vol(option_price)
         else:
             implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol
@@ -175,6 +190,31 @@ class BaseOption(BaseProduct):
     def get_implied_vol(self) -> Union[float, None]:
         if self.implied_vol is None: self.update_implied_vol()
         return self.implied_vol
+
+    def get_implied_vol_adjusted_by_pcr(self, adjusted_rf) -> float:
+        if self.exercise_type == OptionExerciseType.EUROPEAN:
+            black_formula = QlBlackFormula(
+                dt_eval=self.eval_date,
+                dt_maturity=self.maturitydt(),
+                option_type=self.option_type(),
+                spot=self.underlying_close(),
+                strike=self.applicable_strike(),
+                rf=adjusted_rf
+            )
+            implied_vol = black_formula.estimate_vol(self.mktprice_close())
+        else:
+            binomial = QlBinomial(
+                dt_eval=self.eval_date,
+                dt_maturity=self.maturitydt(),
+                option_type=self.option_type(),
+                option_exercise_type=OptionExerciseType.AMERICAN,
+                spot=self.underlying_close(),
+                strike=self.strike(),
+                rf=adjusted_rf,
+                n=800
+            )
+            implied_vol = binomial.estimate_vol(self.mktprice_close())
+        return implied_vol
 
     def get_delta(self) -> Union[float, None]:
         return self._get_black_calculater().Delta()

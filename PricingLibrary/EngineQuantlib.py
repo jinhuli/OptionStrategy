@@ -23,7 +23,7 @@ class QlBinomial(object):
                  option_exercise_type: constant.OptionExerciseType,
                  spot: float,
                  strike: float,
-                 vol: float,
+                 vol: float = 0.0,
                  rf: float = 0.03,
                  n: int = 800,
                  dividend_rate: float = 0.0):
@@ -52,7 +52,7 @@ class QlBinomial(object):
             self.exercise = ql.EuropeanExercise(self.maturity_date)
             self.ql_option = ql.VanillaOption(payoff, self.exercise)
         self.day_count = ql.ActualActual()
-        self.calendar = ql.NullCalendar()
+        self.calendar = ql.China()
         self.spot_handle = ql.QuoteHandle(ql.SimpleQuote(spot))
         self.flat_ts = ql.YieldTermStructureHandle(
             ql.FlatForward(self.settlement, rf, self.day_count)
@@ -126,7 +126,7 @@ class QlBlackFormula(object):
         self.exercise = ql.EuropeanExercise(self.maturity_date)
         self.ql_option = ql.VanillaOption(payoff, self.exercise)
         self.day_count = ql.ActualActual()
-        self.calendar = ql.NullCalendar()
+        self.calendar = ql.China()
         self.spot_handle = ql.QuoteHandle(ql.SimpleQuote(spot))
         self.flat_ts = ql.YieldTermStructureHandle(
             ql.FlatForward(self.settlement, rf, self.day_count)
@@ -157,7 +157,7 @@ class QlBlackFormula(object):
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
 
-    def estimate_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
+    def implied_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
         try:
             implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
                                                            minVol, maxVol)
@@ -175,3 +175,16 @@ class QlBlackFormula(object):
             # print(implied_vol,self.NPV(),'--target value :',targetValue)
             implied_vol = None
         return implied_vol
+
+    def estimate_vol(self, price: float, presion: float = 0.00001, max_vol: float = 2.0):
+        l = presion
+        r = max_vol
+        while l < r and round((r - l), 5) > presion:
+            m = round(l + (r - l) / 2, 5)
+            self.reset_vol(m)
+            p = self.NPV()
+            if p < price:
+                l = m
+            else:
+                r = m
+        return m
