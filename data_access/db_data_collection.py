@@ -30,6 +30,20 @@ class DataCollection():
             df_optionchain = pd.read_sql(query.statement, query.session.bind)
             return df_optionchain
 
+        def get_option_contracts_all(self, id_underlying='index_50etf'):
+            option_contracts = admin_read.table_option_contracts()
+            sess = admin_read.session_mktdata()
+            query = sess.query(option_contracts.c.dt_listed,
+                               option_contracts.c.dt_maturity,
+                               option_contracts.c.windcode,
+                               option_contracts.c.id_instrument,
+                               option_contracts.c.amt_strike,
+                               option_contracts.c.cd_option_type
+                               ) \
+                .filter(option_contracts.c.id_underlying == id_underlying)
+            df_optionchain = pd.read_sql(query.statement, query.session.bind)
+            return df_optionchain
+
         def czce_daily(self, dt, data):
             db_data = []
 
@@ -1024,6 +1038,8 @@ class DataCollection():
             id_instrument = df_optionchain_row['id_instrument']
             data = w.wsi(windcode, "close,volume,amt", datestr + " 09:00:00", datestr + " 15:01:00", "Fill=Previous")
             datetimes = data.Times
+            errorcode = data.ErrorCode
+            print(errorcode)
             try:
                 prices = data.Data[0]
                 volumes = data.Data[1]
