@@ -276,7 +276,8 @@ class BaseOption(BaseProduct):
     #                           7%×合约标的前收盘价)]×合约单位
     # 认沽期权义务仓开仓保证金＝Min[合约前结算价 + Max（12 %×合约标的前收盘价 - 认沽期权虚值，
     #                               7 %×行权价格），行权价格] ×合约单位
-    def get_initial_margin(self) -> float:
+    def get_initial_margin(self,long_short:LongShort) -> float:
+        if long_short == LongShort.LONG: return 0.0
         amt_last_settle = self.mktprice_last_settlement()
         amt_underlying_last_close = self.underlying_last_close()
         if self.option_type() == OptionType.CALL:
@@ -297,7 +298,9 @@ class BaseOption(BaseProduct):
     #                                           7 %×合约标的收盘价）]×合约单位
     # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
     #                               行权价格]×合约单位
-    def get_maintain_margin(self):
+    def get_maintain_margin(self,long_short:LongShort):
+        if long_short == LongShort.LONG:
+            return 0.0
         amt_settle = self.mktprice_settlement()
         if amt_settle is None or amt_settle == np.nan:
             amt_settle = self.mktprice_close()
@@ -334,7 +337,7 @@ class BaseOption(BaseProduct):
             execution_record[Util.TRADE_MARKET_VALUE] = execution_record[Util.TRADE_UNIT] * \
                                                         execution_record[Util.TRADE_PRICE] * self.multiplier()
         else:
-            execution_record[Util.TRADE_MARGIN_CAPITAL] = self.get_initial_margin() * \
+            execution_record[Util.TRADE_MARGIN_CAPITAL] = self.get_initial_margin(order.long_short) * \
                                                           execution_record[Util.TRADE_UNIT]
             execution_record[Util.TRADE_MARKET_VALUE] = 0.0
         if self.fee_per_unit is None:

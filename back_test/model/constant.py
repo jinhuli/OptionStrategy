@@ -793,6 +793,8 @@ class Util:
     STR_PUT = 'put'
     STR_50ETF = '50etf'
     STR_INDEX_50ETF = 'index_50etf'
+    STR_INDEX_50SH = 'index_50sh'
+    STR_INDEX_300SH = 'index_300sh'
     STR_M = 'm'
     STR_IH = 'ih'
     STR_IF = 'iF'

@@ -310,9 +310,9 @@ class BaseProduct(AbstractBaseProduct):
             return self.df_data.loc[self.current_index - 1][Util.AMT_CLOSE]
         return ret
 
-    def get_initial_margin(self) -> float:
+    def get_initial_margin(self,long_short:LongShort) -> float:
         return 0.0
 
-    def get_maintain_margin(self) -> float:
+    def get_maintain_margin(self,long_short:LongShort) -> float:
         return 0.0
 

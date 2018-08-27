@@ -377,8 +377,7 @@ class BaseAccount():
                 margin_unrealized_pnl += unrealized_pnl
             else:
                 nonmargin_unrealized_pnl += unrealized_pnl
-            # TODO：ONLY SHORT OPTION HAS MARGIN REQUIREMENT.
-            trade_margin_capital_add = base_product.get_maintain_margin() * row[Util.TRADE_UNIT] - row[
+            trade_margin_capital_add = base_product.get_maintain_margin(trade_long_short) * row[Util.TRADE_UNIT] - row[
                 Util.TRADE_MARGIN_CAPITAL]
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] += trade_margin_capital_add
             self.cash -= trade_margin_capital_add
