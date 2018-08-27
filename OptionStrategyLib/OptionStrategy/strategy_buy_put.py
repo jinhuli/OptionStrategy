@@ -6,9 +6,10 @@ import datetime
 import numpy as np
 from Utilities.PlotUtil import PlotUtil
 import matplotlib.pyplot as plt
+import pandas as pd
 
 pu = PlotUtil()
-start_date = datetime.date(2015, 1, 1)
+start_date = datetime.date(2018, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 min_holding = 15
 nbr_maturity = 1
@@ -71,6 +72,7 @@ for moneyness in [0,-1]:
 
     res.update({'date':list(account.account['dt_date'])})
     res.update({moneyness:list(account.account[c.Util.PORTFOLIO_NPV])})
-
+df_res = pd.DataFrame(res)
+df_res.to_csv('df_res.csv')
 pu.plot_line_chart(res['date'],[res[0],res[-1]],['npv: buy atm put','npv: buy otm 1 put'])
 plt.show()

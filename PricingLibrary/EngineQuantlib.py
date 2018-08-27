@@ -2,7 +2,7 @@ import typing
 import datetime
 import back_test.model.constant as constant
 import QuantLib as ql
-from PricingLibrary.BlackFormular import BlackFormula
+from PricingLibrary.AbstractOptionPricingEngine import AbstractOptionPricingEngine
 
 """
                  dt_eval: datetime.date,
@@ -15,7 +15,7 @@ from PricingLibrary.BlackFormular import BlackFormula
 """
 
 
-class QlBinomial(object):
+class QlBinomial(AbstractOptionPricingEngine):
     def __init__(self,
                  dt_eval: datetime.date,
                  dt_maturity: datetime.date,
@@ -27,7 +27,7 @@ class QlBinomial(object):
                  rf: float = 0.03,
                  n: int = 800,
                  dividend_rate: float = 0.0):
-
+        super().__init__()
         self.values: typing.List[typing.List[float]] = []
         self.asset_values: typing.List[typing.List[float]] = []
         self.exercise_values: typing.List[typing.List[float]] = []
@@ -67,12 +67,19 @@ class QlBinomial(object):
                                                         self.dividend_yield,
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
-
-    def NPV(self) -> float:
         binomial_engine = ql.BinomialVanillaEngine(self.bsm_process, "crr", self.steps)
         self.ql_option.setPricingEngine(binomial_engine)
-        price = self.ql_option.NPV()
-        return price
+
+    def NPV(self) -> float:
+        return self.ql_option.NPV()
+
+    def Delta(self,implied_vol:float) -> float:
+        self.reset_vol(implied_vol)
+        return self.ql_option.delta()
+
+    def Gamma(self,implied_vol:float) -> float:
+        self.reset_vol(implied_vol)
+        return self.ql_option.gamma()
 
     def reset_vol(self, vol):
         self.flat_vol_ts = ql.BlackVolTermStructureHandle(
@@ -82,6 +89,8 @@ class QlBinomial(object):
                                                         self.dividend_yield,
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
+        engine = ql.AnalyticEuropeanEngine(self.bsm_process)
+        self.ql_option.setPricingEngine(engine)
 
     def estimate_vol(self, price: float, presion: float = 0.00001, max_vol: float = 2.0):
         l = presion
@@ -97,13 +106,17 @@ class QlBinomial(object):
         return m
 
 
-class QlBlackFormula(object):
-    def __init__(self, dt_eval: datetime.date,
+class QlBlackFormula(AbstractOptionPricingEngine):
+    def __init__(self,
+                 dt_eval: datetime.date,
                  dt_maturity: datetime.date,
                  option_type: constant.OptionType,
                  spot: float,
                  strike: float,
-                 vol: float = 0.0, rf: float = 0.03, dividend_rate: float = 0.0):
+                 vol: float = 0.0,
+                 rf: float = 0.03,
+                 dividend_rate: float = 0.0):
+        super().__init__()
         self.dt_eval = dt_eval
         self.dt_maturity = dt_maturity
         self.option_type = option_type
@@ -141,12 +154,19 @@ class QlBlackFormula(object):
                                                         self.dividend_yield,
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
-
-    def NPV(self) -> float:
         engine = ql.AnalyticEuropeanEngine(self.bsm_process)
         self.ql_option.setPricingEngine(engine)
-        price = self.ql_option.NPV()
-        return price
+
+    def NPV(self) -> float:
+        return self.ql_option.NPV()
+
+    def Delta(self,implied_vol:float) -> float:
+        self.reset_vol(implied_vol)
+        return self.ql_option.delta()
+
+    def Gamma(self,implied_vol:float) -> float:
+        self.reset_vol(implied_vol)
+        return self.ql_option.gamma()
 
     def reset_vol(self, vol):
         self.flat_vol_ts = ql.BlackVolTermStructureHandle(
@@ -156,6 +176,8 @@ class QlBlackFormula(object):
                                                         self.dividend_yield,
                                                         self.flat_ts,
                                                         self.flat_vol_ts)
+        engine = ql.AnalyticEuropeanEngine(self.bsm_process)
+        self.ql_option.setPricingEngine(engine)
 
     def implied_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
         try:

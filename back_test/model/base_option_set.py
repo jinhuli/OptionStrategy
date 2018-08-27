@@ -307,6 +307,10 @@ class BaseOptionSet(AbstractBaseProductSet):
                        + df_series[Util.AMT_APPLICABLE_STRIKE] * math.exp(-rf * df_series[Util.AMT_TTM]))
                       / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
         return r
+
+    # TODO:
+    def get_otm_implied_vol_curve(self):
+        return
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
     Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.
