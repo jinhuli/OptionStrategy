@@ -355,6 +355,27 @@ class BaseOptionSet(AbstractBaseProductSet):
                       / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
         return r
 
+    def get_option_moneyness(self,base_option:BaseOption):
+        maturity = base_option.maturitydt()
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
+        if base_option.option_type() == OptionType.CALL:
+            mdt_options_dict = mdt_calls.get(maturity)
+        else:
+            mdt_options_dict = mdt_puts.get(maturity)
+        spot = list(mdt_options_dict.values())[0][0].underlying_close()
+        moneyness = self.OptionUtilClass.get_moneyness_of_a_strike_by_nearest_strike(spot, base_option.strike(),
+                                                                                 list(mdt_options_dict.keys()),
+                                                                                 base_option.option_type())
+        return moneyness
+
+    # 行权价最低的put
+    def get_deepest_otm_put_list(self,maturity: datetime.date):
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
+        mdt_options_dict = mdt_puts.get(maturity)
+        min_k = min(mdt_options_dict.keys())
+        put_list = mdt_options_dict[min_k]
+        return put_list
+
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
     Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.
@@ -414,6 +435,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                                                                             list(mdt_options_dict.keys()), OptionType.PUT)
             put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         return [call_mdt_dict, put_mdt_dict]
+
 
     """ Mthd1: Determine atm option as the NEAREST strike from spot. 
         Get options by given moneyness rank and maturity date. """
@@ -500,7 +522,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         res_option = None
         for option in options:
             volume = option.trading_volume()
-            if volume > volume0: res_option = option
+            if volume >= volume0: res_option = option
             volume0 = volume
         return res_option
 

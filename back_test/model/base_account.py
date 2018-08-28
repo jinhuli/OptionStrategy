@@ -349,12 +349,17 @@ class BaseAccount():
         total_short_scale = 0.0
         total_long_scale = 0.0
         nonmargin_unrealized_pnl = 0.0
+        portfolio_delta = 0.0
         for (id_instrument, row) in self.trade_book.iterrows():
             base_product = self.dict_holding[id_instrument]
             trade_unit = row[Util.TRADE_UNIT]
             trade_long_short = row[Util.TRADE_LONG_SHORT]
             price = base_product.mktprice_close()
-
+            if isinstance(base_product,BaseOption):
+                delta = trade_unit*base_product.multiplier()*base_product.get_delta(base_product.get_implied_vol())*trade_long_short.value
+            else:
+                delta = 0
+            portfolio_delta += delta
             if trade_long_short == LongShort.SHORT:
                 total_short_scale -= trade_unit*price*base_product.multiplier()
             else:
@@ -377,8 +382,8 @@ class BaseAccount():
                 margin_unrealized_pnl += unrealized_pnl
             else:
                 nonmargin_unrealized_pnl += unrealized_pnl
-            trade_margin_capital_add = base_product.get_maintain_margin(trade_long_short) * row[Util.TRADE_UNIT] - row[
-                Util.TRADE_MARGIN_CAPITAL]
+            trade_margin_capital_add = base_product.get_maintain_margin(trade_long_short) * row[Util.TRADE_UNIT] - \
+                                       row[Util.TRADE_MARGIN_CAPITAL]
             self.trade_book.loc[id_instrument, Util.TRADE_MARGIN_CAPITAL] += trade_margin_capital_add
             self.cash -= trade_margin_capital_add
             # Calculate NPV
@@ -421,7 +426,8 @@ class BaseAccount():
             Util.PORTFOLIO_LONG_POSITION_SCALE:total_long_scale,
             Util.PORTFOLIO_SHORT_POSITION_SCALE:total_short_scale,
             Util.MARGIN_UNREALIZED_PNL:margin_unrealized_pnl,
-            Util.NONMARGIN_UNREALIZED_PNL:nonmargin_unrealized_pnl
+            Util.NONMARGIN_UNREALIZED_PNL:nonmargin_unrealized_pnl,
+            Util.PORTFOLIO_DELTA:portfolio_delta/portfolio_total_value
         })
         self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK

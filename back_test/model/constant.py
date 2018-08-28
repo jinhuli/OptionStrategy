@@ -94,6 +94,12 @@ class OptionM:
     MONEYNESS_POINT_HIGH = 5000
 
     @staticmethod
+    def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        # TODO
+        return None
+
+    @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
                                                    option_type: OptionType) -> float:
         d = OptionM.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
@@ -270,6 +276,12 @@ class OptionSR:
     MONEYNESS_POINT_HIGH = 10000
 
     @staticmethod
+    def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        # TODO
+        return None
+
+    @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
                                                    option_type: OptionType) -> float:
         d = OptionSR.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
@@ -427,6 +439,39 @@ class Option50ETF:
             #             return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
             #     else:
             #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+
+    @staticmethod
+    def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        min_strike = strikes[0]
+        max_strike = strikes[0]
+        for strike in strikes:
+            if strike < min_strike:
+                min_strike = strike
+            if strike > max_strike:
+                max_strike = strike
+        if spot < min_strike:
+            spot = min_strike
+        elif spot > max_strike:
+            spot = max_strike
+        if strike <= Option50ETF.MONEYNESS_POINT:
+            if spot <= Option50ETF.MONEYNESS_POINT:
+                # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+                rank = int(option_type.value * round((spot - strike) / 0.05))
+            else:
+                # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+                rank = int(option_type.value * round((Option50ETF.MONEYNESS_POINT - strike) / 0.05
+                                                         + (spot - Option50ETF.MONEYNESS_POINT) / 0.1))
+        else:
+            if spot <= Option50ETF.MONEYNESS_POINT:
+                # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+                rank = int(option_type.value * round((Option50ETF.MONEYNESS_POINT - strike) / 0.1
+                                                         + (spot - Option50ETF.MONEYNESS_POINT) / 0.05))
+            else:
+                # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+                rank = int(option_type.value * round((spot - strike) / 0.1))
+        return rank
+
 
     @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
@@ -851,6 +896,7 @@ class Util:
     PORTFOLIO_LONG_POSITION_SCALE = 'portfolio_long_position_scale'
     MARGIN_UNREALIZED_PNL = 'margin_unrealized_pnl'
     NONMARGIN_UNREALIZED_PNL = 'nonmargin_unrealized_pnl'
+    PORTFOLIO_DELTA = 'portfolio_delta'
     BILLION = 1000000000.0
     TRADE_BOOK_COLUMN_LIST = [DT_DATE, TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
@@ -862,7 +908,7 @@ class Util:
                        PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
                        PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
                        PORTFOLIO_SHORT_POSITION_SCALE, PORTFOLIO_LONG_POSITION_SCALE,
-                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL
+                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL,PORTFOLIO_DELTA
                        ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
