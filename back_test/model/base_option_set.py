@@ -6,9 +6,9 @@ import numpy as np
 import math
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, ExecuteType, LongShort
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, OptionExerciseType, LongShort
 from back_test.model.trade import Order
-
+from PricingLibrary.EngineQuantlib import QlBinomial,QlBlackFormula
 
 class BaseOptionSet(AbstractBaseProductSet):
     """
@@ -45,6 +45,10 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.update_contract_month_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
         self.eligible_maturities: List(datetime.date) = None # To be fulled in NEXT() method
         self.OptionUtilClass = OptionUtil.get_option_util_class(self._name_code)
+        if self._name_code in ['m', 'sr']:
+            self.exercise_type = OptionExerciseType.AMERICAN
+        else:
+            self.exercise_type = OptionExerciseType.EUROPEAN
 
     def init(self) -> None:
         self._generate_required_columns_if_missing()  # 补充行权价等关键信息（high frequency data就可能没有）
@@ -294,6 +298,49 @@ class BaseOptionSet(AbstractBaseProductSet):
     #                    - df_series[Util.AMT_CALL_QUOTE]), math.e) / df_series[Util.AMT_TTM]
     #     return rf
 
+    def get_otm_implied_vol_curve(self, nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(lambda x:self.fun_htb_rate_adjusted_iv(x,OptionType.CALL,htb_r),axis=1)
+        t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(lambda x:self.fun_htb_rate_adjusted_iv(x,OptionType.PUT,htb_r),axis=1)
+        t_qupte[Util.PCT_IV_OTM_BY_HTBR] = t_qupte.apply(self.fun_otm_iv,axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IV_OTM_BY_HTBR]]
+
+    def fun_otm_iv(self,df_series):
+        K = df_series[Util.AMT_APPLICABLE_STRIKE]
+        S = df_series[Util.AMT_UNDERLYING_CLOSE]
+        if K <= S:
+            return df_series[Util.PCT_IV_PUT_BY_HTBR]
+        else:
+            return df_series[Util.PCT_IV_CALL_BY_HTBR]
+
+    def fun_htb_rate_adjusted_iv(self,df_series: pd.DataFrame, option_type: OptionType, htb_r: float):
+        ttm = df_series[Util.AMT_TTM]
+        K = df_series[Util.AMT_APPLICABLE_STRIKE]
+        S = df_series[Util.AMT_UNDERLYING_CLOSE] * math.exp(-htb_r * ttm)
+        dt_eval = df_series[Util.DT_DATE]
+        dt_maturity = df_series[Util.DT_MATURITY]
+        if option_type == OptionType.CALL:
+            C = df_series[Util.AMT_CALL_QUOTE]
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
+                # black_call = BlackFormula(dt_eval,dt_maturity,c.OptionType.CALL,S,K,C,rf=rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval,dt_maturity,OptionType.CALL,OptionExerciseType.AMERICAN,S,K,rf=self.rf)
+            iv = pricing_engine.estimate_vol(C)
+        else:
+            P = df_series[Util.AMT_PUT_QUOTE]
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
+                # black_call = BlackFormula(dt_eval,dt_maturity,c.OptionType.CALL,S,K,C,rf=rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval,dt_maturity,OptionType.PUT,OptionExerciseType.AMERICAN,S,K,rf=self.rf)
+            iv = pricing_engine.estimate_vol(P)
+        return iv
+
     def get_htb_rate(self, nbr_maturity):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte.loc[:, 'diff'] = abs(
@@ -308,9 +355,6 @@ class BaseOptionSet(AbstractBaseProductSet):
                       / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
         return r
 
-    # TODO:
-    def get_otm_implied_vol_curve(self):
-        return
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
     Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.

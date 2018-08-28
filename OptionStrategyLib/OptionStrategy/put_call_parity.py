@@ -60,8 +60,8 @@ def fun_pcp_adjusted_iv(df_series:pd.DataFrame, option_type:c.OptionType,rf:floa
 
 
 
-start_date = datetime.date(2015, 8, 18)
-end_date = datetime.date(2015, 9, 8)
+start_date = datetime.date(2018, 8, 20)
+end_date = datetime.date(2018, 9, 8)
 rf = 0.03
 df_metrics = get_50option_mktdata(start_date, end_date)
 pu = PlotUtil()
@@ -77,11 +77,11 @@ for option in optionset.get_dict_options_by_maturities()[mdt1]:
     iv = option.get_implied_vol_adjusted_by_htbr(htb_r)
     delta = option.get_delta(iv)
     print(optionset.eval_date,option.id_instrument(),option.underlying_close(),iv,delta)
-optionset.next()
-for option in optionset.get_dict_options_by_maturities()[mdt1]:
-    iv = option.get_implied_vol_adjusted_by_htbr(htb_r)
-    delta = option.get_delta(iv)
-    print(optionset.eval_date,option.id_instrument(),option.underlying_close(),iv,delta)
+# optionset.next()
+# for option in optionset.get_dict_options_by_maturities()[mdt1]:
+#     iv = option.get_implied_vol_adjusted_by_htbr(htb_r)
+#     delta = option.get_delta(iv)
+#     print(optionset.eval_date,option.id_instrument(),option.underlying_close(),iv,delta)
 t_qupte = optionset.get_T_quotes(nbr_maturity)
 
 t_qupte[c.Util.AMT_HTB_RATE] = t_qupte.apply(lambda x: fun_htb_rate(x,rf),axis=1)
@@ -117,6 +117,13 @@ print('htb_r_vw : ',htb_r_vw)
 print('htb_r_mp : ',htb_r_mp)
 print('htb_r_atm : ',htb_r_atm)
 
+
+df_otm_iv = optionset.get_otm_implied_vol_curve(nbr_maturity)
+
+Ks = df_otm_iv[c.Util.AMT_APPLICABLE_STRIKE]
+otm_vols = df_otm_iv[c.Util.PCT_IV_OTM_BY_HTBR]
+print(df_otm_iv)
+pu.plot_line_chart(Ks,[otm_vols],['otm_ivs'])
 
 k = list(t_qupte['amt_strike'])
 iv_call = list(t_qupte['amt_iv_call'])
