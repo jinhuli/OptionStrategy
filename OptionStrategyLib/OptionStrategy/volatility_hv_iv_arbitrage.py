@@ -16,8 +16,8 @@ from scipy.stats import gaussian_kde
 import pandas as pd
 
 pu = PlotUtil()
-# start_date = datetime.date(2016, 6, 1)
-start_date = datetime.date(2016, 1, 1)
+start_date = datetime.date(2016, 6, 1)
+# start_date = datetime.date(2018, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15
@@ -184,12 +184,12 @@ while optionset.eval_date <= end_date:
         empty_position = False
 
     if not empty_position: # Delta hedge
-        delta_call = atm_call.get_delta()
-        delta_put = atm_put.get_delta()
+        delta_call = atm_call.get_delta(atm_call.get_implied_vol())
+        delta_put = atm_put.get_delta(atm_put.get_implied_vol())
         options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
         hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta, c.DeltaBound.NONE, buy_write,
                                                         atm_call.get_implied_vol(), atm_call.underlying_close(),
-                                                        atm_call.get_gamma(), atm_call.maturitydt())
+                                                        atm_call.get_gamma(atm_call.get_implied_vol()), atm_call.maturitydt())
         hedging.synthetic_unit += - hedge_unit
         if hedge_unit > 0:
             long_short = c.LongShort.LONG

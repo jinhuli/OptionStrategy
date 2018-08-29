@@ -99,7 +99,7 @@ class BaseFutureCoutinuous(BaseProduct):
             return
         execution_record: pd.Series = order.execution_res
         # calculate margin requirement
-        margin_requirement = self.get_initial_margin() * execution_record[Util.TRADE_UNIT]
+        margin_requirement = self.get_initial_margin(order.long_short) * execution_record[Util.TRADE_UNIT]
         if self.fee_per_unit is None:
             # 百分比手续费
             transaction_fee = execution_record[Util.TRADE_PRICE] * self.fee_rate * execution_record[

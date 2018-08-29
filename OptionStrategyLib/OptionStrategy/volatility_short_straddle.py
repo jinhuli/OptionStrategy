@@ -16,8 +16,8 @@ from scipy.stats import gaussian_kde
 import pandas as pd
 
 pu = PlotUtil()
-# start_date = datetime.date(2016, 6, 1)
-start_date = datetime.date(2018, 1, 1)
+start_date = datetime.date(2016, 6, 1)
+# start_date = datetime.date(2018, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15
@@ -56,6 +56,7 @@ df_data = df_data.join(df_iv_put[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_in
     .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_put'})
 df_data = df_data.dropna()
 df_data.loc[:,'average_iv'] = df_data.loc[:,'iv_call'] + df_data.loc[:,'iv_put']
+
 # # df_data.loc[:,'diff_hist_call_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL+'_20']-df_data.loc[:,'iv_call']
 # # df_data.loc[:,'diff_hist_put_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL+'_20']-df_data.loc[:,'iv_put']
 # df_data = df_data.sort_values(by='dt_date', ascending=False)
@@ -165,6 +166,8 @@ while optionset.eval_date <= end_date:
                 account.add_record(record, option)
                 hedging.synthetic_unit = 0
             empty_position = True
+        # TODO: 是否需要移仓？
+
 
     if empty_position and open_signal_ma(optionset.eval_date,df_iv_stats):
         buy_write = c.BuyWrite.WRITE
@@ -176,7 +179,7 @@ while optionset.eval_date <= end_date:
         atm_strike = atm_call.strike()
         hedging.amt_option = 1 / 1000  # 50ETF与IH点数之比
         unit_c = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier())*m
-        unit_p = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_put.multiplier())*m
+        unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier())*m
 
         order_c = account.create_trade_order(atm_call, long_short, unit_c)
         order_p = account.create_trade_order(atm_put, long_short, unit_p)
@@ -187,12 +190,13 @@ while optionset.eval_date <= end_date:
         empty_position = False
 
     if not empty_position: # Delta hedge
-        delta_call = atm_call.get_delta()
-        delta_put = atm_put.get_delta()
+        iv_htbr = optionset.get_iv_by_otm_iv_curve(nbr_maturiy=0, strike=atm_strike)
+        delta_call = atm_call.get_delta(iv_htbr)
+        delta_put = atm_put.get_delta(iv_htbr)
         options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
         hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta, c.DeltaBound.NONE, buy_write,
-                                                        atm_call.get_implied_vol(), atm_call.underlying_close(),
-                                                        atm_call.get_gamma(), atm_call.maturitydt())
+                                                        iv_htbr, atm_call.underlying_close(),
+                                                        atm_call.get_gamma(iv_htbr), atm_call.maturitydt())
         hedging.synthetic_unit += - hedge_unit
         if hedge_unit > 0:
             long_short = c.LongShort.LONG

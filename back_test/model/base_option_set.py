@@ -298,6 +298,11 @@ class BaseOptionSet(AbstractBaseProductSet):
     #                    - df_series[Util.AMT_CALL_QUOTE]), math.e) / df_series[Util.AMT_TTM]
     #     return rf
 
+    def get_iv_by_otm_iv_curve(self, nbr_maturiy,strike):
+        df = self.get_otm_implied_vol_curve(nbr_maturiy)
+        iv = df[df[Util.AMT_APPLICABLE_STRIKE]==strike][Util.PCT_IV_OTM_BY_HTBR].values[0]
+        return iv
+
     def get_otm_implied_vol_curve(self, nbr_maturity):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte.loc[:, 'diff'] = abs(

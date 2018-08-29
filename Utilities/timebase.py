@@ -180,12 +180,3 @@ def LFT(ts, d):
 #     sar = pd.Series(sar, index=high.index)
 #     return sar
 
-
-df_cf = pd.ExcelFile('../data/replicate/df_cf.xlsx').parse("Sheet1")
-df_cf.loc[:,'dt_date'] = df_cf['dt_date'].apply(lambda x:x.date())
-# df_cf_minute = pd.ExcelFile('../data/replicate/df_cf_minute.xlsx').parse("Sheet1")
-# df_cf_minute.loc[:,'dt_date'] = df_cf_minute['dt_datetime'].apply(lambda x:x.date())
-df_cf = df_cf.set_index('dt_date')
-res = LLKSR(df_cf['amt_close'],20)
-df_cf['LLKSR'] = res
-print(res)
