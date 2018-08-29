@@ -20,10 +20,10 @@ pu = PlotUtil()
 # end_date = datetime.date(2016, 12, 31)
 # start_date = datetime.date(2017, 1, 1)
 # end_date = datetime.date(2017, 12, 31)
-# start_date = datetime.date(2016, 2, 1)
-# end_date = datetime.date(2017, 1, 31)
-start_date = datetime.date(2015, 3, 1)
-end_date = datetime.date(2018, 8, 20)
+start_date = datetime.date(2016, 2, 1)
+end_date = datetime.date(2017, 1, 31)
+# start_date = datetime.date(2015, 3, 1)
+# end_date = datetime.date(2018, 8, 20)
 close_out_date = end_date
 min_holding = 15
 nbr_maturity = 1
@@ -33,12 +33,14 @@ pct_underlying_invest = 0.7
 res = {}
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
+# df_underlying.to_csv('../accounts_data/df_underlying.csv')
 
-
-def get_option_unit(option_put: BaseOption, underlying_value:float, target_delta:float):
-    # unit = np.floor(underlying_value/ option_put.strike() / option_put.multiplier()) # 期权名义本金等于标的市值
-    delta = option_put.get_delta(option_put.get_implied_vol())
-    unit = np.floor(target_delta * underlying_value / delta / option_put.multiplier())  # 根据目标delta值
+def get_option_unit(option_put: BaseOption, underlying_value:float, target_delta):
+    if target_delta is None:
+        unit = np.floor(underlying_value/ option_put.strike() / option_put.multiplier()) # 期权名义本金等于标的市值
+    else:
+        delta = option_put.get_delta(option_put.get_implied_vol())
+        unit = np.floor(target_delta * underlying_value / delta / option_put.multiplier())  # 根据目标delta值
     return unit
 
 
@@ -49,12 +51,15 @@ list_sharpe_ratio = []
 list_pct_option_amt = []
 
 for moneyness in [0, -1, -2, -3, -4]:
+# for moneyness in [-1, -2, -3]:
+# for moneyness in [-3]:
     dict_annualized_yield = {'m':moneyness}
     dict_annualized_volatility = {'m':moneyness}
     dict_max_drawdown = {'m':moneyness}
     dict_sharpe_ratio = {'m':moneyness}
     dict_pct_option_amt = {'m':moneyness}
-    for target_delta in [-0.1,-0.2,-0.3,-0.4]:
+    # for target_delta in [-0.1,-0.2,-0.3,-0.4]:
+    for target_delta in [None]:
         option_amt = []
         optionset = BaseOptionSet(df_metrics)
         optionset.init()
@@ -131,17 +136,18 @@ for moneyness in [0, -1, -2, -3, -4]:
                     record = atm_put.execute_order(order, slippage=slippage)
                     account.add_record(record, atm_put)
                 else: # rebalance delta
-                    underlying_value = unit_underlying * underlying.mktprice_close() * underlying.multiplier()
-                    unit_new = get_option_unit(atm_put, underlying_value,target_delta)
-                    d_unit = unit_new - unit
-                    if d_unit >= 0:
-                        long_short = c.LongShort.LONG
-                    else:
-                        long_short = c.LongShort.SHORT
-                    unit = unit_new
-                    order = account.create_trade_order(atm_put, long_short, d_unit)
-                    record = atm_put.execute_order(order, slippage=slippage)
-                    account.add_record(record, atm_put)
+                    if target_delta is not None:
+                        underlying_value = unit_underlying * underlying.mktprice_close() * underlying.multiplier()
+                        unit_new = get_option_unit(atm_put, underlying_value,target_delta)
+                        d_unit = unit_new - unit
+                        if d_unit >= 0:
+                            long_short = c.LongShort.LONG
+                        else:
+                            long_short = c.LongShort.SHORT
+                        unit = unit_new
+                        order = account.create_trade_order(atm_put, long_short, d_unit)
+                        record = atm_put.execute_order(order, slippage=slippage)
+                        account.add_record(record, atm_put)
             account.daily_accounting(optionset.eval_date)
             option_amt.append(unit*atm_put.multiplier())
             print(optionset.eval_date, underlying.eval_date,
@@ -156,6 +162,7 @@ for moneyness in [0, -1, -2, -3, -4]:
         # pu.plot_line_chart(account.account[c.Util.DT_DATE], [account.account[c.Util.CASH] / account.init_fund], ['cash'])
         # pu.plot_line_chart(account.account[c.Util.DT_DATE], [account.account[c.Util.PORTFOLIO_DELTA]], ['delta'])
         # print(account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV]))
+        account.account.to_csv('../accounts_data/account'+str(slippage)+str(target_delta)+str(moneyness)+'.csv')
         r = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
         return_yr = r['年化收益率']
         volatility_yr = r['年化波动率']
@@ -179,23 +186,23 @@ df_max_drawdown = pd.DataFrame(list_max_drawdown)
 df_sharpe_ratio = pd.DataFrame(list_sharpe_ratio)
 df_pct_option_amt = pd.DataFrame(list_pct_option_amt)
 
-df_annualized_yield.to_csv('df_annualized_yield_ALL.csv')
-df_annualized_volatility.to_csv('df_annualized_volatility_ALL.csv')
-df_max_drawdown.to_csv('df_max_drawdown_ALL.csv')
-df_sharpe_ratio.to_csv('df_sharpe_ratio_ALL.csv')
-df_pct_option_amt.to_csv('df_pct_option_amt_ALL.csv')
+# df_annualized_yield.to_csv('../accounts_data/df_annualized_yield_ALL.csv')
+# df_annualized_volatility.to_csv('../accounts_data/df_annualized_volatility_ALL.csv')
+# df_max_drawdown.to_csv('../accounts_data/df_max_drawdown_ALL.csv')
+# df_sharpe_ratio.to_csv('../accounts_data/df_sharpe_ratio_ALL.csv')
+# df_pct_option_amt.to_csv('../accounts_data/df_pct_option_amt_ALL.csv')
 
-# df_annualized_yield.to_csv('df_annualized_yield_熔断.csv')
-# df_annualized_volatility.to_csv('df_annualized_volatility_熔断.csv')
-# df_max_drawdown.to_csv('df_max_drawdown_熔断.csv')
-# df_sharpe_ratio.to_csv('df_sharpe_ratio_熔断.csv')
-# df_pct_option_amt.to_csv('df_pct_option_amt_熔断.csv')
+df_annualized_yield.to_csv('../accounts_data/df_annualized_yield_熔断.csv')
+df_annualized_volatility.to_csv('../accounts_data/df_annualized_volatility_熔断.csv')
+df_max_drawdown.to_csv('../accounts_data/df_max_drawdown_熔断.csv')
+df_sharpe_ratio.to_csv('../accounts_data/df_sharpe_ratio_熔断.csv')
+df_pct_option_amt.to_csv('../accounts_data/df_pct_option_amt_熔断.csv')
 
-# df_annualized_yield.to_csv('df_annualized_yield_'+str(start_date.year)+'.csv')
-# df_annualized_volatility.to_csv('df_annualized_volatility_'+str(start_date.year)+'.csv')
-# df_max_drawdown.to_csv('df_max_drawdown_'+str(start_date.year)+'.csv')
-# df_sharpe_ratio.to_csv('df_sharpe_ratio_'+str(start_date.year)+'.csv')
-# df_pct_option_amt.to_csv('df_pct_option_amt_'+str(start_date.year)+'.csv')
+# df_annualized_yield.to_csv('../accounts_data/df_annualized_yield_'+str(start_date.year)+'.csv')
+# df_annualized_volatility.to_csv('../accounts_data/df_annualized_volatility_'+str(start_date.year)+'.csv')
+# df_max_drawdown.to_csv('../accounts_data/df_max_drawdown_'+str(start_date.year)+'.csv')
+# df_sharpe_ratio.to_csv('../accounts_data/df_sharpe_ratio_'+str(start_date.year)+'.csv')
+# df_pct_option_amt.to_csv('../accounts_data/df_pct_option_amt_'+str(start_date.year)+'.csv')
 
 print(df_annualized_yield)
 print(df_pct_option_amt)

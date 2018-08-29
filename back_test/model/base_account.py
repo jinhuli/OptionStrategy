@@ -427,7 +427,7 @@ class BaseAccount():
             Util.PORTFOLIO_SHORT_POSITION_SCALE:total_short_scale,
             Util.MARGIN_UNREALIZED_PNL:margin_unrealized_pnl,
             Util.NONMARGIN_UNREALIZED_PNL:nonmargin_unrealized_pnl,
-            Util.PORTFOLIO_DELTA:portfolio_delta/portfolio_total_value
+            Util.PORTFOLIO_DELTA:portfolio_delta
         })
         self.account.loc[eval_date] = account_today
         # REMOVE CLEARED TRADES FROM TRADING BOOK
