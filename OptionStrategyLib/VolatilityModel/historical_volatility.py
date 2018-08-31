@@ -7,12 +7,13 @@ from back_test.model.constant import Util
 class HistoricalVolatilityModels:
 
     @staticmethod
-    def hist_vol(df,n=20):
-        df_vol = df[[Util.DT_DATE]]
-        series = np.log(df[Util.AMT_CLOSE]).diff()
-        df_vol[Util.AMT_HISTVOL+'_'+str(n)] = series.rolling(window=n).std() * math.sqrt(252)
-        df_vol = df_vol.dropna().set_index(Util.DT_DATE)
-        return df_vol
+    def hist_vol(closes,n=20):
+        # df_vol = df[[Util.DT_DATE]]
+        series = np.log(closes).diff()
+        # df_vol[Util.AMT_HISTVOL+'_'+str(n)] = series.rolling(window=n).std() * math.sqrt(252)
+        # df_vol = df_vol.dropna().set_index(Util.DT_DATE)
+        res_series = series.rolling(window=n).std() * math.sqrt(252)
+        return res_series
 
     @staticmethod
     def parkinson_number(df,n=20):

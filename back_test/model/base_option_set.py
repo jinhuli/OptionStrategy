@@ -376,13 +376,21 @@ class BaseOptionSet(AbstractBaseProductSet):
         dt_eval = df_series[Util.DT_DATE]
         dt_maturity = df_series[Util.DT_MATURITY]
         if option_type == OptionType.CALL:
-            black_call = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
             C = df_series[Util.AMT_CALL_QUOTE]
-            iv = black_call.estimate_vol(C)
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                                            rf=self.rf)
+            iv = pricing_engine.estimate_vol(C)
         else:
-            black_put = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
             P = df_series[Util.AMT_PUT_QUOTE]
-            iv = black_put.estimate_vol(P)
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                                            rf=self.rf)
+            iv = pricing_engine.estimate_vol(P)
         return iv
 
     def get_option_moneyness(self,base_option:BaseOption):
