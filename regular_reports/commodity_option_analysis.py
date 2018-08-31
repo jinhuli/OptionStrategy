@@ -25,9 +25,22 @@ df_histvol = Histvol.hist_vol(df_histvol,n=20)
 df_histvol = Histvol.hist_vol(df_histvol,n=20*3)
 df_histvol = Histvol.hist_vol(df_histvol,n=20*6)
 
-""" 隐含波动率 """
+""" ATM隐含波动率 """
 df_iv_atm = get_data.get_iv_by_moneyness(start_date,end_date,name_code,nbr_moneyness=0)
-df_iv_call = df_iv_atm[df_iv_atm[c.Util.CD_OPTION_TYPE]=='call']
-df_iv_put = df_iv_atm[df_iv_atm[c.Util.CD_OPTION_TYPE]=='put']
+df_iv_atm_call = df_iv_atm[df_iv_atm[c.Util.CD_OPTION_TYPE]=='call']
+df_iv_atm_put = df_iv_atm[df_iv_atm[c.Util.CD_OPTION_TYPE]=='put']
 
 """ 隐含波动率曲面 """
+optionset = BaseOptionSet(df_metrics)
+optionset.init()
+df_call_iv = optionset.get_call_implied_vol_curve(nbr_maturity=0)
+
+
+
+
+
+
+
+
+
+
