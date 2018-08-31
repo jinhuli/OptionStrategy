@@ -12,8 +12,8 @@ name_code = c.Util.STR_M
 init_vol = 0.2
 rf = 0.03
 steps = 1000
+moneyness = -1
 
-""" namecode : M """
 table_iv = admin.table_implied_volatilities()
 df_metrics = get_comoption_mktdata(start_date, end_date,name_code)
 exercise_type = c.OptionExerciseType.AMERICAN
@@ -22,7 +22,7 @@ optionset.init()
 dt_maturity = optionset.select_maturity_date(0,min_holding=8)
 spot = optionset.get_underlying_close(maturitydt=dt_maturity)
 list_res = []
-call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0, maturity=dt_maturity)
+call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=moneyness, maturity=dt_maturity)
 # print(call_list)
 # print(put_list)
 print(spot)
@@ -43,7 +43,7 @@ res = {
     'cd_option_type': 'call',
     'cd_mdt_selection': 'hp_8_1st',
     'cd_atm_criterion': 'nearest_strike',
-    'nbr_moneyness': 0,
+    'nbr_moneyness': moneyness,
     'id_instrument': base_option_call.id_instrument(),
     'dt_maturity': dt_maturity,
     'pct_implied_vol': iv_call,
@@ -73,7 +73,7 @@ res = {
     'cd_option_type': 'put',
     'cd_mdt_selection': 'hp_8_1st',
     'cd_atm_criterion': 'nearest_strike',
-    'nbr_moneyness': 0,
+    'nbr_moneyness': moneyness,
     'id_instrument': base_option_put.id_instrument(),
     'dt_maturity': dt_maturity,
     'pct_implied_vol': iv_put,
