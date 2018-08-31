@@ -141,9 +141,12 @@ class BlackCalculator(object):
     #     return delta + delta * dSigma_dK
 
 
-# mdt = datetime.date.today() + datetime.timedelta(days=30*3)
-# p = BlackCalculator(datetime.date.today(),mdt,1820,OptionType.PUT,1837,0.13)
+# mdt = datetime.date.today() + datetime.timedelta(days=30)
+# mdt2 = datetime.date.today() + datetime.timedelta(days=30*3)
+# p = BlackCalculator(datetime.date.today(),mdt,2.5,OptionType.PUT,2.5,0.25)
+# p2 = BlackCalculator(datetime.date.today(),mdt2,2.5,OptionType.PUT,2.5,0.25)
 # c = BlackCalculator(datetime.date.today(),mdt,1920,OptionType.CALL,1837,0.13)
-#
-# print(p.NPV())
+
+# print(p.NPV()*100/2.5)
+# print(p2.NPV()*100/2.5)
 # print(c.NPV())

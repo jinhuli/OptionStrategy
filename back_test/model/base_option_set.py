@@ -1,13 +1,14 @@
 import datetime
 from collections import deque
 from typing import Dict, List, Tuple
-
 import pandas as pd
 import numpy as np
+import math
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF
-
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, OptionExerciseType, LongShort
+from back_test.model.trade import Order
+from PricingLibrary.EngineQuantlib import QlBinomial,QlBlackFormula
 
 class BaseOptionSet(AbstractBaseProductSet):
     """
@@ -22,7 +23,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                  df_daily_data: pd.DataFrame = None,
                  df_underlying: pd.DataFrame = None,
                  frequency: FrequentType = FrequentType.DAILY,
-                 flag_calculate_iv: bool = True, rf: float = 0.03):
+                 flag_calculate_iv: bool = True,
+                 rf: float = 0.03):
         super().__init__()
         self._name_code: str = df_data.loc[0, Util.ID_INSTRUMENT].split('_')[0]
         self.df_data: pd.DataFrame = df_data
@@ -43,6 +45,10 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.update_contract_month_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
         self.eligible_maturities: List(datetime.date) = None # To be fulled in NEXT() method
         self.OptionUtilClass = OptionUtil.get_option_util_class(self._name_code)
+        if self._name_code in ['m', 'sr']:
+            self.exercise_type = OptionExerciseType.AMERICAN
+        else:
+            self.exercise_type = OptionExerciseType.EUROPEAN
 
     def init(self) -> None:
         self._generate_required_columns_if_missing()  # 补充行权价等关键信息（high frequency data就可能没有）
@@ -254,6 +260,127 @@ class BaseOptionSet(AbstractBaseProductSet):
         return spot
 
 
+    def get_T_quotes(self, nbr_maturity:int=0):
+        dt_maturity = self.get_maturities_list()[nbr_maturity]
+        df_current = self.get_current_state()
+        df_mdt = df_current[df_current[Util.DT_MATURITY]==dt_maturity].reset_index(drop=True)
+        df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
+            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME:Util.AMT_CALL_TRADING_VOLUME})
+        df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
+            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME:Util.AMT_PUT_TRADING_VOLUME})
+        df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        df = pd.merge(df_call[[Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_STRIKE,
+                               Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_CALL_TRADING_VOLUME]],
+                      df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE,Util.AMT_PUT_TRADING_VOLUME]],
+                      how='inner', on=Util.AMT_APPLICABLE_STRIKE)
+        df[Util.AMT_TRADING_VOLUME] = df[Util.AMT_CALL_TRADING_VOLUME] + df[Util.AMT_PUT_TRADING_VOLUME]
+        ttm = ((dt_maturity - self.eval_date).total_seconds() / 60.0) / (365.0 * 1440)
+        df['amt_ttm'] = ttm
+        return df
+
+    # def get_implied_rf_vwpcr(self,nbr_maturity):
+    #     t_qupte = self.get_T_quotes(nbr_maturity)
+    #     t_qupte[Util.AMT_HTB_RATE] = t_qupte.apply(self.fun_implied_rf, axis=1)
+    #     implied_rf = (t_qupte.loc[:, Util.AMT_HTB_RATE] * t_qupte.loc[:, Util.AMT_TRADING_VOLUME]).sum() \
+    #            / t_qupte.loc[:,Util.AMT_TRADING_VOLUME].sum()
+    #     return implied_rf
+    #
+    # def get_implied_rf_mink_pcr(self,nbr_maturity):
+    #     t_qupte = self.get_T_quotes(nbr_maturity)
+    #     min_k_series = t_qupte.loc[t_qupte[Util.AMT_APPLICABLE_STRIKE].idxmin()]
+    #     implied_rf = self.fun_implied_rf(min_k_series)
+    #     return implied_rf
+    #
+    # def fun_implied_rf(self,df_series):
+    #     rf = math.log(df_series[Util.AMT_APPLICABLE_STRIKE] /
+    #                   (df_series[Util.AMT_UNDERLYING_CLOSE] + df_series[Util.AMT_PUT_QUOTE]
+    #                    - df_series[Util.AMT_CALL_QUOTE]), math.e) / df_series[Util.AMT_TTM]
+    #     return rf
+
+    def get_iv_by_otm_iv_curve(self, nbr_maturiy,strike):
+        df = self.get_otm_implied_vol_curve(nbr_maturiy)
+        iv = df[df[Util.AMT_APPLICABLE_STRIKE]==strike][Util.PCT_IV_OTM_BY_HTBR].values[0]
+        return iv
+
+    def get_otm_implied_vol_curve(self, nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(lambda x:self.fun_htb_rate_adjusted_iv(x,OptionType.CALL,htb_r),axis=1)
+        t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(lambda x:self.fun_htb_rate_adjusted_iv(x,OptionType.PUT,htb_r),axis=1)
+        t_qupte[Util.PCT_IV_OTM_BY_HTBR] = t_qupte.apply(self.fun_otm_iv,axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IV_OTM_BY_HTBR]]
+
+    def fun_otm_iv(self,df_series):
+        K = df_series[Util.AMT_APPLICABLE_STRIKE]
+        S = df_series[Util.AMT_UNDERLYING_CLOSE]
+        if K <= S:
+            return df_series[Util.PCT_IV_PUT_BY_HTBR]
+        else:
+            return df_series[Util.PCT_IV_CALL_BY_HTBR]
+
+    def fun_htb_rate_adjusted_iv(self,df_series: pd.DataFrame, option_type: OptionType, htb_r: float):
+        ttm = df_series[Util.AMT_TTM]
+        K = df_series[Util.AMT_APPLICABLE_STRIKE]
+        S = df_series[Util.AMT_UNDERLYING_CLOSE] * math.exp(-htb_r * ttm)
+        dt_eval = df_series[Util.DT_DATE]
+        dt_maturity = df_series[Util.DT_MATURITY]
+        if option_type == OptionType.CALL:
+            C = df_series[Util.AMT_CALL_QUOTE]
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
+                # black_call = BlackFormula(dt_eval,dt_maturity,c.OptionType.CALL,S,K,C,rf=rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval,dt_maturity,OptionType.CALL,OptionExerciseType.AMERICAN,S,K,rf=self.rf)
+            iv = pricing_engine.estimate_vol(C)
+        else:
+            P = df_series[Util.AMT_PUT_QUOTE]
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
+                # black_call = BlackFormula(dt_eval,dt_maturity,c.OptionType.CALL,S,K,C,rf=rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval,dt_maturity,OptionType.PUT,OptionExerciseType.AMERICAN,S,K,rf=self.rf)
+            iv = pricing_engine.estimate_vol(P)
+        return iv
+
+    def get_htb_rate(self, nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        return htb_r
+
+    def fun_htb_rate(self,df_series, rf):
+        r = -math.log((df_series[Util.AMT_CALL_QUOTE] - df_series[Util.AMT_PUT_QUOTE]
+                       + df_series[Util.AMT_APPLICABLE_STRIKE] * math.exp(-rf * df_series[Util.AMT_TTM]))
+                      / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
+        return r
+
+    def get_option_moneyness(self,base_option:BaseOption):
+        maturity = base_option.maturitydt()
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
+        if base_option.option_type() == OptionType.CALL:
+            mdt_options_dict = mdt_calls.get(maturity)
+        else:
+            mdt_options_dict = mdt_puts.get(maturity)
+        spot = list(mdt_options_dict.values())[0][0].underlying_close()
+        moneyness = self.OptionUtilClass.get_moneyness_of_a_strike_by_nearest_strike(spot, base_option.strike(),
+                                                                                 list(mdt_options_dict.keys()),
+                                                                                 base_option.option_type())
+        return moneyness
+
+    # 行权价最低的put
+    def get_deepest_otm_put_list(self,maturity: datetime.date):
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
+        mdt_options_dict = mdt_puts.get(maturity)
+        min_k = min(mdt_options_dict.keys())
+        put_list = mdt_options_dict[min_k]
+        return put_list
+
     """
     get_orgnized_option_dict_for_moneyness_ranking : 
     Dictionary <maturity-<nearest strike - List[option]>> to retrieve call and put List[option] by maturity date.
@@ -302,17 +429,18 @@ class BaseOptionSet(AbstractBaseProductSet):
         put_mdt_dict = {}
         for mdt in mdt_calls.keys():
             mdt_options_dict = mdt_calls.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                             list(mdt_options_dict.keys()), OptionType.CALL)
             call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         for mdt in mdt_puts.keys():
             mdt_options_dict = mdt_puts.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                             list(mdt_options_dict.keys()), OptionType.PUT)
             put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         return [call_mdt_dict, put_mdt_dict]
+
 
     """ Mthd1: Determine atm option as the NEAREST strike from spot. 
         Get options by given moneyness rank and maturity date. """
@@ -323,7 +451,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
-        spot = mdt_options_dict.popitem()[1][0].underlying_close()
+        spot = list(mdt_options_dict.values())[0][0].underlying_close()
         k_call = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.CALL)
         call_list = mdt_options_dict.get(k_call)
@@ -347,13 +475,13 @@ class BaseOptionSet(AbstractBaseProductSet):
         put_mdt_dict = {}
         for mdt in mdt_calls.keys():
             mdt_options_dict = mdt_calls.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.CALL)
             call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         for mdt in mdt_puts.keys():
             mdt_options_dict = mdt_puts.get(mdt)
-            spot = mdt_options_dict.popitem()[1][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].underlying_close()
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                         list(mdt_options_dict.keys()), OptionType.PUT)
             put_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
@@ -371,7 +499,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
-        spot = mdt_options_dict.popitem()[1][0].underlying_close()
+        spot = list(mdt_options_dict.values())[0][0].underlying_close()
         idx_call = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                     list(mdt_options_dict.keys()), OptionType.CALL)
         call_list = mdt_options_dict.get(idx_call)
@@ -392,6 +520,22 @@ class BaseOptionSet(AbstractBaseProductSet):
             return
         else:
             return maturities[idx_maturity]
+
+    # TODO: MOVE TO CONSTENT
+    def select_higher_volume(self, options:List[BaseOption]) -> BaseOption:
+        volume0 = 0.0
+        res_option = None
+        for option in options:
+            volume = option.trading_volume()
+            if volume >= volume0: res_option = option
+            volume0 = volume
+        return res_option
+
+    # TODO: USE TOLYER'S EXPANSION.
+    def yield_decomposition(self):
+        return
+
+
 
     # """ Input optionset with the same maturity,get dictionary order by moneynesses as keys
     #     * ATM defined as FIRST OTM  """

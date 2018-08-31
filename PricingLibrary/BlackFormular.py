@@ -18,16 +18,16 @@ class BlackFormula(object):
     def __init__(self,
                  dt_eval: datetime.date,
                  dt_maturity: datetime.date,
-                 strike: float,
-                 type: OptionType,
+                 option_type: OptionType,
                  spot: float,
+                 strike: float,
                  black_price: float,
                  rf: float = 0.03,
                  displacement: float = 0.0):
         discount = PricingUtil.get_discount(dt_eval, dt_maturity, rf)
         self.dt_eval = dt_eval
         self.dt_maturity = dt_maturity
-        self.option_type = type
+        self.option_type = option_type
         self.strike = strike + displacement
         self.forward = spot / discount + displacement
         self.discount = discount

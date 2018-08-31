@@ -1,31 +1,24 @@
-from OptionStrategyLib.OptionPricing.BlackCalculator import BlackCalculator
 import math
 import datetime
+from PricingLibrary.BlackFormular import BlackFormula
+from PricingLibrary.EngineQuantlib import QlBlackFormula
+from PricingLibrary.BlackCalculator import BlackCalculator
+import back_test.model.constant as c
 
-hedge_date = datetime.date(2017, 7, 19)
-maturitydt = hedge_date
-spot = 2.702
-rf = 0.030
-strike = 2.2
-vol = 0.2449897447635236
+dt_eval = datetime.date(2017, 1, 1)
+dt_maturity = datetime.date(2017, 4, 1)
+spot_price = 120
+strike_price = 100
+volatility = 0.3  # the historical vols or implied vols
+dividend_rate = 0
+risk_free_rate = 0.03
+option_price = 30.0
 
+black_formula = BlackFormula(dt_eval, dt_maturity, c.OptionType.CALL,spot_price,strike_price,option_price)
+iv1 = black_formula.ImpliedVolApproximation()
+estimated_price1 = BlackCalculator(dt_eval,dt_maturity,strike_price,c.OptionType.CALL,spot_price,iv1).NPV()
+ql_black =  QlBlackFormula(dt_eval, dt_maturity, c.OptionType.CALL,spot_price,strike_price)
+iv2, estimated_price2 = ql_black.estimate_vol(option_price)
 
-ttm = (maturitydt - hedge_date).days / 365
-discount = math.exp(-rf * ttm)
-dS = 0.001
-iscall = False
-
-print('spot = ', spot)
-print('=' * 100)
-print("%10s %25s " % ("Strike", "delta_constant_vol "))
-print('-' * 100)
-
-
-
-stdDev = vol * math.sqrt(ttm)
-forward = spot / discount
-black = BlackCalculator(strike, forward, stdDev, discount, iscall)
-
-delta = black.Delta(spot)
-
-print(delta)
+print(iv1,estimated_price1)
+print(iv2,estimated_price2)

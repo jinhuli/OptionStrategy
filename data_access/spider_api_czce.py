@@ -25,7 +25,7 @@ def spider_option(firstdate,enddate):
         else: str_month = str(month)
         if day < 10: str_day = '0' + str(day)
         else: str_day = str(day)
-        url = 'http://www.czce.com.cn/portal/DFSStaticFiles/Option/'\
+        url = 'http://old.czce.com.cn/portal/DFSStaticFiles/Option/'\
               +str(year)+'/'+str(year)+str_month+str_day+'/OptionDataDaily.txt'
         #http://www.czce.com.cn/portal/DFSStaticFiles/Future/2017/20170919/FutureDataDailyMA.htm
         #http://www.czce.com.cn/portal/DFSStaticFiles/Future/2017/20170915/FutureDataDailySR.txt
@@ -70,7 +70,7 @@ def spider_future(firstdate,enddate):
         else: str_month = str(month)
         if day < 10: str_day = '0' + str(day)
         else: str_day = str(day)
-        url = 'http://www.czce.com.cn/portal/DFSStaticFiles/Future/'\
+        url = 'http://old.czce.com.cn/portal/DFSStaticFiles/Future/'\
               +str(year)+'/'+str(year)+str_month+str_day+'/FutureDataDaily.txt'
         #http://www.czce.com.cn/portal/DFSStaticFiles/Future/2017/20170919/FutureDataDailyMA.htm
         #http://www.czce.com.cn/portal/DFSStaticFiles/Future/2017/20170915/FutureDataDailySR.txt

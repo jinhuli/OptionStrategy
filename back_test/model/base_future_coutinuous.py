@@ -27,7 +27,7 @@ class BaseFutureCoutinuous(BaseProduct):
         self.df_underlying_index_daily = df_underlying_index_daily
         self.df_all_futures_daily = df_futures_all_daily
         self.idx_underlying_index = -1
-        self.underlying_index_state_daily = None
+        self.underlying_state_daily = None
 
     def __repr__(self) -> str:
         return 'BaseInstrument(id_instrument: {0},eval_date: {1},frequency: {2})' \
@@ -35,22 +35,23 @@ class BaseFutureCoutinuous(BaseProduct):
 
     def next(self):
         super().next()
-        if self.underlying_index_state_daily is None or self.eval_date != self.eval_datetime.date():
+        if self.df_underlying_index_daily is None: return
+        if self.underlying_state_daily is None or self.eval_date != self.eval_datetime.date():
             self.idx_underlying_index += 1
-            self.underlying_index_state_daily = self.df_underlying_index_daily.loc[self.idx_underlying_index]
+            self.underlying_state_daily = self.df_underlying_index_daily.loc[self.idx_underlying_index]
 
     """ getters """
 
     def margin_rate(self) -> Union[float, None]:
         return self._margin_rate
 
-    def get_initial_margin(self) -> Union[float, None]:
+    def get_initial_margin(self,long_short:LongShort) -> Union[float, None]:
         # pre_settle_price = self.mktprice_last_settlement()
         margin = self.mktprice_close() * self._margin_rate * self._multiplier
         return margin
 
     # TODO: USE SETTLEMENT PRICE
-    def get_maintain_margin(self) -> Union[float, None]:
+    def get_maintain_margin(self,long_short:LongShort) -> Union[float, None]:
         margin = self.mktprice_close() * self._margin_rate * self._multiplier
         return margin
 
@@ -68,6 +69,12 @@ class BaseFutureCoutinuous(BaseProduct):
 
     def get_current_value(self, long_short):
         return 0.0
+
+    def is_margin_trade(self, long_short):
+        return True
+
+    def is_mtm(self):
+        return True
 
     """ Intraday Weighted Average Price """
 
@@ -92,7 +99,7 @@ class BaseFutureCoutinuous(BaseProduct):
             return
         execution_record: pd.Series = order.execution_res
         # calculate margin requirement
-        margin_requirement = self.get_initial_margin() * execution_record[Util.TRADE_UNIT]
+        margin_requirement = self.get_initial_margin(order.long_short) * execution_record[Util.TRADE_UNIT]
         if self.fee_per_unit is None:
             # 百分比手续费
             transaction_fee = execution_record[Util.TRADE_PRICE] * self.fee_rate * execution_record[

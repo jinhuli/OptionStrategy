@@ -10,7 +10,7 @@
 import pandas as pd
 import numpy as np
 
-# from pykalman import KalmanFilter
+from pykalman import KalmanFilter
 
 # =============================================================================
 # 1. 局域线性核回归
@@ -84,19 +84,19 @@ def MA(ts, d):
 # =============================================================================
 # 3. 卡尔曼滤波
 # =============================================================================
-# def KALMAN(ts, d):
-#     '''卡尔曼滤波'''
-#     sigma = (2/(d+1))**2
-#     kf = KalmanFilter(transition_covariance=sigma,
-#                       transition_matrices=[1],
-#                       observation_covariance=1,
-#                       observation_matrices=[1],
-#                       initial_state_covariance=1,
-#                       initial_state_mean=0)
-#     tmp = kf.filter(ts.values)[0]
-#     tmp = pd.Series(tmp[:, 0], index=ts.index)
-#     tmp[:2*d] = np.nan
-#     return tmp
+def KALMAN(ts, d):
+    '''卡尔曼滤波'''
+    sigma = (2/(d+1))**2
+    kf = KalmanFilter(transition_covariance=sigma,
+                      transition_matrices=[1],
+                      observation_covariance=1,
+                      observation_matrices=[1],
+                      initial_state_covariance=1,
+                      initial_state_mean=0)
+    tmp = kf.filter(ts.values)[0]
+    tmp = pd.Series(tmp[:, 0], index=ts.index)
+    tmp[:2*d] = np.nan
+    return tmp
 
 # =============================================================================
 # 4. MACD
@@ -180,12 +180,3 @@ def LFT(ts, d):
 #     sar = pd.Series(sar, index=high.index)
 #     return sar
 
-
-df_cf = pd.ExcelFile('../data/replicate/df_cf.xlsx').parse("Sheet1")
-df_cf.loc[:,'dt_date'] = df_cf['dt_date'].apply(lambda x:x.date())
-# df_cf_minute = pd.ExcelFile('../data/replicate/df_cf_minute.xlsx').parse("Sheet1")
-# df_cf_minute.loc[:,'dt_date'] = df_cf_minute['dt_datetime'].apply(lambda x:x.date())
-df_cf = df_cf.set_index('dt_date')
-res = LLKSR(df_cf['amt_close'],20)
-df_cf['LLKSR'] = res
-print(res)

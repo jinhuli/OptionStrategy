@@ -35,6 +35,7 @@ name_code_option = c.Util.STR_50ETF
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 # df_future_c1_daily = get_data.get_dzqh_cf_c1_daily(dt_histvol, end_date, name_code)
 df_future_c1_daily = get_data.get_mktdata_cf_c1_daily(dt_histvol, end_date, name_code)
+df_future_c1_minute = get_data.get_cf_c1_minute(dt_histvol, end_date, name_code)
 
 """ 历史波动率 """
 # df_vol_1m = Histvol.hist_vol(df_future_c1_daily)
@@ -55,6 +56,7 @@ df_data = df_data.join(df_iv_put[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_in
     .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_put'})
 df_data = df_data.dropna()
 df_data.loc[:,'average_iv'] = df_data.loc[:,'iv_call'] + df_data.loc[:,'iv_put']
+
 # # df_data.loc[:,'diff_hist_call_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL+'_20']-df_data.loc[:,'iv_call']
 # # df_data.loc[:,'diff_hist_put_iv'] = df_data.loc[:,c.Util.AMT_HISTVOL+'_20']-df_data.loc[:,'iv_put']
 # df_data = df_data.sort_values(by='dt_date', ascending=False)
@@ -112,7 +114,8 @@ def close_signal_ma(dt_date,option_maturity,df_stats,k_straddle=None,k0=None)->b
 optionset = BaseOptionSet(df_metrics)
 optionset.init()
 d1 = optionset.eval_date
-df_c1 = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= d1].reset_index(drop=True)
+# df_c1 = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= d1].reset_index(drop=True)
+df_c1 = df_future_c1_minute[df_future_c1_minute[c.Util.DT_DATE] >= d1].reset_index(drop=True)
 df_c1 = df_c1.rename(columns={c.Util.ID_INSTRUMENT:'id_future'})
 df_c1.loc[:,c.Util.ID_INSTRUMENT] = 'ih'
 # df_tmp = df_metrics.drop_duplicates(c.Util.DT_DATE).join(df_c1[[c.Util.DT_DATE, c.Util.ID_INSTRUMENT]].set_index(c.Util.DT_DATE).rename(columns={c.Util.ID_INSTRUMENT:'id_future'}),
@@ -123,7 +126,8 @@ df_c1.loc[:,c.Util.ID_INSTRUMENT] = 'ih'
 # check_data2 = df_tmp[df_tmp2['dt_date'].isnull()]
 # print(check_data)
 
-hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY)
+# hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY)
+hedging = SytheticOption(df_c1, frequency=c.FrequentType.MINUTE)
 hedging.init()
 
 account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
@@ -162,6 +166,8 @@ while optionset.eval_date <= end_date:
                 account.add_record(record, option)
                 hedging.synthetic_unit = 0
             empty_position = True
+        # TODO: 是否需要移仓？
+
 
     if empty_position and open_signal_ma(optionset.eval_date,df_iv_stats):
         buy_write = c.BuyWrite.WRITE
@@ -173,7 +179,7 @@ while optionset.eval_date <= end_date:
         atm_strike = atm_call.strike()
         hedging.amt_option = 1 / 1000  # 50ETF与IH点数之比
         unit_c = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier())*m
-        unit_p = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_put.multiplier())*m
+        unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier())*m
 
         order_c = account.create_trade_order(atm_call, long_short, unit_c)
         order_p = account.create_trade_order(atm_put, long_short, unit_p)
@@ -184,12 +190,13 @@ while optionset.eval_date <= end_date:
         empty_position = False
 
     if not empty_position: # Delta hedge
-        delta_call = atm_call.get_delta(atm_call.get_implied_vol())
-        delta_put = atm_put.get_delta(atm_put.get_implied_vol())
+        iv_htbr = optionset.get_iv_by_otm_iv_curve(nbr_maturiy=0, strike=atm_strike)
+        delta_call = atm_call.get_delta(iv_htbr)
+        delta_put = atm_put.get_delta(iv_htbr)
         options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
         hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta, c.DeltaBound.NONE, buy_write,
-                                                        atm_call.get_implied_vol(), atm_call.underlying_close(),
-                                                        atm_call.get_gamma(atm_call.get_implied_vol()), atm_call.maturitydt())
+                                                        iv_htbr, atm_call.underlying_close(),
+                                                        atm_call.get_gamma(iv_htbr), atm_call.maturitydt())
         hedging.synthetic_unit += - hedge_unit
         if hedge_unit > 0:
             long_short = c.LongShort.LONG

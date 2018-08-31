@@ -42,7 +42,7 @@ class SyntheticOptionHedgedPortfolio():
         # df_hist_vol.to_csv('../../data/df_hist_vol.csv')
         self.underlying = BaseInstrument(df_data=df_index)
         self.underlying.init()
-        self.synthetic_option = SytheticOption(df_c1_minute=df_future_c1,
+        self.synthetic_option = SytheticOption(df_c1_data=df_future_c1,
                                                # df_c1_daily=df_future_c1_daily,
                                                df_futures_all_daily=df_futures_all_daily,
                                                df_index_daily=df_index)
@@ -50,7 +50,7 @@ class SyntheticOptionHedgedPortfolio():
 
         self.account = BaseAccount(self.fund, leverage=20.0, rf=0.0)
         self.trading_desk = Trade()
-        self.init_spot = self.synthetic_option.underlying_index_state_daily[Util.AMT_CLOSE]
+        self.init_spot = self.synthetic_option.underlying_state_daily[Util.AMT_CLOSE]
         self.df_analysis = pd.DataFrame()
 
     def next(self):

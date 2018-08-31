@@ -59,6 +59,17 @@ class BaseInstrument(BaseProduct):
     def get_current_value(self, long_short):
         if long_short == LongShort.LONG:
             return self.mktprice_close()
+        else:
+            return
+
+    def is_margin_trade(self, long_short):
+        if long_short == LongShort.LONG:
+            return False
+        else:
+            return
+
+    def is_mtm(self):
+        return False
 
     def multiplier(self):
         return self._multiplier

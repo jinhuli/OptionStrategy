@@ -94,6 +94,12 @@ class OptionM:
     MONEYNESS_POINT_HIGH = 5000
 
     @staticmethod
+    def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        # TODO
+        return None
+
+    @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
                                                    option_type: OptionType) -> float:
         d = OptionM.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
@@ -270,6 +276,12 @@ class OptionSR:
     MONEYNESS_POINT_HIGH = 10000
 
     @staticmethod
+    def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        # TODO
+        return None
+
+    @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
                                                    option_type: OptionType) -> float:
         d = OptionSR.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes, option_type)
@@ -392,6 +404,7 @@ class Option50ETF:
 
     }
 
+    @staticmethod
     def fun_strike_before_adj(df: pd.Series) -> float:
         return round(df[Util.AMT_STRIKE] * df[Util.NBR_MULTIPLIER] / 10000, 2)
 
@@ -426,6 +439,39 @@ class Option50ETF:
             #             return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
             #     else:
             #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
+
+    @staticmethod
+    def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
+                                                   option_type: OptionType) -> float:
+        min_strike = strikes[0]
+        max_strike = strikes[0]
+        for strike in strikes:
+            if strike < min_strike:
+                min_strike = strike
+            if strike > max_strike:
+                max_strike = strike
+        if spot < min_strike:
+            spot = min_strike
+        elif spot > max_strike:
+            spot = max_strike
+        if strike <= Option50ETF.MONEYNESS_POINT:
+            if spot <= Option50ETF.MONEYNESS_POINT:
+                # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
+                rank = int(option_type.value * round((spot - strike) / 0.05))
+            else:
+                # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
+                rank = int(option_type.value * round((Option50ETF.MONEYNESS_POINT - strike) / 0.05
+                                                         + (spot - Option50ETF.MONEYNESS_POINT) / 0.1))
+        else:
+            if spot <= Option50ETF.MONEYNESS_POINT:
+                # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
+                rank = int(option_type.value * round((Option50ETF.MONEYNESS_POINT - strike) / 0.1
+                                                         + (spot - Option50ETF.MONEYNESS_POINT) / 0.05))
+            else:
+                # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
+                rank = int(option_type.value * round((spot - strike) / 0.1))
+        return rank
+
 
     @staticmethod
     def get_strike_by_monenyes_rank_nearest_strike(spot: float, moneyness_rank: int, strikes: List[float],
@@ -756,6 +802,8 @@ class Util:
     NBR_MULTIPLIER = 'nbr_multiplier'
     AMT_HOLDING_VOLUME = 'amt_holding_volume'
     AMT_TRADING_VOLUME = 'amt_trading_volume'
+    AMT_CALL_TRADING_VOLUME = 'amt_call_trading_volume'
+    AMT_PUT_TRADING_VOLUME = 'amt_put_trading_volume'
     AMT_TRADING_VALUE = 'amt_trading_value'
     AMT_MORNING_OPEN_15MIN = 'amt_morning_open_15min'
     AMT_MORNING_CLOSE_15MIN = 'amt_morning_close_15min'
@@ -766,6 +814,9 @@ class Util:
     AMT_DAILY_AVG = 'amt_daily_avg'
     AMT_NEAREST_STRIKE = 'amt_nearest_strike'
     PCT_IMPLIED_VOL = 'pct_implied_vol'
+    PCT_IV_OTM_BY_HTBR = 'pct_iv_by_htbr'
+    PCT_IV_CALL_BY_HTBR = 'pct_iv_call_by_htbr'
+    PCT_IV_PUT_BY_HTBR = 'pct_iv_put_by_htbr'
     AMT_DELTA = 'amt_delta'
     AMT_THETA = 'amt_theta'
     AMT_VEGA = 'amt_vega'
@@ -776,16 +827,25 @@ class Util:
     RISK_FREE_RATE = 'risk_free_rate'
     AMT_APPLICABLE_STRIKE = 'amt_applicable_strike'
     AMT_APPLICABLE_MULTIPLIER = 'amt_applicable_multiplier'
+    AMT_YIELD = 'amt_yield'
     AMT_HISTVOL = 'amt_hist_vol'
     AMT_PARKINSON_NUMBER = 'amt_parkinson_number'
     AMT_GARMAN_KLASS = 'amt_garman_klass'
     AMT_HEDHE_UNIT = 'amt_hedge_unit'
+    AMT_CALL_QUOTE = 'amt_call_quote'
+    AMT_PUT_QUOTE = 'amt_put_quote'
+    AMT_TTM = 'amt_ttm'
+    AMT_HTB_RATE='amt_HTB_rate'
     NAME_CODE = 'name_code'
     STR_CALL = 'call'
     STR_PUT = 'put'
     STR_50ETF = '50etf'
     STR_INDEX_50ETF = 'index_50etf'
+    STR_INDEX_50SH = 'index_50sh'
+    STR_INDEX_300SH = 'index_300sh'
     STR_M = 'm'
+    STR_IH = 'ih'
+    STR_IF = 'iF'
     STR_SR = 'sr'
     STR_ALL = 'all'
     NAN_VALUE = -999.0
@@ -836,6 +896,7 @@ class Util:
     PORTFOLIO_LONG_POSITION_SCALE = 'portfolio_long_position_scale'
     MARGIN_UNREALIZED_PNL = 'margin_unrealized_pnl'
     NONMARGIN_UNREALIZED_PNL = 'nonmargin_unrealized_pnl'
+    PORTFOLIO_DELTA = 'portfolio_delta'
     BILLION = 1000000000.0
     TRADE_BOOK_COLUMN_LIST = [DT_DATE, TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
@@ -847,7 +908,7 @@ class Util:
                        PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
                        PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
                        PORTFOLIO_SHORT_POSITION_SCALE, PORTFOLIO_LONG_POSITION_SCALE,
-                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL
+                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL,PORTFOLIO_DELTA
                        ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
@@ -874,13 +935,14 @@ class Util:
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
+        # 'ih': 0.0,
         'ic': 6.9 / 10000.0,
     }
     DICT_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,
         'if': 300,
         'ih': 300,
-        'ic': 200,
+        'ic': 200
     }
     DICT_OPTION_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,
@@ -902,8 +964,9 @@ class Util:
         'index': 0
     }
 
-    DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017, 12, 28), datetime.date(2017, 12, 29), datetime.date(2018, 1, 26),
-                                  datetime.date(2018, 5, 4)]
+    # DZQH_CF_DATA_MISSING_DATES = [datetime.date(2017, 12, 28), datetime.date(2017, 12, 29), datetime.date(2018, 1, 26),
+    #                               datetime.date(2018, 5, 4)]
+    DZQH_CF_DATA_MISSING_DATES = []
 
     @staticmethod
     def filter_invalid_data(x: pd.Series) -> bool:
@@ -1008,3 +1071,27 @@ class QuantlibUtil:
     def get_dividend_ts(evalDate, daycounter):
         dividend_ts = ql.YieldTermStructureHandle(ql.FlatForward(evalDate, 0.0, daycounter))
         return dividend_ts
+
+
+
+class Statistics:
+
+    @staticmethod
+    def moving_average(df_series, n):
+        ma = df_series.rolling(window=n).mean()
+        return ma
+
+    @staticmethod
+    def standard_deviation(df_series, n):
+        std = df_series.rolling(window=n).std()
+        return std
+
+    @staticmethod
+    def percentile(df_series, n, percent):
+        return df_series.rolling(window=n).quantile(percent)
+
+    @staticmethod
+    def volatility_by_closes(df_series_closes,n=20):
+        series = np.log(df_series_closes).diff()
+        vol= series.rolling(window=n).std() * math.sqrt(252)
+        return vol

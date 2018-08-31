@@ -14,8 +14,8 @@ import QuantLib as ql
 from Utilities.calculate import calculate_histvol
 from Utilities import admin_util as admin
 from regular_reports.report_util import *
-
-
+from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVolatilityModels as HistVol
+from back_test.model.constant import Util
 """成交持仓认沽认购比P/C"""
 def pcr(df_pcr):
     # 按期权合约持仓量最大选取主力合约
@@ -60,8 +60,12 @@ def hist_vol(df_underlying_core):
     df_underlying_core['4近三月'] = list(calculate_histvol(df_underlying_core['amt_close'],60)*100)
     df_underlying_core['3近两月'] = list(calculate_histvol(df_underlying_core['amt_close'],40)*100)
     df_underlying_core['2近一月'] = list(calculate_histvol(df_underlying_core['amt_close'],20)*100)
+    # tmp1 = calculate_histvol(df_underlying_core['amt_close'],20)
+    # tmp = HistVol.hist_vol(df_underlying_core,n=21)
+    # tmp_series = tmp[Util.AMT_HISTVOL]
+    # df_underlying_core = df_underlying_core.join(tmp,on=Util.DT_DATE,how='left')
     df_histvol = df_underlying_core.dropna()
-    # df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
+    df_histvol = df_histvol[['dt_date', '2近一月', '3近两月', '4近三月', '5近半年']]
     df_histvol = df_histvol.sort_values(by='dt_date', ascending=False)
     df_histvol.to_csv('../data/' + namecode + '_future_hist_vols.csv')
 

@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Union
 import datetime
-from back_test.model.constant import FrequentType, Util
+from back_test.model.constant import FrequentType, Util,LongShort
 from back_test.model.base_product import BaseProduct
 
 
@@ -24,10 +24,10 @@ class BaseFuture(BaseProduct):
     def contract_month(self) -> Union[str, None]:
         return self.current_state[Util.NAME_CONTRACT_MONTH]
 
-    def get_initial_margin(self) -> Union[float,None]:
-        return self.get_maintain_margin()
+    def get_initial_margin(self,long_short:LongShort) -> Union[float,None]:
+        return self.get_maintain_margin(long_short)
 
-    def get_maintain_margin(self) -> Union[float,None]:
+    def get_maintain_margin(self,long_short:LongShort) -> Union[float,None]:
         margin_rate = Util.DICT_FUTURE_MARGIN_RATE[self.name_code()]
         pre_settle_price = self.mktprice_last_settlement()
         margin = pre_settle_price * margin_rate * self._multiplier
@@ -42,6 +42,12 @@ class BaseFuture(BaseProduct):
     """ 用于计算杠杆率 ：保证金交易，current value为零 """
     def get_current_value(self, long_short):
         return 0.0
+
+    def is_margin_trade(self, long_short):
+        return True
+
+    def is_mtm(self):
+        return True
 
     def is_core(self) -> Union[bool,None]:
         core_months = Util.DICT_FUTURE_CORE_CONTRACT[self.name_code()]

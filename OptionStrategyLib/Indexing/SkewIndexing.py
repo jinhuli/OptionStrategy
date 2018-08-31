@@ -111,7 +111,6 @@ class SkewIndexing(BaseOptionSet):
         S = df.loc[0, 'amt_underlying_close']
         implied_r = math.log(F/S,math.e)/ttm
         self.implied_rf = implied_r
-
         df['k0'] = k0
         df['mid_k'] = mid_k
         df['F'] = F
@@ -196,7 +195,7 @@ class SkewIndexing(BaseOptionSet):
                 if skew is not None and skew > 50 and skew < 200:
                     self.df_res.loc[eval_date,'skew'] = skew
                     self.df_res.loc[eval_date,'vix'] = vix
-                    self.df_res.loc[eval_date,'ir'] = self.implied_rf
+                    # self.df_res.loc[eval_date,'ir'] = self.implied_rf
                 # self.df_res.loc[eval_date,'skew'] = skew
                 print("%10s %20s %20s %20s" % (eval_date,vix, skew, self.implied_rf))
 
@@ -209,8 +208,8 @@ class SkewIndexing(BaseOptionSet):
 
 
 # start_date = datetime.date(2015, 1, 11)
-start_date = datetime.date(2018, 8, 7)
-end_date = datetime.date(2018, 8, 10)
+start_date = datetime.date.today() - datetime.timedelta(days=5)
+end_date = datetime.date.today()
 skew_indexing = SkewIndexing(start_date, end_date)
 skew_indexing.init()
 skew_indexing.run()

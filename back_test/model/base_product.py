@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
 import datetime
 import numpy as np
 import pandas as pd
 from back_test.model.abstract_base_product import AbstractBaseProduct
-from back_test.model.constant import FrequentType, Util, TradeType
+from back_test.model.constant import FrequentType, Util, TradeType,ExecuteType, LongShort
 from back_test.model.trade import Order
 from typing import Union
 
@@ -20,7 +21,7 @@ class BaseProduct(AbstractBaseProduct):
         self.df_daily_data: pd.DataFrame = df_daily_data  # Used in high frequency data
         self.nbr_index: int = df_data.shape[0]
         self._id_instrument: str = self.df_data.loc[0][Util.ID_INSTRUMENT]
-        self._name_code: str = self._id_instrument.split('_')[0]
+        self._name_code: str = self._id_instrument.split('_')[0].lower()
         self.current_index: int = -1
         self.current_daily_index: int = -1
         self.eval_date: datetime.date = None
@@ -157,16 +158,44 @@ class BaseProduct(AbstractBaseProduct):
         # TODO
         return True
 
-    def execute_order(self, order: Order, slippage=0):
-        raise NotImplementedError("Child class not implement method execute_order.")
+    # def execute_order(self,order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+    #     raise NotImplementedError("Child class not implement method execute_order.")
 
     """
     getters
     """
 
-    """ 用于计算杠杆率 ：基础证券交易不包含保证金current value为当前价格 """
-    def get_current_value(self, long_short):
-        return self.mktprice_close()
+    # """ 保证金交易当前价值为零/基础证券交易不包含保证金current value为当前价格 """
+    # def get_current_value(self, long_short):
+    #     raise NotImplementedError("Child class not implement method execute_order.")
+    #
+    # """ 标记是否为保证金交易 """
+    # def is_margin_trade(self, long_short):
+    #     raise NotImplementedError("Child class not implement method execute_order.")
+    #
+    # """ 标记该证券是否逐日盯市（期货是的，期权不是） """
+    # def is_mtm(self):
+    #     raise NotImplementedError("Child class not implement method execute_order.")
+
+    @abstractmethod
+    def execute_order(self, order: Order, slippage:int=0,execute_type:ExecuteType=ExecuteType.EXECUTE_ALL_UNITS) -> bool:
+        # 执行交易指令
+        pass
+
+    @abstractmethod
+    def get_current_value(self, long_short:LongShort) -> float:
+        # 保证金交易当前价值为零/基础证券交易不包含保证金current value为当前价格
+        pass
+
+    @abstractmethod
+    def is_margin_trade(self, long_short:LongShort) -> bool:
+        # 标记是否为保证金交易
+        pass
+
+    @abstractmethod
+    def is_mtm(self) -> bool:
+        # 标记该证券是否逐日盯市
+        pass
 
     def multiplier(self) -> int:
         return 1
@@ -281,9 +310,9 @@ class BaseProduct(AbstractBaseProduct):
             return self.df_data.loc[self.current_index - 1][Util.AMT_CLOSE]
         return ret
 
-    def get_initial_margin(self) -> float:
+    def get_initial_margin(self,long_short:LongShort) -> float:
         return 0.0
 
-    def get_maintain_margin(self) -> float:
+    def get_maintain_margin(self,long_short:LongShort) -> float:
         return 0.0
 

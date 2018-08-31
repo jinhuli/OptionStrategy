@@ -1,11 +1,14 @@
 import datetime
 import pandas as pd
 import numpy as np
+import math
 from typing import Union
-from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType,Option50ETF
+from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, \
+    Option50ETF, ExecuteType, LongShort, OptionExerciseType, PricingUtil
 from back_test.model.base_product import BaseProduct
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.BlackFormular import BlackFormula
+from PricingLibrary.EngineQuantlib import QlBlackFormula, QlBinomial
 from back_test.model.trade import Order
 
 
@@ -17,13 +20,18 @@ class BaseOption(BaseProduct):
                  flag_calculate_iv: bool = False, rf: float = 0.03):
         super().__init__(df_data, df_daily_data, rf, frequency)
         self.flag_calculate_iv = flag_calculate_iv
-        self.black_calculater: BlackCalculator = None
+        # self.black_calculater: BlackCalculator = None
         self.implied_vol: float = None
         self.fee_rate = Util.DICT_OPTION_TRANSACTION_FEE_RATE[self.name_code()]
         self.fee_per_unit = Util.DICT_OPTION_TRANSACTION_FEE[self.name_code()]
+        if self.name_code() in ['m', 'sr']:
+            self.exercise_type = OptionExerciseType.AMERICAN
+        else:
+            self.exercise_type = OptionExerciseType.EUROPEAN
+        self.pricing_engine = None
 
     def next(self) -> None:
-        self._destroy_black_calculater()
+        self._destroy_pricing_engine()
         super().next()
 
     def __repr__(self) -> str:
@@ -45,23 +53,77 @@ class BaseOption(BaseProduct):
             if column not in columns:
                 self.df_data[column] = None
 
-    """ European Option greeks """
+    def _set_pricing_engine(self):
+        if self.pricing_engine is None:
+            dt_maturity = self.maturitydt()
+            strike = self.applicable_strike()
+            option_type = self.option_type()
+            spot = self.underlying_close()
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                black_formula = QlBlackFormula(
+                    dt_eval=self.eval_date,
+                    dt_maturity=dt_maturity,
+                    option_type=option_type,
+                    spot=spot,
+                    strike=strike,
+                    rf=self.rf
+                )
+                self.pricing_engine = black_formula
+            else:
+                binomial = QlBinomial(
+                    dt_eval=self.eval_date,
+                    dt_maturity=dt_maturity,
+                    option_type=option_type,
+                    option_exercise_type=OptionExerciseType.AMERICAN,
+                    spot=spot,
+                    strike=strike,
+                    rf=self.rf,
+                    n=800
+                )
+                self.pricing_engine = binomial
 
-    # TODO might write this in another class
-    def _get_black_calculater(self) -> Union[BlackCalculator, None]:
-        if self.black_calculater is not None:
-            return self.black_calculater
+    def _get_pricing_engine(self, spot):
         dt_maturity = self.maturitydt()
         strike = self.applicable_strike()
         option_type = self.option_type()
-        vol = self.get_implied_vol()
-        spot = self.underlying_close()
-        self.black_calculater = BlackCalculator(self.eval_date, dt_maturity, strike, option_type, spot, vol, self.rf)
-        return self.black_calculater
+        if self.exercise_type == OptionExerciseType.EUROPEAN:
+            black_formula = QlBlackFormula(
+                dt_eval=self.eval_date,
+                dt_maturity=dt_maturity,
+                option_type=option_type,
+                spot=spot,
+                strike=strike,
+                rf=self.rf
+            )
+            return black_formula
+        else:
+            binomial = QlBinomial(
+                dt_eval=self.eval_date,
+                dt_maturity=dt_maturity,
+                option_type=option_type,
+                option_exercise_type=OptionExerciseType.AMERICAN,
+                spot=spot,
+                strike=strike,
+                rf=self.rf,
+                n=800
+            )
+            return binomial
 
-    def _destroy_black_calculater(self) -> None:
+    # def _get_black_calculater(self) -> Union[BlackCalculator, None]:
+    #     if self.black_calculater is not None:
+    #         return self.black_calculater
+    #     dt_maturity = self.maturitydt()
+    #     strike = self.applicable_strike()
+    #     option_type = self.option_type()
+    #     vol = self.get_implied_vol()
+    #     spot = self.underlying_close()
+    #     self.black_calculater = BlackCalculator(self.eval_date, dt_maturity, strike, option_type, spot, vol, self.rf)
+    #     return self.black_calculater
+
+    def _destroy_pricing_engine(self) -> None:
         self.implied_vol: float = None
-        self.black_calculater: BlackCalculator = None
+        # self.black_calculater: BlackCalculator = None
+        self.pricing_engine = None
 
     """ getters """
 
@@ -151,13 +213,37 @@ class BaseOption(BaseProduct):
 
     def update_implied_vol(self) -> None:
         if self.flag_calculate_iv:
-            dt_maturity = self.maturitydt()
-            strike = self.applicable_strike()
-            option_type = self.option_type()
             option_price = self.mktprice_close()
-            spot = self.underlying_close()
-            black_formula = BlackFormula(self.eval_date, dt_maturity, strike, option_type, spot, option_price, self.rf)
-            implied_vol = black_formula.ImpliedVolApproximation()
+            self._set_pricing_engine()
+            implied_vol = self.pricing_engine.estimate_vol(option_price)
+            # dt_maturity = self.maturitydt()
+            # strike = self.applicable_strike()
+            # option_type = self.option_type()
+            # spot = self.underlying_close()
+            # # black_formula = BlackFormula(self.eval_date, dt_maturity, option_type, spot, strike,option_price, self.rf)
+            # # implied_vol = black_formula.ImpliedVolApproximation()
+            # if self.exercise_type == OptionExerciseType.EUROPEAN:
+            #     black_formula = QlBlackFormula(
+            #         dt_eval=self.eval_date,
+            #         dt_maturity=dt_maturity,
+            #         option_type=option_type,
+            #         spot=spot,
+            #         strike=strike,
+            #         rf=self.rf
+            #     )
+            #     implied_vol = black_formula.estimate_vol(option_price)
+            # else:
+            #     binomial = QlBinomial(
+            #         dt_eval=self.eval_date,
+            #         dt_maturity=dt_maturity,
+            #         option_type=option_type,
+            #         option_exercise_type=OptionExerciseType.AMERICAN,
+            #         spot=spot,
+            #         strike=strike,
+            #         rf=self.rf,
+            #         n=800
+            #     )
+            #     implied_vol = binomial.estimate_vol(option_price)
         else:
             implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol
@@ -166,8 +252,43 @@ class BaseOption(BaseProduct):
         if self.implied_vol is None: self.update_implied_vol()
         return self.implied_vol
 
-    def get_delta(self) -> Union[float, None]:
-        return self._get_black_calculater().Delta()
+    def get_implied_vol_adjusted_by_htbr(self, htb_r) -> float:
+        ttm = PricingUtil.get_ttm(self.eval_date, self.maturitydt())
+        spot_htb = self.underlying_close() * math.exp(-htb_r * ttm)
+        pricing_engine = self._get_pricing_engine(spot_htb)
+        implied_vol = pricing_engine.estimate_vol(self.mktprice_close())
+        # if self.exercise_type == OptionExerciseType.EUROPEAN:
+        #     black_formula = QlBlackFormula(
+        #         dt_eval=self.eval_date,
+        #         dt_maturity=self.maturitydt(),
+        #         option_type=self.option_type(),
+        #         spot=spot_htb,
+        #         strike=self.applicable_strike(),
+        #         rf=self.rf
+        #     )
+        #     implied_vol = black_formula.estimate_vol(self.mktprice_close())
+        # else:
+        #     binomial = QlBinomial(
+        #         dt_eval=self.eval_date,
+        #         dt_maturity=self.maturitydt(),
+        #         option_type=self.option_type(),
+        #         option_exercise_type=OptionExerciseType.AMERICAN,
+        #         spot=spot_htb,
+        #         strike=self.strike(),
+        #         rf=self.rf
+        #     )
+        #     implied_vol = binomial.estimate_vol(self.mktprice_close())
+        return implied_vol
+
+    def get_delta(self, implied_vol: float) -> Union[float, None]:
+        # if htb_r is None:
+        #     spot = self.underlying_close()
+        # else:
+        #     ttm = PricingUtil.get_ttm(self.eval_date, self.maturitydt())
+        #     spot = self.underlying_close() * math.exp(-htb_r * ttm)
+        self._set_pricing_engine()
+        delta = self.pricing_engine.Delta(implied_vol)
+        return delta
 
     def get_theta(self) -> Union[float, None]:
         # TODO
@@ -181,8 +302,15 @@ class BaseOption(BaseProduct):
         # TODO
         return
 
-    def get_gamma(self) -> Union[float, None]:
-        return self._get_black_calculater().Gamma()
+    def get_gamma(self, implied_vol: float, htb_r=None) -> Union[float, None]:
+        # if htb_r is None:
+        #     spot = self.underlying_close()
+        # else:
+        #     ttm = PricingUtil.get_ttm(self.eval_date, self.maturitydt())
+        #     spot = self.underlying_close() * math.exp(-htb_r * ttm)
+        self._set_pricing_engine()
+        gamma = self.pricing_engine.Gamma(implied_vol)
+        return gamma
 
     def get_vomma(self) -> Union[float, None]:
         # TODO
@@ -199,10 +327,23 @@ class BaseOption(BaseProduct):
     """ 用于计算杠杆率 ：option，买方具有current value为当前的权利金，期权卖方为保证金交易，current value为零 """
 
     def get_current_value(self, long_short):
-        if long_short == Util.LONG:
+        if long_short == LongShort.LONG:
             return self.mktprice_close()
-        else:
+        elif long_short == LongShort.SHORT:
             return 0.0
+        else:
+            return
+
+    def is_margin_trade(self, long_short):
+        if long_short == LongShort.LONG:
+            return False
+        elif long_short == LongShort.SHORT:
+            return True
+        else:
+            return
+
+    def is_mtm(self):
+        return False
 
     """ init_margin(初始保证金):用于开仓一天，且只有期权卖方收取 """
 
@@ -210,7 +351,8 @@ class BaseOption(BaseProduct):
     #                           7%×合约标的前收盘价)]×合约单位
     # 认沽期权义务仓开仓保证金＝Min[合约前结算价 + Max（12 %×合约标的前收盘价 - 认沽期权虚值，
     #                               7 %×行权价格），行权价格] ×合约单位
-    def get_initial_margin(self) -> float:
+    def get_initial_margin(self, long_short: LongShort) -> float:
+        if long_short == LongShort.LONG: return 0.0
         amt_last_settle = self.mktprice_last_settlement()
         amt_underlying_last_close = self.underlying_last_close()
         if self.option_type() == OptionType.CALL:
@@ -231,7 +373,9 @@ class BaseOption(BaseProduct):
     #                                           7 %×合约标的收盘价）]×合约单位
     # 认沽期权义务仓维持保证金＝Min[合约结算价 + Max（12 %×合标的收盘价 - 认沽期权虚值，7 %×行权价格），
     #                               行权价格]×合约单位
-    def get_maintain_margin(self):
+    def get_maintain_margin(self, long_short: LongShort):
+        if long_short == LongShort.LONG:
+            return 0.0
         amt_settle = self.mktprice_settlement()
         if amt_settle is None or amt_settle == np.nan:
             amt_settle = self.mktprice_close()
@@ -253,17 +397,22 @@ class BaseOption(BaseProduct):
             return int(self.id_underlying()[-2:]) in Util.MAIN_CONTRACT_159
         return True
 
-    def execute_order(self, order: Order, slippage=1):
-        if order is None: return
-        order.trade_with_current_volume(int(self.trading_volume()), slippage)
+    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+        if order is None or order.trade_unit==0: return
+        if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
+            order.trade_all_unit(slippage)
+        elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
+            order.trade_with_current_volume(int(self.trading_volume()), slippage)
+        else:
+            return
         execution_record: pd.Series = order.execution_res
-        if order.long_short == Util.LONG:
+        if order.long_short == LongShort.LONG:
             # 无保证金交易的情况下，trade_market_value有待从现金账户中全部扣除。
             execution_record[Util.TRADE_MARGIN_CAPITAL] = 0.0
             execution_record[Util.TRADE_MARKET_VALUE] = execution_record[Util.TRADE_UNIT] * \
                                                         execution_record[Util.TRADE_PRICE] * self.multiplier()
         else:
-            execution_record[Util.TRADE_MARGIN_CAPITAL] = self.get_initial_margin() * \
+            execution_record[Util.TRADE_MARGIN_CAPITAL] = self.get_initial_margin(order.long_short) * \
                                                           execution_record[Util.TRADE_UNIT]
             execution_record[Util.TRADE_MARKET_VALUE] = 0.0
         if self.fee_per_unit is None:
