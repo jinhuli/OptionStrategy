@@ -13,7 +13,7 @@ from sqlalchemy import func
 """当日成交持仓数据"""
 
 
-def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code):
+def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code,core_instrumentid):
     pu = PlotUtil()
     # options_mkt = admin.table_options_mktdata()
     # evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
@@ -35,12 +35,12 @@ def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code):
     #
     # df_2d = pd.read_sql(query_volume.statement, query_volume.session.bind)
 
-    df = df_option_metrics[df_option_metrics['dt_date'] == dt_date].reset_index()
-    df_lw = df_option_metrics[df_option_metrics['dt_date'] == dt_last_week].reset_index()
-    df_call = df[df['cd_option_type'] == 'call'].reset_index()
-    df_put = df[df['cd_option_type'] == 'put'].reset_index()
-    dflw_call = df_lw[df_lw['cd_option_type'] == 'call'].reset_index()
-    dflw_put = df_lw[df_lw['cd_option_type'] == 'put'].reset_index()
+    df = df_option_metrics[(df_option_metrics['dt_date'] == dt_date)&(df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
+    df_lw = df_option_metrics[(df_option_metrics['dt_date'] == dt_last_week)&(df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
+    df_call = df[df['cd_option_type'] == 'call'].reset_index(drop=True)
+    df_put = df[df['cd_option_type'] == 'put'].reset_index(drop=True)
+    dflw_call = df_lw[df_lw['cd_option_type'] == 'call'].reset_index(drop=True)
+    dflw_put = df_lw[df_lw['cd_option_type'] == 'put'].reset_index(drop=True)
     call_deltas = []
     put_deltas = []
     for idx, row in df_call.iterrows():
@@ -240,13 +240,15 @@ def LLKSR_analysis(dt_start, df_iv, df_future_c1_daily, name_code):
                             ['隐含波动率LLKSR趋势线 (h=5)', '隐含波动率LLKSR趋势线 (h=10)', '隐含波动率LLKSR趋势线 (h=20)'])
     f2 = pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_10']), list(df_histvol['histvol_20'])],
                             ['隐含波动率LLKSR趋势线 (h=10)', '历史波动率LLKSR趋势线 (h=10)'])
-    pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_10']), list(iv_atm)],
+    f3 = pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_10']), list(iv_atm)],
                        ['隐含波动率LLKSR趋势线 (h=10)', 'iv_atm'])
     f1.savefig('../data/' + name_code + '_iv_LLKSRs.png', dpi=300, format='png', bbox_inches='tight')
     f2.savefig('../data/' + name_code + '_iv_hv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
+    f3.savefig('../data/' + name_code + '_iv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
 
 """"""
 name_code = c.Util.STR_SR
+core_id = 'sr_1901'
 end_date = datetime.date(2018, 8, 31)
 last_week = datetime.date(2018, 8, 27)
 """"""
@@ -290,7 +292,7 @@ df_res = implied_vol(d1, df_iv, df_res)
 df_res = df_res.reset_index(drop=True)
 df_res.to_csv('../data/' + name_code + '_data_report.csv')
 """当日成交持仓数据"""
-trade_volume(end_date, last_week, df_metrics, name_code)
+trade_volume(end_date, last_week, df_metrics, name_code, core_id)
 
 
 LLKSR_analysis(d1, df_iv, df_future_c1_daily, name_code)

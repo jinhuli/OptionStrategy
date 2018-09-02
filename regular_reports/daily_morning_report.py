@@ -4,6 +4,7 @@ from regular_reports.report_util import *
 from data_access import get_data
 from back_test.model import constant as c
 
+
 def get_mktdata_future_c1(start_date, end_date, name_code):
     table_f = admin.table_futures_mktdata()
     query = admin.session_mktdata().query(table_f.c.dt_date, table_f.c.id_instrument,
@@ -78,7 +79,7 @@ def get_volume_groupby_id_future(table_future, namecode, dt_start, dt_end):
     return df
 
 
-def iv_at_the_money(dt_date, dt_last,name_code):
+def iv_at_the_money(dt_date, dt_last, name_code):
     dict_iv_call = {}
     dict_iv_put = {}
     df_iv_atm_1 = get_data.get_iv_by_moneyness(dt_last, dt_date, name_code, nbr_moneyness=0,
@@ -86,8 +87,10 @@ def iv_at_the_money(dt_date, dt_last,name_code):
     dates = df_iv_atm_1['dt_date'].unique()
     for date in dates:
         iv_call = df_iv_atm_1[
-            (df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'call')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_put = df_iv_atm_1[(df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'put')][c.Util.PCT_IMPLIED_VOL].values[0]
+                      (df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'call')][
+                      c.Util.PCT_IMPLIED_VOL].values[0] * 100
+        iv_put = df_iv_atm_1[(df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'put')][
+            c.Util.PCT_IMPLIED_VOL].values[0]*100
         dict_iv_call.update({date: iv_call})
         dict_iv_put.update({date: iv_put})
     return dict_iv_call, dict_iv_put
@@ -137,7 +140,7 @@ def fun_report_namecode(namecode):
 
 
 # Eval Settings and Data
-dt_date = datetime.date(2018, 8, 30)  # Set as Friday
+dt_date = datetime.date(2018, 8, 31)  # Set as Friday
 
 # Eval Settings and Data
 
