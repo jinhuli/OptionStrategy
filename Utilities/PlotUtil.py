@@ -66,12 +66,32 @@ class PlotUtil:
                 ax.plot(x, y, color=c, linestyle=l, linewidth=2, label=lgd)
             else:
                 ax.plot(x, y, color=c, linestyle=l, linewidth=2, label=lgd)
-        # ax.legend(bbox_to_anchor=(0.5, 1.,.1,.1), loc=3, mode="expand")
-        # ax.legend(bbox_to_anchor=(0.5,.8,0.1,0.), loc='center')
-
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         self.set_frame([ax])
+
+    def plot_scatter(self, ax, count, x, y, lgd='', x_label='', y_label=''):
+        c = self.colors[count]
+        if lgd == '':
+            if count == 3:
+                tmp, = ax.scatter(x, y, color=c)
+                tmp.set_dashes(self.dash)
+            elif count == 0:
+                ax.scatter(x, y, color=c)
+            else:
+                ax.scatter(x, y, color=c)
+        else:
+            if count == 3:
+                tmp, = ax.scatter(x, y, color=c, label=lgd)
+                tmp.set_dashes(self.dash)
+            elif count == 0:
+                ax.scatter(x, y, color=c, label=lgd)
+            else:
+                ax.scatter(x, y, color=c,  label=lgd)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        self.set_frame([ax])
+
 
     def plot_line_chart(self, x, Y, legends, x_label='', y_label=''):
         f, ax = plt.subplots()
@@ -84,7 +104,16 @@ class PlotUtil:
         self.set_frame([ax])
         return f
 
-
+    def plot_scatter_chart(self, x, Y, legends, x_label='', y_label=''):
+        f, ax = plt.subplots()
+        for idx, y in enumerate(Y):
+            lgd = legends[idx]
+            self.plot_scatter(ax, idx, x, y, lgd)
+        ax.legend(frameon=False)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        self.set_frame([ax])
+        return f
 
 
 

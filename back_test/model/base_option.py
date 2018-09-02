@@ -397,7 +397,7 @@ class BaseOption(BaseProduct):
             return int(self.id_underlying()[-2:]) in Util.MAIN_CONTRACT_159
         return True
 
-    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS) -> pd.Series:
         if order is None or order.trade_unit==0: return
         if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
             order.trade_all_unit(slippage)

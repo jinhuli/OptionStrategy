@@ -2,61 +2,52 @@ from back_test.model.base_option_set import BaseOptionSet
 from data_access.get_data import get_50option_mktdata,get_comoption_mktdata
 import back_test.model.constant as c
 import datetime
-from PricingLibrary.BinomialModel import BinomialTree
-from PricingLibrary.BlackFormular import BlackFormula
 from PricingLibrary.EngineQuantlib import QlBlackFormula, QlBinomial
 import Utilities.admin_write_util as admin
 
-start_date = datetime.date(2017, 1, 14)
-end_date = datetime.date(2018, 8, 14)
-name_code = c.Util.STR_SR
+start_date = datetime.date(2015, 1, 1)
+end_date = datetime.date.today()
 
 init_vol = 0.2
 rf = 0.03
-steps = 1000
-moneyness = -1
-
+moneyness = 0
+min_holding = 8
+# nbr_maturity = 0
+# cd_mdt_selection = 'hp_8_1st'
+nbr_maturity = 1
+cd_mdt_selection = 'hp_8_2nd'
+# nbr_maturity = 2
+# cd_mdt_selection = 'hp_8_3rd'
 
 """ namecode : M/SR """
+name_code = c.Util.STR_SR
+# name_code = c.Util.STR_M
 df_metrics = get_comoption_mktdata(start_date, end_date,name_code)
 exercise_type = c.OptionExerciseType.AMERICAN
 
 """ namecode : 50ETF """
+# name_code = c.Util.STR_50ETF
 # df_metrics = get_50option_mktdata(start_date, end_date)
 # exercise_type = c.OptionExerciseType.EUROPEAN
 
 table_iv = admin.table_implied_volatilities()
 optionset = BaseOptionSet(df_metrics)
 optionset.init()
-dt_maturity = optionset.select_maturity_date(0,min_holding=8)
+dt_maturity = optionset.select_maturity_date(nbr_maturity=nbr_maturity,min_holding=min_holding)
 spot = optionset.get_underlying_close(maturitydt=dt_maturity)
 
-while optionset.has_next():
+while optionset.current_index < optionset.nbr_index:
     print(optionset.eval_date, spot)
-    # if optionset.eval_date == datetime.date(2015,7,30):
-    #     print('')
-    #     for o in optionset.eligible_options:
-    #         if o.id_instrument() == '50etf_1508_c_2.45':
-    #             print(o.id_instrument())
-    #         elif o.id_instrument() == '50etf_1508_p_2.45':
-    #             print(o.id_instrument())
-    #     # print('length of eligible options : ',len(optionset.eligible_options))
-    #     print('')
-    call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0, maturity=dt_maturity)
-    # print(call_list)
-    # print(put_list)
-
+    try:
+        call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=moneyness, maturity=dt_maturity)
+    except Exception as e:
+        print(e)
+        optionset.next()
+        dt_maturity = optionset.select_maturity_date(nbr_maturity, min_holding=min_holding)
+        spot = optionset.get_underlying_close(maturitydt=dt_maturity)
+        continue
     base_option_call = call_list[0]
-
     if exercise_type == c.OptionExerciseType.AMERICAN:
-        # cd_source = 'self_written_library'
-        # binomial_tree = BinomialTree(
-        #     base_option_call.eval_date,
-        #     base_option_call.maturitydt(),
-        #     base_option_call.option_type(),
-        #     exercise_type,
-        #     spot,base_option_call.strike(),vol=init_vol,rf=rf,n=1000)
-        # iv_call = binomial_tree.estimate_vol(base_option_call.mktprice_close())
         cd_source = 'quantlib'
         binomial_tree = QlBinomial(
             base_option_call.eval_date,
@@ -79,7 +70,6 @@ while optionset.has_next():
         )
         try:
             iv_call = black_formula.estimate_vol(base_option_call.mktprice_close())
-            # iv_call2 = base_option_call.get_implied_vol()
         except:
             iv_call = 0.0
     print(base_option_call.id_instrument(), base_option_call.eval_date, iv_call)
@@ -88,9 +78,9 @@ while optionset.has_next():
         'name_code':name_code,
         'id_underlying':base_option_call.id_underlying(),
         'cd_option_type':'call',
-        'cd_mdt_selection':'hp_8_1st',
+        'cd_mdt_selection':cd_mdt_selection,
         'cd_atm_criterion':'nearest_strike',
-        'nbr_moneyness':0,
+        'nbr_moneyness':moneyness,
         'cd_source': cd_source,
         'id_instrument':base_option_call.id_instrument(),
         'dt_maturity':dt_maturity,
@@ -108,14 +98,6 @@ while optionset.has_next():
         pass
     base_option_put = put_list[0]
     if exercise_type == c.OptionExerciseType.AMERICAN:
-        # cd_source = 'self_written_library'
-        # binomial_tree = BinomialTree(
-        #     base_option_put.eval_date,
-        #     base_option_put.maturitydt(),
-        #     base_option_put.option_type(),
-        #     exercise_type,
-        #     spot,base_option_put.strike(),vol=init_vol,rf=rf,n=1000)
-        # iv_put = binomial_tree.estimate_vol(base_option_put.mktprice_close())
         cd_source = 'quantlib'
         binomial_tree = QlBinomial(
             base_option_put.eval_date,
@@ -138,7 +120,6 @@ while optionset.has_next():
         )
         try:
             iv_put = black_formula.estimate_vol(base_option_put.mktprice_close())
-            # iv_put2 = base_option_put.get_implied_vol()
         except:
             iv_put = 0.0
     print(base_option_put.id_instrument(), base_option_put.eval_date, iv_put)
@@ -147,9 +128,9 @@ while optionset.has_next():
         'name_code':name_code,
         'id_underlying':base_option_put.id_underlying(),
         'cd_option_type':'put',
-        'cd_mdt_selection':'hp_8_1st',
+        'cd_mdt_selection':cd_mdt_selection,
         'cd_atm_criterion':'nearest_strike',
-        'nbr_moneyness':0,
+        'nbr_moneyness':moneyness,
         'cd_source':cd_source,
         'id_instrument':base_option_put.id_instrument(),
         'dt_maturity':dt_maturity,
@@ -165,8 +146,9 @@ while optionset.has_next():
     except Exception as e:
         print(e)
         pass
+    if not optionset.has_next(): break
     optionset.next()
-    dt_maturity = optionset.select_maturity_date(0, min_holding=8)
+    dt_maturity = optionset.select_maturity_date(nbr_maturity, min_holding=min_holding)
     spot = optionset.get_underlying_close(maturitydt=dt_maturity)
 
 

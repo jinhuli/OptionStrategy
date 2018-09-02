@@ -1,12 +1,8 @@
-
-from sqlalchemy import *
 import datetime
-import pandas as pd
-from data_access.db_tables import DataBaseTables as dbt
-from Utilities import admin_util as admin
 from Utilities.calculate import calculate_histvol
 from regular_reports.report_util import *
-
+from data_access import get_data
+from back_test.model import constant as c
 
 def get_mktdata_future_c1(start_date, end_date, name_code):
     table_f = admin.table_futures_mktdata()
@@ -82,28 +78,16 @@ def get_volume_groupby_id_future(table_future, namecode, dt_start, dt_end):
     return df
 
 
-def iv_at_the_money(dt_date, dt_yesterday, id_underlying, df_srf):
-    optionMetrics = dbt.OptionMetrics
-    query_sro = admin.session_metrics().query(optionMetrics.dt_date, optionMetrics.id_instrument,
-                                              optionMetrics.id_underlying,
-                                              optionMetrics.amt_strike,
-                                              optionMetrics.cd_option_type, optionMetrics.pct_implied_vol) \
-        .filter(optionMetrics.id_underlying == id_underlying).filter(optionMetrics.dt_date >= dt_yesterday) \
-        .filter(optionMetrics.dt_date <= dt_date)
-    df_sro = pd.read_sql(query_sro.statement, query_sro.session.bind)
-    dates = df_sro['dt_date'].unique()
+def iv_at_the_money(dt_date, dt_last,name_code):
     dict_iv_call = {}
     dict_iv_put = {}
+    df_iv_atm_1 = get_data.get_iv_by_moneyness(dt_last, dt_date, name_code, nbr_moneyness=0,
+                                               cd_mdt_selection='hp_8_1st')
+    dates = df_iv_atm_1['dt_date'].unique()
     for date in dates:
-        df0 = df_sro[df_sro['dt_date'] == date]
-        df1 = df0[(df0['cd_option_type'] == 'call')]
-        amt_settle = \
-            df_srf[(df_srf['dt_date'] == date) & (df_srf['id_instrument'] == id_underlying)]['amt_settlement'].values[0]
-        df1['diff'] = abs(df1['amt_strike'] - amt_settle)
-        df1 = df1.sort_values(by='diff', ascending=True)
-        k = df1.iloc[0]['amt_strike']
-        iv_call = df1.iloc[0]['pct_implied_vol'] * 100
-        iv_put = df0[(df0['cd_option_type'] == 'put') & (df0['amt_strike'] == k)]['pct_implied_vol'].values[0] * 100
+        iv_call = df_iv_atm_1[
+            (df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'call')][c.Util.PCT_IMPLIED_VOL].values[0]
+        iv_put = df_iv_atm_1[(df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'put')][c.Util.PCT_IMPLIED_VOL].values[0]
         dict_iv_call.update({date: iv_call})
         dict_iv_put.update({date: iv_put})
     return dict_iv_call, dict_iv_put
@@ -153,9 +137,7 @@ def fun_report_namecode(namecode):
 
 
 # Eval Settings and Data
-dt_date = datetime.date(2018, 7, 20)  # Set as Friday
-
-
+dt_date = datetime.date(2018, 8, 30)  # Set as Friday
 
 # Eval Settings and Data
 
@@ -272,7 +254,7 @@ for namecode in ['m', 'sr']:
 m_id_c1 = dict_core_underlying['m']
 m_df_future_c1 = get_mktdata_future_c1(dt_start, dt_date, 'm')
 m_df_future = get_mktdata_future(admin.table_futures_mktdata(), m_id_c1, dt_yesterday, dt_date)
-m_dict_iv_call, m_dict_iv_put = iv_at_the_money(dt_date, dt_yesterday, m_id_c1, m_df_future)
+m_dict_iv_call, m_dict_iv_put = iv_at_the_money(dt_date, dt_yesterday, 'm')
 m_iv_call_today = m_dict_iv_call[dt_date]
 m_iv_put_today = m_dict_iv_put[dt_date]
 m_iv_call_yesterday = m_dict_iv_call[dt_yesterday]
@@ -283,7 +265,7 @@ m_hisvol_3M = list(calculate_histvol(m_df_future_c1['amt_close'], 60))[-1] * 100
 sr_id_c1 = dict_core_underlying['sr']
 sr_df_future_c1 = get_mktdata_future_c1(dt_start, dt_date, 'sr')
 sr_df_future = get_mktdata_future(admin.table_futures_mktdata(), sr_id_c1, dt_yesterday, dt_date)
-sr_dict_iv_call, sr_dict_iv_put = iv_at_the_money(dt_date, dt_yesterday, sr_id_c1, sr_df_future)
+sr_dict_iv_call, sr_dict_iv_put = iv_at_the_money(dt_date, dt_yesterday, 'sr')
 sr_iv_call_today = sr_dict_iv_call[dt_date]
 sr_iv_put_today = sr_dict_iv_put[dt_date]
 sr_iv_call_yesterday = sr_dict_iv_call[dt_yesterday]

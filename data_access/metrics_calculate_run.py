@@ -1,16 +1,14 @@
 import datetime
-
-# from data_access.get_data import get_50option_mktdata as get_mktdata
 import QuantLib as ql
-from back_test.BktOptionSet import BktOptionSet
+from back_test.deprecated.BktOptionSet import BktOptionSet
 
 from OptionStrategyLib.OptionStrategy.bkt_strategy_ivbymoneyness import BktStrategyMoneynessVol
 from Utilities import admin_write_util as admin
 from back_test.deprecated.BktUtil import BktUtil
 from data_access.get_data import get_50option_mktdata, get_comoption_mktdata
 
-start_date = datetime.date(2018,7,27)
-end_date = datetime.date(2018,8,5)
+start_date = datetime.date(2018,8,27)
+end_date = datetime.date(2018,8,31)
 
 calendar = ql.China()
 daycounter = ql.ActualActual()

@@ -53,12 +53,7 @@ class SytheticOption(BaseFutureCoutinuous):
         return - self.get_synthetic_unit(delta, buywrite)
 
     def get_hedge_rebalancing_unit(self, delta: float,
-                                   delta_bound: DeltaBound,
-                                   buywrite: BuyWrite = BuyWrite.BUY,
-                                   vol: float=None,
-                                   spot: float=None,
-                                   gamma: float=None,
-                                   dt_maturity: datetime.date=None) -> int:
+                                   buywrite: BuyWrite = BuyWrite.BUY) -> int:
         hold_unit = self.synthetic_unit
         synthetic_unit = self.get_synthetic_unit(delta, buywrite)
         d_unit = -(synthetic_unit - hold_unit)
