@@ -140,7 +140,8 @@ def get_comoption_mktdata(start_date, end_date, name_code):
               Option_mkt.code_instrument, Option_mkt.amt_close, Option_mkt.amt_open,
               Option_mkt.amt_settlement,
               Option_mkt.amt_last_settlement, Option_mkt.amt_trading_volume,
-              Option_mkt.pct_implied_vol
+              Option_mkt.pct_implied_vol,Option_mkt.amt_holding_volume,
+              Option_mkt.amt_trading_volume,
               ) \
         .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
         .filter(Option_mkt.name_code == name_code).filter(Option_mkt.flag_night != 1)

@@ -569,13 +569,13 @@ class OptionFilter:
                        }
 
     @staticmethod
-    def fun_option_type_split(df: pd.Series) -> Union[OptionType, None]:
+    def fun_option_type_split(df: pd.Series) -> Union[str, None]:
         id_instrument = df[Util.ID_INSTRUMENT]
         type_str = id_instrument.split('_')[2]
         if type_str == 'c':
-            option_type = OptionType.CALL
+            option_type = Util.STR_CALL
         elif type_str == 'p':
-            option_type = OptionType.PUT
+            option_type = Util.STR_PUT
         else:
             return
         return option_type

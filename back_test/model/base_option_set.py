@@ -314,6 +314,16 @@ class BaseOptionSet(AbstractBaseProductSet):
         t_qupte[Util.PCT_IV_OTM_BY_HTBR] = t_qupte.apply(self.fun_otm_iv,axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IV_OTM_BY_HTBR]]
 
+    def get_call_implied_vol_curve(self, nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x:self.fun_iv(x,OptionType.CALL),axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IMPLIED_VOL]]
+
+    def get_put_implied_vol_curve(self, nbr_maturity):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x:self.fun_iv(x,OptionType.PUT),axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IMPLIED_VOL]]
+
     def fun_otm_iv(self,df_series):
         K = df_series[Util.AMT_APPLICABLE_STRIKE]
         S = df_series[Util.AMT_UNDERLYING_CLOSE]
@@ -359,6 +369,29 @@ class BaseOptionSet(AbstractBaseProductSet):
                        + df_series[Util.AMT_APPLICABLE_STRIKE] * math.exp(-rf * df_series[Util.AMT_TTM]))
                       / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
         return r
+
+    def fun_iv(self, df_series: pd.DataFrame, option_type: OptionType):
+        K = df_series[Util.AMT_APPLICABLE_STRIKE]
+        S = df_series[Util.AMT_UNDERLYING_CLOSE]
+        dt_eval = df_series[Util.DT_DATE]
+        dt_maturity = df_series[Util.DT_MATURITY]
+        if option_type == OptionType.CALL:
+            C = df_series[Util.AMT_CALL_QUOTE]
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                                            rf=self.rf)
+            iv = pricing_engine.estimate_vol(C)
+        else:
+            P = df_series[Util.AMT_PUT_QUOTE]
+            if self.exercise_type == OptionExerciseType.EUROPEAN:
+                pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
+            else:
+                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                                            rf=self.rf)
+            iv = pricing_engine.estimate_vol(P)
+        return iv
 
     def get_option_moneyness(self,base_option:BaseOption):
         maturity = base_option.maturitydt()
