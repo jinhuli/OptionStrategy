@@ -14,6 +14,6 @@ df_index_metrics = get_index_intraday(start_date, end_date, 'index_50etf')
 
 a = BaseInstrument(df_index_metrics, frequency=FrequentType.MINUTE)
 a.init()
-a.next()
-a.execute_order(None)
+a.set_date(datetime.date(2017,10,10))
+a.set_date(datetime.date(2017,1,1))
 print(a)
