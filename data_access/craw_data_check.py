@@ -10,11 +10,6 @@ from Utilities import admin_write_util as admin
 
 w.start()
 
-date = datetime.date(2018,5,11)
-
-dt_date = date.strftime("%Y-%m-%d")
-print(dt_date)
-
 conn = admin.conn_mktdata()
 conn_intraday = admin.conn_intraday()
 
@@ -31,19 +26,18 @@ option_mktdata_intraday = admin.table_option_mktdata_intraday()
 dc = DataCollection()
 
 
-# res = futures_mktdata_daily.select((futures_mktdata_daily.c.dt_date == dt_date)
-#                                    & (futures_mktdata_daily.c.cd_exchange == 'cfe')).execute()
-# if res.rowcount == 0:
-df = dc.table_future_contracts().get_future_contract_ids(dt_date)
-for (idx_oc, row) in df.iterrows():
-    # print(row)
-    db_data = dc.table_futures().wind_index_future_daily(dt_date, row['id_instrument'], row['windcode'])
-    # print(db_data)
-    try:
-        conn.execute(futures_mktdata_daily.insert(), db_data)
-        print(row)
-        print('equity index futures -- inserted into data base succefully')
-    except Exception as e:
-        print(e)
-# else:
-#     print('equity index futures -- already exists')
+beg_date = datetime.date(2015, 1, 1)
+end_date = datetime.date.today()
+
+date_range = w.tdays(beg_date, end_date, "").Data[0]
+for dt in date_range:
+    date = dt.strftime("%Y-%m-%d")
+    df = dc.table_future_contracts().get_future_contract_ids(date)
+    for (idx_oc, row) in df.iterrows():
+        db_data = dc.table_futures().wind_index_future_daily(date, row['id_instrument'], row['windcode'])
+        try:
+            conn.execute(futures_mktdata_daily.insert(), db_data)
+            print(row)
+            print('equity index futures -- inserted into data base succefully')
+        except Exception as e:
+            print(e)
