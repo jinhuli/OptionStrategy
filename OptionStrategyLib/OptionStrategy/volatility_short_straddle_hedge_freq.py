@@ -17,7 +17,8 @@ def open_signal(dt_date, df_status):
     return open_signal_tangent(dt_date, df_status)
 
 def close_signal(dt_date,option_maturity, df_status):
-    if dt_date >= option_maturity - datetime.timedelta(days=1):
+    # TODO: 提前一周平仓？
+    if dt_date >= option_maturity - datetime.timedelta(days=5):
         print('3.到期', dt_date)
         return True
     else:
@@ -42,10 +43,10 @@ pu = PlotUtil()
 start_date = datetime.date(2015, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 15
+min_holding = 20 # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
-m = 1 # 期权notional倍数
+m = 2 # 期权notional倍数
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -107,6 +108,7 @@ buy_write = c.BuyWrite.WRITE
 maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 id_future = hedging.current_state[c.Util.ID_FUTURE]
 idx_hedge = 0
+flag_hedge = False
 print(id_future)
 while optionset.eval_date <= end_date:
     if account.cash <=0 : break
@@ -144,6 +146,7 @@ while optionset.eval_date <= end_date:
                 account.add_record(record, holding)
         hedging.synthetic_unit = 0
         id_future = hedging.current_state[c.Util.ID_FUTURE]
+        flag_hedge = True
 
     # 触发平仓信号
     if not empty_position:
@@ -179,7 +182,8 @@ while optionset.eval_date <= end_date:
         empty_position = False
 
     # Delta hedge
-    if not empty_position and idx_hedge % 2 == 0 :
+    # if not empty_position and (idx_hedge % 2 == 0 or flag_hedge):
+    if not empty_position :
         iv_htbr = optionset.get_iv_by_otm_iv_curve(nbr_maturiy=0, strike=atm_call.applicable_strike())
         delta_call = atm_call.get_delta(iv_htbr)
         delta_put = atm_put.get_delta(iv_htbr)
@@ -187,8 +191,6 @@ while optionset.eval_date <= end_date:
         gamma_put = atm_put.get_gamma(iv_htbr)
         options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
         hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta,  buy_write)
-        # delta_bound_call = hedging.whalley_wilmott2(optionset.eval_date,iv_htbr,hedging.mktprice_close(),gamma_call,maturity1)
-        # delta_bound_put = hedging.whalley_wilmott2(optionset.eval_date,iv_htbr,hedging.mktprice_close(),gamma_put,maturity1)
         hedging.synthetic_unit += - hedge_unit
         if hedge_unit > 0:
             long_short = c.LongShort.LONG
@@ -197,6 +199,7 @@ while optionset.eval_date <= end_date:
         order_u = account.create_trade_order(hedging, long_short, hedge_unit)
         record_u = hedging.execute_order(order_u, slippage=slippage)
         account.add_record(record_u, hedging)
+        flag_hedge = False
 
     idx_hedge += 1
     account.daily_accounting(optionset.eval_date)

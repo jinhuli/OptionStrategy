@@ -41,7 +41,7 @@ pu = PlotUtil()
 start_date = datetime.date(2015, 1, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 15
+min_holding = 20
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1 # 期权notional倍数
