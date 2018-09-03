@@ -20,6 +20,15 @@ class SytheticOption(BaseFutureCoutinuous):
                  rf=0.03,
                  frequency=FrequentType.MINUTE
                  ):
+        # 将主力合约作为一个产品使用name_code为id，
+        df_c1_data = df_c1_data.reset_index(drop=True)
+        name_code = df_c1_data.loc[0, Util.ID_INSTRUMENT].split('_')[0].lower()
+        df_c1_data = df_c1_data.rename(columns={Util.ID_INSTRUMENT: Util.ID_FUTURE})
+        df_c1_data.loc[:, Util.ID_INSTRUMENT] = name_code
+        if df_futures_all_daily is not None:
+            df_futures_all_daily = df_futures_all_daily.rename(columns={Util.ID_INSTRUMENT: Util.ID_FUTURE})
+            df_futures_all_daily.loc[:, Util.ID_INSTRUMENT] = name_code
+
         super().__init__(df_future_c1=df_c1_data, df_future_c1_daily=df_c1_daily,
                          df_futures_all_daily=df_futures_all_daily, df_underlying_index_daily=df_index_daily,
                          rf=rf, frequency=frequency)
