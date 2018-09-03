@@ -92,27 +92,27 @@ class QlBinomial(AbstractOptionPricingEngine):
         binomial_engine = ql.BinomialVanillaEngine(self.bsm_process, "crr", self.steps)
         self.ql_option.setPricingEngine(binomial_engine)
 
-    def estimate_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
-        try:
-            implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
-                                                               minVol, maxVol)
-        except Exception as e:
-            print(e)
-            implied_vol = None
-        return implied_vol
+    # def estimate_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
+    #     try:
+    #         implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
+    #                                                            minVol, maxVol)
+    #     except Exception as e:
+    #         print(e)
+    #         implied_vol = None
+    #     return implied_vol
 
-    # def estimate_vol(self, price: float, presion: float = 0.00001, max_vol: float = 2.0):
-    #     l = presion
-    #     r = max_vol
-    #     while l < r and round((r - l), 5) > presion:
-    #         m = round(l + (r - l) / 2, 5)
-    #         self.reset_vol(m)
-    #         p = self.NPV()
-    #         if p < price:
-    #             l = m
-    #         else:
-    #             r = m
-    #     return m
+    def estimate_vol(self, price: float, presion: float = 0.00001, max_vol: float = 2.0):
+        l = presion
+        r = max_vol
+        while l < r and round((r - l), 5) > presion:
+            m = round(l + (r - l) / 2, 5)
+            self.reset_vol(m)
+            p = self.NPV()
+            if p < price:
+                l = m
+            else:
+                r = m
+        return m
 
 
 class QlBlackFormula(AbstractOptionPricingEngine):

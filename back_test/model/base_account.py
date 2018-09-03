@@ -356,7 +356,9 @@ class BaseAccount():
             trade_long_short = row[Util.TRADE_LONG_SHORT]
             price = base_product.mktprice_close()
             if isinstance(base_product,BaseOption):
-                delta = trade_unit*base_product.multiplier()*base_product.get_delta(base_product.get_implied_vol())*trade_long_short.value
+                iv = base_product.get_implied_vol()
+                if iv is None: iv = 0.2
+                delta = trade_unit*base_product.multiplier()*base_product.get_delta(iv)*trade_long_short.value
             else:
                 delta = 0
             portfolio_delta += delta
@@ -434,6 +436,7 @@ class BaseAccount():
         self.trade_book = self.trade_book[self.trade_book[Util.TRADE_UNIT] != 0.0]
         self.realized_pnl = 0.0
         self.portfolio_total_value = portfolio_total_value
+
 
     """ getters from trade book """
 

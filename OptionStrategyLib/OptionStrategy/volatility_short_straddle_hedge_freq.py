@@ -20,11 +20,6 @@ init_fund = c.Util.BILLION
 slippage = 0
 m = 1 # 期权notional倍数
 
-""" commodity option """
-# name_code = name_code_option = c.Util.STR_M
-# df_metrics = get_data.get_comoption_mktdata(start_date, end_date,name_code)
-# df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
-
 """ 50ETF option """
 name_code = c.Util.STR_IH
 name_code_option = c.Util.STR_50ETF
@@ -45,15 +40,6 @@ df_data.loc[:,'average_iv'] = (df_data.loc[:,'iv_call'] + df_data.loc[:,'iv_put'
 """ Volatility Statistics """
 df_iv_stats = df_data[[c.Util.DT_DATE, 'average_iv']]
 
-
-""" 2. Filtration ：LLKSR """
-# df_iv_stats['LLKSR_20'] = LLKSR(df_iv_stats['average_iv'], 20)
-# df_iv_stats['LLKSR10'] = LLKSR(df_iv_stats['average_iv'], 10)
-# df_iv_stats['LLKSR_5'] = LLKSR(df_iv_stats['average_iv'], 5)
-# df_iv_stats['diff_20'] = df_iv_stats['LLKSR_20'].diff()
-# df_iv_stats['diff_10'] = df_iv_stats['LLKSR10'].diff()
-# df_iv_stats['diff_5'] = df_iv_stats['LLKSR_5'].diff()
-
 """ Filtration : LLT """
 df_iv_stats['LLT_20'] = LLT(df_iv_stats['average_iv'], 20)
 df_iv_stats['LLT_10'] = LLT(df_iv_stats['average_iv'], 10)
@@ -65,9 +51,6 @@ df_iv_stats['diff_5'] = df_iv_stats['LLT_5'].diff()
 df_iv_stats['diff_3'] = df_iv_stats['LLT_3'].diff()
 
 df_iv_stats = df_iv_stats.set_index(c.Util.DT_DATE)
-# pu.plot_line_chart(list(df_iv_stats.index), [list(df_iv_stats['average_iv']), list(df_iv_stats['estimated_iv_20'])], ['iv','estimated IV'])
-# pu.plot_line_chart(list(df_iv_stats.index), [list(df_iv_stats['average_iv']), list(df_iv_stats['estimated_iv_5'])], ['iv','estimated IV'])
-# plt.show()
 
 """ Open/Close Position Signal """
 def open_signal(dt_date, df_status):
@@ -94,35 +77,6 @@ def close_signal_tangent(dt_date, df_status):
         return True
     else:
         return False
-
-# def open_signal_ma(dt_date,df_stats)->bool:
-#     df_stats.loc[:, 'last_ma_10'] = df_stats['ma_10'].shift()
-#     iv = df_stats.loc[dt_date,'average_iv']
-#     ma_10 = df_stats.loc[dt_date,'ma_10']
-#     ma_20 = df_stats.loc[dt_date,'ma_20']
-#     if iv < ma_10 and ma_10 < ma_20:
-#         print('0.OPEN: short trend ', dt_date)
-#         return True
-#     else:
-#         return False
-#
-# def close_signal_ma(dt_date,df_stats)->bool:
-#     df_stats.loc[:,'last_ma_10'] = df_stats['ma_10'].shift()
-#     df_stats.loc[:,'last_iv'] = df_stats['average_iv'].shift()
-#     iv = df_stats.loc[dt_date, 'average_iv']
-#     iv_last = df_stats.loc[dt_date, 'last_iv']
-#     ma_10_last = df_stats.loc[dt_date, 'last_ma_10']
-#     iv_upper = df_stats.loc[dt_date, 'upper']
-#     ma_10 = df_stats.loc[dt_date, 'ma_10']
-#     ma_60 = df_stats.loc[dt_date, 'ma_60']
-#     if iv_last <= iv_upper and iv >= iv_upper:  # 止损
-#         print('1.STOP LOSS ',dt_date)
-#         return True
-#     elif ma_10_last <= ma_60 and ma_10 > ma_60: # 止盈
-#         print('2.STOP EARNING', dt_date)
-#         return True
-#     else:
-#          return False
 
 
 """ Volatility Strategy: Straddle """
@@ -201,16 +155,7 @@ while optionset.eval_date <= end_date:
         iv_htbr = optionset.get_iv_by_otm_iv_curve(nbr_maturiy=0, strike=atm_call.applicable_strike())
         delta_call = atm_call.get_delta(iv_htbr)
         delta_put = atm_put.get_delta(iv_htbr)
-        # iv1 = atm_call.get_implied_vol()
-        # iv2 = atm_put.get_implied_vol()
-        # if iv1 is None or iv2 is None:
-        #     list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)
-        #     iv1 = list_atm_call[0].get_implied_vol()
-        #     iv2 = list_atm_put[0].get_implied_vol()
-        #     if iv1 is None : iv1 = iv2
-        #     if iv2 is None: iv2 = iv1
-        # delta_call = atm_call.get_delta(iv1)
-        # delta_put = atm_put.get_delta(iv2)
+
         options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
         hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta,  buy_write)
         hedging.synthetic_unit += - hedge_unit
@@ -231,9 +176,9 @@ while optionset.eval_date <= end_date:
     hedging.next()
 
 
-account.account.to_csv('account.csv')
+# account.account.to_csv('account.csv')
 df_records = pd.DataFrame(account.list_records)
-df_records.to_csv('df_records.csv')
+# df_records.to_csv('df_records.csv')
 res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
 print(res)
 dates = list(account.account.index)

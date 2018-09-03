@@ -215,35 +215,10 @@ class BaseOption(BaseProduct):
         if self.flag_calculate_iv:
             option_price = self.mktprice_close()
             self._set_pricing_engine()
-            implied_vol = self.pricing_engine.estimate_vol(option_price)
-            # dt_maturity = self.maturitydt()
-            # strike = self.applicable_strike()
-            # option_type = self.option_type()
-            # spot = self.underlying_close()
-            # # black_formula = BlackFormula(self.eval_date, dt_maturity, option_type, spot, strike,option_price, self.rf)
-            # # implied_vol = black_formula.ImpliedVolApproximation()
-            # if self.exercise_type == OptionExerciseType.EUROPEAN:
-            #     black_formula = QlBlackFormula(
-            #         dt_eval=self.eval_date,
-            #         dt_maturity=dt_maturity,
-            #         option_type=option_type,
-            #         spot=spot,
-            #         strike=strike,
-            #         rf=self.rf
-            #     )
-            #     implied_vol = black_formula.estimate_vol(option_price)
-            # else:
-            #     binomial = QlBinomial(
-            #         dt_eval=self.eval_date,
-            #         dt_maturity=dt_maturity,
-            #         option_type=option_type,
-            #         option_exercise_type=OptionExerciseType.AMERICAN,
-            #         spot=spot,
-            #         strike=strike,
-            #         rf=self.rf,
-            #         n=800
-            #     )
-            #     implied_vol = binomial.estimate_vol(option_price)
+            try:
+                implied_vol = self.pricing_engine.estimate_vol(option_price)
+            except:
+                implied_vol = None
         else:
             implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol
@@ -257,35 +232,9 @@ class BaseOption(BaseProduct):
         spot_htb = self.underlying_close() * math.exp(-htb_r * ttm)
         pricing_engine = self._get_pricing_engine(spot_htb)
         implied_vol = pricing_engine.estimate_vol(self.mktprice_close())
-        # if self.exercise_type == OptionExerciseType.EUROPEAN:
-        #     black_formula = QlBlackFormula(
-        #         dt_eval=self.eval_date,
-        #         dt_maturity=self.maturitydt(),
-        #         option_type=self.option_type(),
-        #         spot=spot_htb,
-        #         strike=self.applicable_strike(),
-        #         rf=self.rf
-        #     )
-        #     implied_vol = black_formula.estimate_vol(self.mktprice_close())
-        # else:
-        #     binomial = QlBinomial(
-        #         dt_eval=self.eval_date,
-        #         dt_maturity=self.maturitydt(),
-        #         option_type=self.option_type(),
-        #         option_exercise_type=OptionExerciseType.AMERICAN,
-        #         spot=spot_htb,
-        #         strike=self.strike(),
-        #         rf=self.rf
-        #     )
-        #     implied_vol = binomial.estimate_vol(self.mktprice_close())
         return implied_vol
 
     def get_delta(self, implied_vol: float) -> Union[float, None]:
-        # if htb_r is None:
-        #     spot = self.underlying_close()
-        # else:
-        #     ttm = PricingUtil.get_ttm(self.eval_date, self.maturitydt())
-        #     spot = self.underlying_close() * math.exp(-htb_r * ttm)
         self._set_pricing_engine()
         delta = self.pricing_engine.Delta(implied_vol)
         return delta

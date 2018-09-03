@@ -15,26 +15,6 @@ from sqlalchemy import func
 
 def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code,core_instrumentid):
     pu = PlotUtil()
-    # options_mkt = admin.table_options_mktdata()
-    # evalDate = dt_date.strftime("%Y-%m-%d")  # Set as Friday
-    # plt.rcParams['font.sans-serif'] = ['STKaiti']
-    # plt.rcParams.update({'font.size': 15})
-    #
-    # """当日成交持仓量 """
-    # query_volume = admin.session_mktdata().query(options_mkt.c.dt_date,
-    #                           options_mkt.c.cd_option_type,
-    #                           options_mkt.c.amt_strike,
-    #                           options_mkt.c.amt_holding_volume,
-    #                           options_mkt.c.amt_trading_volume,
-    #                           options_mkt.c.amt_close,
-    #                           options_mkt.c.pct_implied_vol
-    #                           ) \
-    #     .filter(or_(options_mkt.c.dt_date == evalDate,options_mkt.c.dt_date == dt_last_week)) \
-    #     .filter(options_mkt.c.id_underlying == core_instrumentid)\
-    #     .filter(options_mkt.c.flag_night != 1)
-    #
-    # df_2d = pd.read_sql(query_volume.statement, query_volume.session.bind)
-
     df = df_option_metrics[(df_option_metrics['dt_date'] == dt_date)&(df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
     df_lw = df_option_metrics[(df_option_metrics['dt_date'] == dt_last_week)&(df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
     df_call = df[df['cd_option_type'] == 'call'].reset_index(drop=True)
@@ -247,8 +227,8 @@ def LLKSR_analysis(dt_start, df_iv, df_future_c1_daily, name_code):
     f3.savefig('../data/' + name_code + '_iv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
 
 """"""
-name_code = c.Util.STR_SR
-core_id = 'sr_1901'
+name_code = c.Util.STR_M
+core_id = 'm_1901'
 end_date = datetime.date(2018, 8, 31)
 last_week = datetime.date(2018, 8, 27)
 """"""

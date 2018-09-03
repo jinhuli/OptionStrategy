@@ -933,6 +933,7 @@ class Util:
         "sr": 0.0,
     }
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
+        'm':None,
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
         # 'ih': 0.0,
@@ -1091,7 +1092,7 @@ class Statistics:
         return df_series.rolling(window=n).quantile(percent)
 
     @staticmethod
-    def volatility_by_closes(df_series_closes,n=20):
+    def volatility_by_closes(df_series_closes, n=20):
         series = np.log(df_series_closes).diff()
         vol= series.rolling(window=n).std() * math.sqrt(252)
         return vol
