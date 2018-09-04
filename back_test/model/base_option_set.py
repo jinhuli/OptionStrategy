@@ -37,10 +37,13 @@ class BaseOptionSet(AbstractBaseProductSet):
         self.frequency: FrequentType = frequency
         self.flag_calculate_iv: bool = flag_calculate_iv
         self.option_dict: Dict[datetime.date, List(BaseOption)] = {}
+        self.option_dict_backup: Dict[datetime.date, List(BaseOption)] = {}
         self.rf: float = rf
         self.size: int = 0
         self.eval_date: datetime.date = None
         self.eval_datetime: datetime.datetime = None
+        self.date_list: List[datetime.date] = None
+        self.datetime_list: List[datetime.datetime] = None
         self.current_index = -1
         self.eligible_options = deque()
         self.update_contract_month_maturity_table()  # _generate_required_columns_if_missing的时候就要用到
@@ -53,9 +56,7 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     def init(self) -> None:
         self._generate_required_columns_if_missing()  # 补充行权价等关键信息（high frequency data就可能没有）
-        print('start preprosess ', datetime.datetime.now())
         self.pre_process()
-        print('end preprosess ', datetime.datetime.now())
         self.next()
 
     def _generate_required_columns_if_missing(self) -> None:
@@ -121,12 +122,13 @@ class BaseOptionSet(AbstractBaseProductSet):
     def pre_process(self) -> None:
 
         if self.frequency in Util.LOW_FREQUENT:
-            self.date_list: List[datetime.date] = sorted(self.df_data[Util.DT_DATE].unique())
+            self.date_list = sorted(self.df_data[Util.DT_DATE].unique())
             self.nbr_index = len(self.date_list)
         else:
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
-            self.datetime_list: List[datetime.datetime] = sorted(self.df_data[Util.DT_DATETIME].unique())
+            self.date_list = sorted(self.df_data[Util.DT_DATE].unique())
+            self.datetime_list = sorted(self.df_data[Util.DT_DATETIME].unique())
             self.nbr_index = len(self.datetime_list)
             if self.df_daily_data is None:
                 # TODO: Rise error if no daily data in high frequency senario.
@@ -142,7 +144,6 @@ class BaseOptionSet(AbstractBaseProductSet):
         for key in groups.groups.keys():
             # manage minute data and daily data.
             df_option = groups.get_group(key).reset_index(drop=True)
-            # print(key, ' , ', len(df_option), ' , ', datetime.datetime.now())
             if self.df_daily_data is not None:
                 df_option_daily = groups_daily.get_group(key).reset_index(drop=True)
             else:
@@ -156,9 +157,9 @@ class BaseOptionSet(AbstractBaseProductSet):
                 self.option_dict.update({option.eval_date: l})
             l.append(option)
             self.size += 1
+        self.option_dict_backup = self.option_dict.copy()
 
     def next(self) -> None:
-        start = datetime.datetime.now()
         # Update index and time,
         self.current_index += 1
         if self.frequency in Util.LOW_FREQUENT:
@@ -191,10 +192,43 @@ class BaseOptionSet(AbstractBaseProductSet):
                 if self.eval_datetime != option.eval_datetime:
                     print("Option datetime does not match, id : {0}, dt_optionset:{1}, dt_option:{2}".format(
                         option.id_instrument(), self.eval_datetime, option.eval_datetime))
-        end = datetime.datetime.now()
-        # print("OptionSet.NEXT iter {0}, option_set length:{1}, time cost{2}".format(self.eval_date, len(self.eligible_options),
-        #                                                              (end - start).total_seconds()))
         return None
+
+    def set_date(self, dt: datetime.date):
+        """
+        set current date for option set
+        1. construct eligible options at given date.
+        2. set all options in eligible options to the given date.
+        3. update other related fields
+        :param dt:
+        :return:
+        """
+        # raise error if reset to an invalid date,i.e. date less than the minimum or greater than the maximum
+        if dt not in self.date_list:
+            raise ValueError("invalid date: {} on optionset {}".format(dt, self))
+        # Reset option_dict and eligible_options
+        self.option_dict = self.option_dict_backup.copy()
+        self.eligible_options = deque()
+        eligible_maturities = set()
+        # Loop over option_dict_backup to generate eligible_options
+        for date in self.date_list:
+            if date > dt:
+                break
+            for option in self.option_dict_backup.get(date, []):
+                if option.last_date() < dt:
+                    continue
+                option.set_date(dt)
+                eligible_maturities.add(option.maturitydt())
+                self.eligible_options.append(option)
+        self.eligible_maturities = sorted(eligible_maturities)
+        # Update eval_date and eval_datetime
+        if self.frequency in Util.LOW_FREQUENT:
+            self.current_index = next((index for index, val in enumerate(self.date_list) if val >= dt), -1)
+            self.eval_date = self.date_list[self.current_index]
+        else:
+            self.current_index = next((index for index, val in enumerate(self.datetime_list) if val >= dt), -1)
+            self.eval_datetime = self.datetime_list[self.current_index]
+            self.eval_date = self.eval_datetime.date()
 
     def __repr__(self) -> str:
         return 'BaseOptionSet(evalDate:{0}, totalSize: {1})' \
@@ -293,22 +327,25 @@ class BaseOptionSet(AbstractBaseProductSet):
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
         htb_r = self.fun_htb_rate(atm_series, self.rf)
-        t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(lambda x:self.fun_htb_rate_adjusted_iv(x,OptionType.CALL,htb_r),axis=1)
-        t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(lambda x:self.fun_htb_rate_adjusted_iv(x,OptionType.PUT,htb_r),axis=1)
-        t_qupte[Util.PCT_IV_OTM_BY_HTBR] = t_qupte.apply(self.fun_otm_iv,axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IV_OTM_BY_HTBR]]
+        t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(
+            lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.CALL, htb_r), axis=1)
+        t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(
+            lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.PUT, htb_r), axis=1)
+        t_qupte[Util.PCT_IV_OTM_BY_HTBR] = t_qupte.apply(self.fun_otm_iv, axis=1)
+        return t_qupte[
+            [Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_OTM_BY_HTBR]]
 
     def get_call_implied_vol_curve(self, nbr_maturity):
         t_qupte = self.get_T_quotes(nbr_maturity)
-        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x:self.fun_iv(x,OptionType.CALL),axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IMPLIED_VOL]]
+        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IMPLIED_VOL]]
 
     def get_put_implied_vol_curve(self, nbr_maturity):
         t_qupte = self.get_T_quotes(nbr_maturity)
-        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x:self.fun_iv(x,OptionType.PUT),axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE,Util.AMT_UNDERLYING_CLOSE,Util.DT_MATURITY,Util.PCT_IMPLIED_VOL]]
+        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IMPLIED_VOL]]
 
-    def fun_otm_iv(self,df_series):
+    def fun_otm_iv(self, df_series):
         K = df_series[Util.AMT_APPLICABLE_STRIKE]
         S = df_series[Util.AMT_UNDERLYING_CLOSE]
         if K <= S:
@@ -356,7 +393,6 @@ class BaseOptionSet(AbstractBaseProductSet):
                       / df_series[Util.AMT_UNDERLYING_CLOSE]) / df_series[Util.AMT_TTM]
         return r
 
-
     def fun_iv(self, df_series: pd.DataFrame, option_type: OptionType):
         K = df_series[Util.AMT_APPLICABLE_STRIKE]
         S = df_series[Util.AMT_UNDERLYING_CLOSE]
@@ -380,7 +416,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             iv = pricing_engine.estimate_vol(P)
         return iv
 
-    def get_option_moneyness(self,base_option:BaseOption):
+    def get_option_moneyness(self, base_option: BaseOption):
         maturity = base_option.maturitydt()
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         if base_option.option_type() == OptionType.CALL:
