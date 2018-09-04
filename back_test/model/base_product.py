@@ -41,6 +41,9 @@ class BaseProduct(AbstractBaseProduct):
         self.update_current_state()
         self.update_current_daily_state()
 
+    def last_date(self) -> datetime.date:
+        return self.df_data.loc[self.nbr_index - 1, Util.DT_DATE]
+
     def set_date(self, dt: datetime.date) -> None:
         """
         Set current date of base product.
@@ -57,7 +60,8 @@ class BaseProduct(AbstractBaseProduct):
         if self.df_daily_data is not None:
             df_daily_query_index = self.df_daily_data.dt_date == dt
             if df_daily_query_index.sum() == 0:
-                raise ValueError("Input date {} does not exist in df_daily_data on base product object {}".format(dt, self))
+                raise ValueError(
+                    "Input date {} does not exist in df_daily_data on base product object {}".format(dt, self))
             self.current_daily_index = df_daily_query_index.idxmax()
             self.current_daily_state = self.df_daily_data.loc[self.current_daily_index]
         if self.frequency not in Util.LOW_FREQUENT:
