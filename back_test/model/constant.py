@@ -780,6 +780,7 @@ class Util:
     DT_DATETIME = 'dt_datetime'
     CODE_INSTRUMENT = 'code_instrument'
     ID_INSTRUMENT = 'id_instrument'
+    ID_FUTURE = 'id_future'
 
     # option
     DT_MATURITY = 'dt_maturity'
@@ -912,12 +913,14 @@ class Util:
                        ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
+        'sr': 0.05,
         'if': 0.15,
         'ih': 0.15,
         'ic': 0.15,
     }
     DICT_TRANSACTION_FEE = {  # 元/手
         'm': 3.0,
+        'sr': 3.0,
         'if': None,
         'ih': None,
         'ic': None,
@@ -934,13 +937,14 @@ class Util:
     }
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
         'm':None,
+        'sr':None,
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
-        # 'ih': 0.0,
         'ic': 6.9 / 10000.0,
     }
     DICT_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,
+        'sr':10,
         'if': 300,
         'ih': 300,
         'ic': 200

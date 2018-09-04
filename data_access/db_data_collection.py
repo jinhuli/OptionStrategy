@@ -511,6 +511,7 @@ class DataCollection():
             for i, f in enumerate(tickdata.Fields):
                 df[f] = tickdata.Data[i]
             df['dt_datetime'] = tickdata.Times
+            df = df.fillna(0.0)
             for (idx, row) in df.iterrows():
                 dt = row['dt_datetime']
                 dt_date = datetime.date(dt.year, dt.month, dt.day)
@@ -521,10 +522,10 @@ class DataCollection():
                 volume = row['VOLUME']
                 amt = row['AMT']
                 amt_holding_volume = row['OI']
+
                 amt_last_close = row['PRE_CLOSE']
                 amt_last_settlement = row['PRE_SETTLE']
                 amt_settlement = row['SETTLE']
-
                 db_row = {'dt_date': dt_date,
                           'id_instrument': id_instrument,
                           'flag_night': flag_night,
