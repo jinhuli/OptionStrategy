@@ -3,7 +3,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from back_test.model.abstract_base_product import AbstractBaseProduct
-from back_test.model.constant import FrequentType, Util, TradeType,ExecuteType, LongShort
+from back_test.model.constant import FrequentType, Util, TradeType, ExecuteType, LongShort
 from back_test.model.trade import Order
 from typing import Union
 
@@ -30,7 +30,6 @@ class BaseProduct(AbstractBaseProduct):
         self.current_daily_state: pd.Series = None
         self.rf = rf
 
-
     def init(self) -> None:
         self.validate_data()
         self.pre_process()
@@ -42,6 +41,33 @@ class BaseProduct(AbstractBaseProduct):
         self.update_current_state()
         self.update_current_daily_state()
 
+    def set_date(self, dt: datetime.date) -> None:
+        """
+        Set current date of base product.
+        :param dt: required datetime.
+        :return:
+        """
+        if self.df_data is not None:
+            df_query_index = self.df_data.dt_date == dt
+            if df_query_index.sum() == 0:
+                raise ValueError("Input date {} does not exist in df_data on base product object {}".format(dt, self))
+            self.current_index = df_query_index.idxmax()
+            self.current_state = self.df_data.loc[self.current_index]
+            self.eval_date = self.current_state[Util.DT_DATE]
+        if self.df_daily_data is not None:
+            df_daily_query_index = self.df_daily_data.dt_date == dt
+            if df_daily_query_index.sum() == 0:
+                raise ValueError("Input date {} does not exist in df_daily_data on base product object {}".format(dt, self))
+            self.current_daily_index = df_daily_query_index.idxmax()
+            self.current_daily_state = self.df_daily_data.loc[self.current_daily_index]
+        if self.frequency not in Util.LOW_FREQUENT:
+            self.eval_datetime = self.current_state[Util.DT_DATETIME]
+        else:
+            self.eval_datetime: datetime.datetime = datetime.datetime(self.eval_date.year,
+                                                                      self.eval_date.month,
+                                                                      self.eval_date.day,
+                                                                      0, 0, 0)
+
     def validate_data(self) -> None:
         # Basic validation appliable for all instruments
         if self.frequency not in Util.LOW_FREQUENT:
@@ -49,16 +75,16 @@ class BaseProduct(AbstractBaseProduct):
             # overwrite date col based on data in datetime col.
             self.df_data[Util.DT_DATE] = self.df_data[Util.DT_DATETIME].apply(lambda x: x.date())
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
-            self.eval_datetime: datetime.datetime  = self.df_data.loc[0][Util.DT_DATETIME]
+            self.eval_datetime: datetime.datetime = self.df_data.loc[0][Util.DT_DATETIME]
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
             self.df_data = self.df_data[mask].reset_index(drop=True)
             self.nbr_index: int = self.df_data.shape[0]
         else:
             self.eval_date: datetime.date = self.df_data.loc[0][Util.DT_DATE]
-            self.eval_datetime: datetime.datetime  = datetime.datetime(self.eval_date.year,
-                                                                       self.eval_date.month,
-                                                                       self.eval_date.day,
-                                                                       0,0,0)
+            self.eval_datetime: datetime.datetime = datetime.datetime(self.eval_date.year,
+                                                                      self.eval_date.month,
+                                                                      self.eval_date.day,
+                                                                      0, 0, 0)
         # Product specific validation to be override
         self._generate_required_columns_if_missing()
         # Product specific pre_process to be override
@@ -83,14 +109,13 @@ class BaseProduct(AbstractBaseProduct):
                 if column not in columns2:
                     self.df_daily_data[column] = None
 
-
-    #TODO: ADD NEXT DAY METHOD
+    # TODO: ADD NEXT DAY METHOD
     def get_next_state_date(self):
         if self.has_next():
             next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
             return next_date
 
-    def is_last_minute(self)-> bool:
+    def is_last_minute(self) -> bool:
         if self.has_next():
             next_date = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
             if self.eval_date == next_date:
@@ -99,7 +124,6 @@ class BaseProduct(AbstractBaseProduct):
                 return True
         else:
             return True
-
 
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
@@ -115,11 +139,13 @@ class BaseProduct(AbstractBaseProduct):
                                                                       self.eval_date.month,
                                                                       self.eval_date.day,
                                                                       0, 0, 0)
+
     # TODO: Is daily state necessary in high freq data?
     def update_current_daily_state(self) -> None:
         if self.df_daily_data is None:
             return
-        if self.current_daily_state is not None and self.current_daily_state[Util.DT_DATE] == self.current_state[Util.DT_DATE]:
+        if self.current_daily_state is not None and self.current_daily_state[Util.DT_DATE] == self.current_state[
+            Util.DT_DATE]:
             return
         self.current_daily_index += 1
         self.current_daily_state = self.df_daily_data.loc[self.current_daily_index]
@@ -129,7 +155,6 @@ class BaseProduct(AbstractBaseProduct):
 
     def get_current_dayly_state(self) -> pd.Series:
         return self.current_daily_state
-
 
     def __repr__(self) -> str:
         return 'BaseProduct(id_instrument: {0},eval_date: {1},frequency: {2})' \
@@ -178,17 +203,18 @@ class BaseProduct(AbstractBaseProduct):
     #     raise NotImplementedError("Child class not implement method execute_order.")
 
     @abstractmethod
-    def execute_order(self, order: Order, slippage:int=0,execute_type:ExecuteType=ExecuteType.EXECUTE_ALL_UNITS) -> bool:
+    def execute_order(self, order: Order, slippage: int = 0,
+                      execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS) -> bool:
         # 执行交易指令
         pass
 
     @abstractmethod
-    def get_current_value(self, long_short:LongShort) -> float:
+    def get_current_value(self, long_short: LongShort) -> float:
         # 保证金交易当前价值为零/基础证券交易不包含保证金current value为当前价格
         pass
 
     @abstractmethod
-    def is_margin_trade(self, long_short:LongShort) -> bool:
+    def is_margin_trade(self, long_short: LongShort) -> bool:
         # 标记是否为保证金交易
         pass
 
@@ -310,9 +336,8 @@ class BaseProduct(AbstractBaseProduct):
             return self.df_data.loc[self.current_index - 1][Util.AMT_CLOSE]
         return ret
 
-    def get_initial_margin(self,long_short:LongShort) -> float:
+    def get_initial_margin(self, long_short: LongShort) -> float:
         return 0.0
 
-    def get_maintain_margin(self,long_short:LongShort) -> float:
+    def get_maintain_margin(self, long_short: LongShort) -> float:
         return 0.0
-
