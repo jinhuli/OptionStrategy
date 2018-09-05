@@ -140,7 +140,7 @@ def fun_report_namecode(namecode):
 
 
 # Eval Settings and Data
-dt_date = datetime.date(2018, 8, 31)  # Set as Friday
+dt_date = datetime.date(2018, 9, 4)  # Set as Friday
 
 # Eval Settings and Data
 

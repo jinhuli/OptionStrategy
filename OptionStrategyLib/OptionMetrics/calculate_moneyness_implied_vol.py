@@ -5,17 +5,17 @@ import datetime
 from PricingLibrary.EngineQuantlib import QlBlackFormula, QlBinomial
 import Utilities.admin_write_util as admin
 
-start_date = datetime.date(2015, 1, 1)
+start_date = datetime.date(2018, 8, 31)
 end_date = datetime.date.today()
 
 init_vol = 0.2
 rf = 0.03
 moneyness = 0
 min_holding = 8
-# nbr_maturity = 0
-# cd_mdt_selection = 'hp_8_1st'
-nbr_maturity = 1
-cd_mdt_selection = 'hp_8_2nd'
+nbr_maturity = 0
+cd_mdt_selection = 'hp_8_1st'
+# nbr_maturity = 1
+# cd_mdt_selection = 'hp_8_2nd'
 # nbr_maturity = 2
 # cd_mdt_selection = 'hp_8_3rd'
 
