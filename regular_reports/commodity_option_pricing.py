@@ -70,7 +70,7 @@ ql_baw = QlBAW(dt_settlement,dt_maturity,OptionType.PUT,OptionExerciseType.AMERI
 ql_bonomial = QlBinomial(dt_settlement,dt_maturity,OptionType.CALL,OptionExerciseType.AMERICAN,spot,strike,rf=0.06)
 
 option.setPricingEngine(BaroneAdesiWhaleyEngine(process))
-print('Barone-Adesi-Whaley : ',option.impliedVolatility(refValue,process))
+print('BAW : ',option.impliedVolatility(refValue,process))
 print('BAW local : ',ql_baw.estimate_vol_ql(refValue))
 print('BAW local2 : ',ql_baw.estimate_vol(refValue))
 
@@ -78,3 +78,4 @@ option.setPricingEngine(BinomialVanillaEngine(process,'crr',800))
 print('Binomial : ',option.impliedVolatility(refValue,process))
 
 print('Binomial local : ',ql_bonomial.estimate_vol_ql(refValue))
+print('Binomial local2 : ',ql_bonomial.estimate_vol(refValue))
