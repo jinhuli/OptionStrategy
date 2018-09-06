@@ -44,7 +44,7 @@ min_holding = 20
 nbr_maturity = 1
 slippage = 0
 pct_underlying_invest = 1.0
-alpha = 0.1
+alpha = 0.05
 
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
