@@ -8,8 +8,8 @@ from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, \
     OptionExerciseType
-from PricingLibrary.EngineQuantlib import QlBinomial, QlBlackFormula
-
+from PricingLibrary.EngineQuantlib import QlBinomial, QlBlackFormula,QlBAW
+from PricingLibrary.BinomialModel import BinomialTree
 
 class BaseOptionSet(AbstractBaseProductSet):
     """
@@ -180,7 +180,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                         option.id_instrument(), self.eval_datetime, option.eval_datetime))
         return None
 
-    def set_date(self, dt: datetime.date):
+    def go_to(self, dt: datetime.date):
         """
         set current date for option set
         1. construct eligible options at given date.
@@ -201,9 +201,10 @@ class BaseOptionSet(AbstractBaseProductSet):
             if date > dt:
                 break
             for option in self.option_dict_backup.get(date, []):
+                if not option.is_valid_option():continue
                 if option.last_date() < dt:
                     continue
-                option.set_date(dt)
+                option.go_to(dt)
                 eligible_maturities.add(option.maturitydt())
                 self.eligible_options.append(option)
         self.eligible_maturities = sorted(eligible_maturities)
@@ -293,7 +294,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_PUT_TRADING_VOLUME})
         df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
-        df = pd.merge(df_call[[Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_STRIKE,
+        df = pd.merge(df_call[[Util.NAME_CONTRACT_MONTH,Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_STRIKE,
                                Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_CALL_TRADING_VOLUME]],
                       df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_PUT_TRADING_VOLUME]],
                       how='inner', on=Util.AMT_APPLICABLE_STRIKE)
@@ -321,15 +322,15 @@ class BaseOptionSet(AbstractBaseProductSet):
         return t_qupte[
             [Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_OTM_BY_HTBR]]
 
-    def get_call_implied_vol_curve(self, nbr_maturity):
+    def get_call_implied_vol_curve(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
-        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IMPLIED_VOL]]
+        t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_CALL]]
 
-    def get_put_implied_vol_curve(self, nbr_maturity):
+    def get_put_implied_vol_curve(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
-        t_qupte[Util.PCT_IMPLIED_VOL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IMPLIED_VOL]]
+        t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_PUT]]
 
     def fun_otm_iv(self, df_series):
         K = df_series[Util.AMT_APPLICABLE_STRIKE]
@@ -389,7 +390,9 @@ class BaseOptionSet(AbstractBaseProductSet):
             if self.exercise_type == OptionExerciseType.EUROPEAN:
                 pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
             else:
-                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                # pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                #                             rf=self.rf)
+                pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
                                             rf=self.rf)
             iv = pricing_engine.estimate_vol(C)
         else:
@@ -397,8 +400,10 @@ class BaseOptionSet(AbstractBaseProductSet):
             if self.exercise_type == OptionExerciseType.EUROPEAN:
                 pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
             else:
-                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
-                                            rf=self.rf)
+                # pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                #                             rf=self.rf)
+                pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                                              rf=self.rf)
             iv = pricing_engine.estimate_vol(P)
         return iv
 

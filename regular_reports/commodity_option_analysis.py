@@ -234,7 +234,7 @@ name_code = c.Util.STR_M
 core_id = 'm_1901'
 end_date = datetime.date(2018, 9, 4)
 last_week = datetime.date(2018, 8, 31)
-start_date = datetime.date(2017, 1, 1)
+start_date = datetime.date(2018, 1, 1)
 dt_histvol = start_date - datetime.timedelta(days=200)
 min_holding = 5
 
@@ -261,8 +261,12 @@ d1 = max(df_metrics[c.Util.DT_DATE].values[0], df_future_c1_daily[c.Util.DT_DATE
 """ T-quote IV """
 optionset = BaseOptionSet(df_metrics)
 optionset.init()
-
-
+optionset.go_to(end_date)
+t_quote = optionset.get_T_quotes()
+ivs_c = optionset.get_call_implied_vol_curve()
+ivs_p = optionset.get_put_implied_vol_curve()
+# ivs = ivs_c.join(ivs_p[c.Util.AMT_APPLICABLE_STRIKE,c.Util.PCT_IV_PUT].set_index(c.Util.AMT_APPLICABLE_STRIKE),on=c.Util.AMT_APPLICABLE_STRIKE)
+ivs2 = pd.merge(ivs_c,ivs_p,how='left',on=c.Util.AMT_APPLICABLE_STRIKE)
 """ 隐含波动率期限结构 """
 dt_1 = last_week - datetime.timedelta(days=7)
 dt_2 = last_week - datetime.timedelta(days=14)

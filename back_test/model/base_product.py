@@ -44,7 +44,7 @@ class BaseProduct(AbstractBaseProduct):
     def last_date(self) -> datetime.date:
         return self.df_data.loc[self.nbr_index - 1, Util.DT_DATE]
 
-    def set_date(self, dt: datetime.date) -> None:
+    def go_to(self, dt: datetime.date) -> None:
         """
         Set current date of base product.
         :param dt: required datetime.

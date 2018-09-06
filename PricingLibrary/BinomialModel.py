@@ -30,7 +30,7 @@ class BinomialTree(object):
                  option_exercise_type: constant.OptionExerciseType,
                  spot: float,
                  strike: float,
-                 vol: float,
+                 vol: float = 0.2,
                  rf: float = 0.03,
                  n: int=800):
 

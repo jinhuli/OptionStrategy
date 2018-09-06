@@ -818,6 +818,8 @@ class Util:
     PCT_IV_OTM_BY_HTBR = 'pct_iv_by_htbr'
     PCT_IV_CALL_BY_HTBR = 'pct_iv_call_by_htbr'
     PCT_IV_PUT_BY_HTBR = 'pct_iv_put_by_htbr'
+    PCT_IV_CALL = 'pct_iv_call'
+    PCT_IV_PUT = 'pct_iv_put'
     AMT_DELTA = 'amt_delta'
     AMT_THETA = 'amt_theta'
     AMT_VEGA = 'amt_vega'
