@@ -325,12 +325,12 @@ class BaseOptionSet(AbstractBaseProductSet):
     def get_call_implied_vol_curve(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_CALL]]
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL]]
 
     def get_put_implied_vol_curve(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_PUT]]
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT]]
 
     def fun_otm_iv(self, df_series):
         K = df_series[Util.AMT_APPLICABLE_STRIKE]

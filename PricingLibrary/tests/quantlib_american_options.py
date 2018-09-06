@@ -29,7 +29,7 @@ payoff = PlainVanillaPayoff(Option.Put, 40.0)
 
 # market data
 underlying = SimpleQuote(36.0)
-volatility = BlackConstantVol(todaysDate, TARGET(), 0.20, ActualActual())
+volatility = BlackConstantVol(todaysDate, China(), 0.20, ActualActual())
 dividendYield = FlatForward(settlementDate, 0.00, ActualActual())
 
 dt_settlement = QuantlibUtil.to_dt_date(settlementDate)

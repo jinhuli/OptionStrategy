@@ -91,14 +91,14 @@ class QlBAW(AbstractOptionPricingEngine):
         engine = ql.BaroneAdesiWhaleyEngine(self.bsm_process)
         self.ql_option.setPricingEngine(engine)
 
-    # def estimate_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
-    #     try:
-    #         implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
-    #                                                            minVol, maxVol)
-    #     except Exception as e:
-    #         print(e)
-    #         implied_vol = None
-    #     return implied_vol
+    def estimate_vol_ql(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
+        try:
+            implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
+                                                               minVol, maxVol)
+        except Exception as e:
+            print(e)
+            implied_vol = None
+        return implied_vol
 
     def estimate_vol(self, price: float, presion: float = 0.00001,min_vol=0.01, max_vol: float = 2.0):
         l = min_vol
@@ -193,14 +193,14 @@ class QlBinomial(AbstractOptionPricingEngine):
         binomial_engine = ql.BinomialVanillaEngine(self.bsm_process, "crr", self.steps)
         self.ql_option.setPricingEngine(binomial_engine)
 
-    # def estimate_vol(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
-    #     try:
-    #         implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
-    #                                                            minVol, maxVol)
-    #     except Exception as e:
-    #         print(e)
-    #         implied_vol = None
-    #     return implied_vol
+    def estimate_vol_ql(self, targetValue: float, accuracy=1.0e-4, maxEvaluations=100, minVol=1.0e-4, maxVol=4.0):
+        try:
+            implied_vol = self.ql_option.impliedVolatility(targetValue, self.bsm_process, accuracy, maxEvaluations,
+                                                               minVol, maxVol)
+        except Exception as e:
+            print(e)
+            implied_vol = None
+        return implied_vol
 
     def estimate_vol(self, price: float, presion: float = 0.00001,min_vol=0.01, max_vol: float = 2.0):
         l = min_vol
