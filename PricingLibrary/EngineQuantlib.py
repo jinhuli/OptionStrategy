@@ -27,9 +27,9 @@ class QlBAW(AbstractOptionPricingEngine):
                  n: int = 800,
                  dividend_rate: float = 0.0):
         super().__init__()
-        self.values: typing.List[typing.List[float]] = []
-        self.asset_values: typing.List[typing.List[float]] = []
-        self.exercise_values: typing.List[typing.List[float]] = []
+        # self.values: typing.List[typing.List[float]] = []
+        # self.asset_values: typing.List[typing.List[float]] = []
+        # self.exercise_values: typing.List[typing.List[float]] = []
         self.strike = strike
         self.spot = spot
         self.vol = vol
@@ -126,7 +126,7 @@ class QlBinomial(AbstractOptionPricingEngine):
                  strike: float,
                  vol: float = 0.2,
                  rf: float = 0.03,
-                 n: int = 800,
+                 n: int = 801,
                  dividend_rate: float = 0.0):
         super().__init__()
         self.values: typing.List[typing.List[float]] = []

@@ -8,8 +8,9 @@ from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, \
     OptionExerciseType
-from PricingLibrary.EngineQuantlib import QlBinomial, QlBlackFormula,QlBAW
+from PricingLibrary.EngineQuantlib import QlBinomial, QlBlackFormula, QlBAW
 from PricingLibrary.BinomialModel import BinomialTree
+
 
 class BaseOptionSet(AbstractBaseProductSet):
     """
@@ -201,7 +202,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             if date > dt:
                 break
             for option in self.option_dict_backup.get(date, []):
-                if not option.is_valid_option():continue
+                if not option.is_valid_option(): continue
                 if option.last_date() < dt:
                     continue
                 option.go_to(dt)
@@ -289,16 +290,17 @@ class BaseOptionSet(AbstractBaseProductSet):
         df_current = self.get_current_state()
         df_mdt = df_current[df_current[Util.DT_MATURITY] == dt_maturity].reset_index(drop=True)
         df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
-            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_CALL_TRADING_VOLUME})
+            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
         df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
-            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_PUT_TRADING_VOLUME})
+            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
         df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
-        df = pd.merge(df_call[[Util.NAME_CONTRACT_MONTH,Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_STRIKE,
-                               Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_CALL_TRADING_VOLUME]],
-                      df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_PUT_TRADING_VOLUME]],
+        df = pd.merge(df_call[[Util.NAME_CONTRACT_MONTH, Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE,
+                               Util.AMT_STRIKE,
+                               Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_TRADING_VOLUME_CALL]],
+                      df_put[[Util.AMT_PUT_QUOTE, Util.AMT_APPLICABLE_STRIKE, Util.AMT_TRADING_VOLUME_PUT]],
                       how='inner', on=Util.AMT_APPLICABLE_STRIKE)
-        df[Util.AMT_TRADING_VOLUME] = df[Util.AMT_CALL_TRADING_VOLUME] + df[Util.AMT_PUT_TRADING_VOLUME]
+        df[Util.AMT_TRADING_VOLUME] = df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT]
         ttm = ((dt_maturity - self.eval_date).total_seconds() / 60.0) / (365.0 * 1440)
         df['amt_ttm'] = ttm
         return df
@@ -314,23 +316,92 @@ class BaseOptionSet(AbstractBaseProductSet):
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
         htb_r = self.fun_htb_rate(atm_series, self.rf)
+        t_qupte.loc[:, Util.AMT_HTB_RATE] = htb_r
         t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(
             lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.CALL, htb_r), axis=1)
         t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(
             lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.PUT, htb_r), axis=1)
         t_qupte[Util.PCT_IV_OTM_BY_HTBR] = t_qupte.apply(self.fun_otm_iv, axis=1)
         return t_qupte[
-            [Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_OTM_BY_HTBR]]
+            [Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_OTM_BY_HTBR,
+             Util.AMT_HTB_RATE]]
+
+    def get_volume_weighted_iv(self, nbr_maturity=0, min_iv=0.05, max_iv=1.5):
+        df = self.get_implied_vol_curves()
+        df = df[(df[Util.PCT_IV_CALL] >= min_iv) & (df[Util.PCT_IV_CALL] <= max_iv) &
+                (df[Util.PCT_IV_PUT] >= min_iv) & (df[Util.PCT_IV_PUT] <= max_iv)]
+        iv_vw = (sum(df[Util.PCT_IV_CALL] * df[Util.AMT_TRADING_VOLUME_CALL]) +
+                 sum(df[Util.PCT_IV_PUT] * df[Util.AMT_TRADING_VOLUME_PUT])) \
+                / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
+        return iv_vw
+
+    def get_volume_weighted_iv_htbr(self, nbr_maturity=0, min_iv=0.05, max_iv=1.5):
+        df = self.get_implied_vol_curves_htbr()
+        df = df[(df[Util.PCT_IV_CALL_BY_HTBR] >= min_iv) & (df[Util.PCT_IV_CALL_BY_HTBR] <= max_iv) &
+                (df[Util.PCT_IV_PUT_BY_HTBR] >= min_iv) & (df[Util.PCT_IV_PUT_BY_HTBR] <= max_iv)]
+        iv_vw = (sum(df[Util.PCT_IV_CALL_BY_HTBR] * df[Util.AMT_TRADING_VOLUME_CALL]) +
+                 sum(df[Util.PCT_IV_PUT_BY_HTBR] * df[Util.AMT_TRADING_VOLUME_PUT])) \
+                / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
+        return iv_vw
+
+    def get_implied_vol_curves(self, nbr_maturity=0):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
+        t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
+                        Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL,
+                        Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
+
+    def get_implied_vol_curves_htbr(self, nbr_maturity=0):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        t_qupte.loc[:, Util.AMT_HTB_RATE] = htb_r
+        t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(
+            lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.CALL, htb_r), axis=1)
+        t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(
+            lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.PUT, htb_r), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.AMT_HTB_RATE,
+                        Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_TRADING_VOLUME_CALL,
+                        Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT_BY_HTBR, Util.AMT_TRADING_VOLUME_PUT]]
 
     def get_call_implied_vol_curve(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL]]
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
+                        Util.DT_MATURITY, Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL]]
 
     def get_put_implied_vol_curve(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
-        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT]]
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
+                        Util.DT_MATURITY, Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
+
+    def get_call_implied_vol_curve_htbr(self, nbr_maturity=0):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        t_qupte.loc[:, Util.AMT_HTB_RATE] = htb_r
+        t_qupte[Util.PCT_IV_CALL_BY_HTBR] = t_qupte.apply(
+            lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.CALL, htb_r), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
+                        Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_HTB_RATE, Util.AMT_TRADING_VOLUME_CALL]]
+
+    def get_put_implied_vol_curve_htbr(self, nbr_maturity=0):
+        t_qupte = self.get_T_quotes(nbr_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        t_qupte.loc[:, Util.AMT_HTB_RATE] = htb_r
+        t_qupte[Util.PCT_IV_PUT_BY_HTBR] = t_qupte.apply(
+            lambda x: self.fun_htb_rate_adjusted_iv(x, OptionType.PUT, htb_r), axis=1)
+        return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
+                        Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT_BY_HTBR, Util.AMT_HTB_RATE, Util.AMT_TRADING_VOLUME_PUT]]
 
     def fun_otm_iv(self, df_series):
         K = df_series[Util.AMT_APPLICABLE_STRIKE]
@@ -350,23 +421,25 @@ class BaseOptionSet(AbstractBaseProductSet):
             C = df_series[Util.AMT_CALL_QUOTE]
             if self.exercise_type == OptionExerciseType.EUROPEAN:
                 pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
-                # black_call = BlackFormula(dt_eval,dt_maturity,c.OptionType.CALL,S,K,C,rf=rf)
             else:
-                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
-                                            rf=self.rf)
+                # pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                #                             rf=self.rf)
+                pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                                       rf=self.rf)
             iv = pricing_engine.estimate_vol(C)
         else:
             P = df_series[Util.AMT_PUT_QUOTE]
             if self.exercise_type == OptionExerciseType.EUROPEAN:
                 pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
-                # black_call = BlackFormula(dt_eval,dt_maturity,c.OptionType.CALL,S,K,C,rf=rf)
             else:
-                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
-                                            rf=self.rf)
+                # pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                #                             rf=self.rf)
+                pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                                       rf=self.rf)
             iv = pricing_engine.estimate_vol(P)
         return iv
 
-    def get_htb_rate(self, nbr_maturity):
+    def get_htb_rate(self, nbr_maturity=0):
         t_qupte = self.get_T_quotes(nbr_maturity)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -390,20 +463,20 @@ class BaseOptionSet(AbstractBaseProductSet):
             if self.exercise_type == OptionExerciseType.EUROPEAN:
                 pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.CALL, S, K, self.rf)
             else:
-                # pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
-                #                             rf=self.rf)
-                pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
                                             rf=self.rf)
+                # pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
+                #                             rf=self.rf)
             iv = pricing_engine.estimate_vol(C)
         else:
             P = df_series[Util.AMT_PUT_QUOTE]
             if self.exercise_type == OptionExerciseType.EUROPEAN:
                 pricing_engine = QlBlackFormula(dt_eval, dt_maturity, OptionType.PUT, S, K, self.rf)
             else:
-                # pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
-                #                             rf=self.rf)
-                pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.CALL, OptionExerciseType.AMERICAN, S, K,
-                                              rf=self.rf)
+                pricing_engine = QlBinomial(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                                            rf=self.rf)
+                # pricing_engine = QlBAW(dt_eval, dt_maturity, OptionType.PUT, OptionExerciseType.AMERICAN, S, K,
+                #                               rf=self.rf)
             iv = pricing_engine.estimate_vol(P)
         return iv
 
