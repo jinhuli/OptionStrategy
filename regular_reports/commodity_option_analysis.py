@@ -222,23 +222,26 @@ def LLKSR_analysis(dt_start, df_iv, df_future_c1_daily, name_code):
                             ['隐含波动率LLKSR趋势线 (h=10)', '历史波动率LLKSR趋势线 (h=10)'])
     f3 = pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_10']), list(iv_atm)],
                        ['隐含波动率LLKSR趋势线 (h=10)', 'iv_atm'])
+    f4 = pu.plot_line_chart(dates, [list(df_iv['iv_call']), list(df_iv['iv_put'])],
+                            ['iv call', 'iv put'])
     f1.savefig('../data/' + name_code + '_iv_LLKSRs.png', dpi=300, format='png', bbox_inches='tight')
     f2.savefig('../data/' + name_code + '_iv_hv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
     f3.savefig('../data/' + name_code + '_iv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
+    f4.savefig('../data/' + name_code + '_iv_call_put.png', dpi=300, format='png', bbox_inches='tight')
 
 """"""
 name_code = c.Util.STR_M
 core_id = 'm_1901'
-end_date = datetime.date(2018, 8, 31)
-last_week = datetime.date(2018, 8, 27)
-""""""
-
-pu = PlotUtil()
+end_date = datetime.date(2018, 9, 4)
+last_week = datetime.date(2018, 8, 31)
 start_date = datetime.date(2017, 1, 1)
-
 dt_histvol = start_date - datetime.timedelta(days=200)
 min_holding = 5
+
+""""""
 df_res = pd.DataFrame()
+pu = PlotUtil()
+""""""
 
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
 df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
@@ -253,6 +256,11 @@ df_iv = df_iv.dropna().reset_index(drop=True)
 df_iv.loc[:, 'average_iv'] = (df_iv.loc[:, 'iv_call'] + df_iv.loc[:, 'iv_put'])/2
 
 d1 = max(df_metrics[c.Util.DT_DATE].values[0], df_future_c1_daily[c.Util.DT_DATE].values[0])
+
+
+""" T-quote IV """
+optionset = BaseOptionSet(df_metrics)
+optionset.init()
 
 
 """ 隐含波动率期限结构 """

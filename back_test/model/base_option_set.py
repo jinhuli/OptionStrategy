@@ -65,20 +65,6 @@ class BaseOptionSet(AbstractBaseProductSet):
         for column in required_column_list:
             if column not in columns:
                 self.df_data[column] = None
-            # if column not in columns:
-            #     # STRIKE
-            #     if column == Util.AMT_STRIKE:
-            #         self.df_data[Util.AMT_STRIKE] = self.df_data[Util.ID_INSTRUMENT].apply(lambda x: float(x.split('_')[3]))
-            #     # NAME_CONTRACT_MONTH
-            #     elif column == Util.NAME_CONTRACT_MONTH:
-            #         self.df_data[Util.NAME_CONTRACT_MONTH] = self.df_data[Util.ID_INSTRUMENT].apply(
-            #             lambda x: x.split('_')[1])
-            #     # OPTION_TYPE
-            #     elif column == Util.CD_OPTION_TYPE:
-            #         self.df_data[Util.CD_OPTION_TYPE] = self.df_data[Util.ID_INSTRUMENT].apply(
-            #             OptionFilter.fun_option_type_split)
-            #     else:
-            #         self.df_data[column] = None
         # DT_MATURITY -> datetime.date : 通过contract month查找
         if self.df_data.loc[0, Util.DT_MATURITY] is None or pd.isnull(self.df_data.loc[0, Util.DT_MATURITY]):
             # self.df_data[Util.DT_MATURITY] = self.df_data.apply(OptionFilter.fun_option_maturity, axis=1)
