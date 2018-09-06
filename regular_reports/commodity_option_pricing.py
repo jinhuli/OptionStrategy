@@ -1,18 +1,7 @@
 from back_test.model.base_option_set import BaseOptionSet
 from data_access import get_data
 import back_test.model.constant as c
-# import datetime
-# from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVolatilityModels as Histvol
-# from Utilities.PlotUtil import PlotUtil
-# import matplotlib.pyplot as plt
-# from Utilities.timebase import LLKSR
-# import Utilities.admin_util as admin
-import pandas as pd
-# from sqlalchemy import func
-# from PricingLibrary.EngineQuantlib import QlBAW,QlBlackFormula,QlBinomial
-# from QuantLib import *
 import datetime
-# from back_test.model.constant import QuantlibUtil,OptionType,OptionExerciseType
 
 """"""
 name_code = c.Util.STR_M
@@ -27,35 +16,21 @@ min_holding = 5
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
 
 """ T-quote IV """
-optionset = BaseOptionSet(df_metrics)
+optionset = BaseOptionSet(df_metrics,rf=0)
 optionset.init()
 optionset.go_to(end_date)
-t_quote = optionset.get_T_quotes()
-ivs_c1 = optionset.get_call_implied_vol_curve()
-ivs_p1 = optionset.get_put_implied_vol_curve()
-ivs_c2 = optionset.get_call_implied_vol_curve_htbr()
-ivs_p2 = optionset.get_put_implied_vol_curve_htbr()
+dt_maturity = optionset.select_maturity_date(0,min_holding)
+t_quote = optionset.get_T_quotes(dt_maturity)
+ivs_c1 = optionset.get_call_implied_vol_curve(dt_maturity)
+ivs_p1 = optionset.get_put_implied_vol_curve(dt_maturity)
+ivs_c2 = optionset.get_call_implied_vol_curve_htbr(dt_maturity)
+ivs_p2 = optionset.get_put_implied_vol_curve_htbr(dt_maturity)
 
-ivs1 = pd.merge(ivs_c1,ivs_p1,how='inner',on=c.Util.AMT_APPLICABLE_STRIKE,suffixes=('','_y'))
-ivs1 = ivs1[(ivs1[c.Util.PCT_IV_CALL]>0.05)&(ivs1[c.Util.PCT_IV_PUT]>0.05)].reset_index(drop=True)
-# print(ivs1)
-iv_vw = (sum(ivs1[c.Util.PCT_IV_CALL]*ivs1[c.Util.AMT_TRADING_VOLUME_CALL]) + sum(ivs1[c.Util.PCT_IV_PUT]*ivs1[c.Util.AMT_TRADING_VOLUME_PUT]))\
-         /sum(ivs1[c.Util.AMT_TRADING_VOLUME_CALL]+ivs1[c.Util.AMT_TRADING_VOLUME_PUT])
-print(iv_vw)
-ivs_c2 = ivs_c2[ivs_c2[c.Util.PCT_IV_CALL_BY_HTBR]>0.05].reset_index(drop=True)
-ivs_p2 = ivs_p2[ivs_p2[c.Util.PCT_IV_PUT_BY_HTBR]>0.05].reset_index(drop=True)
-ivs2 = pd.merge(ivs_c2,ivs_p2,how='inner',on=c.Util.AMT_APPLICABLE_STRIKE,suffixes=('_call','_put'))
-
-iv_vw2 = (sum(ivs2[c.Util.PCT_IV_CALL_BY_HTBR]*ivs2[c.Util.AMT_TRADING_VOLUME_CALL]) +
-          sum(ivs2[c.Util.PCT_IV_PUT_BY_HTBR]*ivs2[c.Util.AMT_TRADING_VOLUME_PUT]))\
-         /sum(ivs2[c.Util.AMT_TRADING_VOLUME_CALL]+ivs2[c.Util.AMT_TRADING_VOLUME_PUT])
-print(iv_vw2)
-
-iv_curve = optionset.get_implied_vol_curves()
-iv_curve_htbr = optionset.get_put_implied_vol_curve_htbr()
-iv_volume_weighted = optionset.get_volume_weighted_iv()
-iv_volume_weighted_htbr = optionset.get_volume_weighted_iv_htbr()
-htbr = optionset.get_htb_rate(nbr_maturity=0)
+iv_curve = optionset.get_implied_vol_curves(dt_maturity)
+iv_curve_htbr = optionset.get_put_implied_vol_curve_htbr(dt_maturity)
+iv_volume_weighted = optionset.get_volume_weighted_iv(dt_maturity)
+iv_volume_weighted_htbr = optionset.get_volume_weighted_iv_htbr(dt_maturity)
+htbr = optionset.get_htb_rate(dt_maturity)
 print(iv_volume_weighted)
 print(iv_volume_weighted_htbr)
 print(htbr)

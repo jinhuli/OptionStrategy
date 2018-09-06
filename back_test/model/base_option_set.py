@@ -285,8 +285,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                 spot = option_list[0].underlying_close()
         return spot
 
-    def get_T_quotes(self, nbr_maturity: int = 0):
-        dt_maturity = self.get_maturities_list()[nbr_maturity]
+
+    def get_T_quotes(self, dt_maturity):
         df_current = self.get_current_state()
         df_mdt = df_current[df_current[Util.DT_MATURITY] == dt_maturity].reset_index(drop=True)
         df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
@@ -305,13 +305,13 @@ class BaseOptionSet(AbstractBaseProductSet):
         df['amt_ttm'] = ttm
         return df
 
-    def get_iv_by_otm_iv_curve(self, nbr_maturiy, strike):
-        df = self.get_otm_implied_vol_curve(nbr_maturiy)
+    def get_iv_by_otm_iv_curve(self, dt_maturity, strike):
+        df = self.get_otm_implied_vol_curve(dt_maturity)
         iv = df[df[Util.AMT_APPLICABLE_STRIKE] == strike][Util.PCT_IV_OTM_BY_HTBR].values[0]
         return iv
 
-    def get_otm_implied_vol_curve(self, nbr_maturity):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_otm_implied_vol_curve(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -326,8 +326,8 @@ class BaseOptionSet(AbstractBaseProductSet):
             [Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_OTM_BY_HTBR,
              Util.AMT_HTB_RATE]]
 
-    def get_volume_weighted_iv(self, nbr_maturity=0, min_iv=0.05, max_iv=1.5):
-        df = self.get_implied_vol_curves()
+    def get_volume_weighted_iv(self, dt_maturity, min_iv=0.05, max_iv=1.5):
+        df = self.get_implied_vol_curves(dt_maturity)
         df = df[(df[Util.PCT_IV_CALL] >= min_iv) & (df[Util.PCT_IV_CALL] <= max_iv) &
                 (df[Util.PCT_IV_PUT] >= min_iv) & (df[Util.PCT_IV_PUT] <= max_iv)]
         iv_vw = (sum(df[Util.PCT_IV_CALL] * df[Util.AMT_TRADING_VOLUME_CALL]) +
@@ -335,8 +335,8 @@ class BaseOptionSet(AbstractBaseProductSet):
                 / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
 
-    def get_volume_weighted_iv_htbr(self, nbr_maturity=0, min_iv=0.05, max_iv=1.5):
-        df = self.get_implied_vol_curves_htbr()
+    def get_volume_weighted_iv_htbr(self, dt_maturity, min_iv=0.05, max_iv=1.5):
+        df = self.get_implied_vol_curves_htbr(dt_maturity)
         df = df[(df[Util.PCT_IV_CALL_BY_HTBR] >= min_iv) & (df[Util.PCT_IV_CALL_BY_HTBR] <= max_iv) &
                 (df[Util.PCT_IV_PUT_BY_HTBR] >= min_iv) & (df[Util.PCT_IV_PUT_BY_HTBR] <= max_iv)]
         iv_vw = (sum(df[Util.PCT_IV_CALL_BY_HTBR] * df[Util.AMT_TRADING_VOLUME_CALL]) +
@@ -344,16 +344,16 @@ class BaseOptionSet(AbstractBaseProductSet):
                 / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
 
-    def get_implied_vol_curves(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_implied_vol_curves(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL,
                         Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_implied_vol_curves_htbr(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_implied_vol_curves_htbr(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -367,20 +367,20 @@ class BaseOptionSet(AbstractBaseProductSet):
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_TRADING_VOLUME_CALL,
                         Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT_BY_HTBR, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_call_implied_vol_curve(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_call_implied_vol_curve(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
                         Util.DT_MATURITY, Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL]]
 
-    def get_put_implied_vol_curve(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_put_implied_vol_curve(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
                         Util.DT_MATURITY, Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_call_implied_vol_curve_htbr(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_call_implied_vol_curve_htbr(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -391,8 +391,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_HTB_RATE, Util.AMT_TRADING_VOLUME_CALL]]
 
-    def get_put_implied_vol_curve_htbr(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_put_implied_vol_curve_htbr(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -439,8 +439,8 @@ class BaseOptionSet(AbstractBaseProductSet):
             iv = pricing_engine.estimate_vol(P)
         return iv
 
-    def get_htb_rate(self, nbr_maturity=0):
-        t_qupte = self.get_T_quotes(nbr_maturity)
+    def get_htb_rate(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
