@@ -539,6 +539,22 @@ class BaseOptionSet(AbstractBaseProductSet):
         # 返回的option放在list里，是因为可能有相邻行权价的期权同时处于一个nearest strike
         return call_ret, put_ret
 
+
+    def get_dict_moneyness_and_options(self, dt_maturity: datetime.date, option_type:OptionType) -> Dict[int, List[BaseOption]]:
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
+        if option_type == OptionType.CALL:
+            dict_strike_options = mdt_calls.get(dt_maturity)
+        else:
+            dict_strike_options = mdt_puts.get(dt_maturity)
+        spot = list(dict_strike_options.values())[0][0].underlying_close()
+        strikes = list(dict_strike_options.keys())
+        dict_moneyness_strikes = Option50ETF.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes,
+                                                                                           OptionType.PUT)
+        dict_res = {}
+        for m in dict_moneyness_strikes:
+            dict_res.update({m:dict_strike_options[dict_moneyness_strikes[m]]})
+        return dict_res
+
     """ Mthd1: Determine atm option as the NEAREST strike from spot. 
         Get option maturity dictionary from all maturities by given moneyness rank. """
 
