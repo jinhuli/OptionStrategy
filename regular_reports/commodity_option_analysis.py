@@ -190,8 +190,45 @@ def hist_vol(dt_start, df_future_c1_daily, df_res):
 
 """ 隐含波动率（包含期限结构分析） """
 
-
 def implied_vol(df_metrics, df_res, dt_list_term_structure):
+    optionset = BaseOptionSet(df_metrics,rf=0.0)
+    optionset.init()
+    list_res_iv = []
+    iv_term_structure = []
+    while optionset.current_index < optionset.nbr_index:
+        dt_maturity = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+        iv_curve_htbr = optionset.get_implied_vol_curves_htbr(dt_maturity)
+        call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, dt_maturity)
+        atm_k = call_list[0].applicable_strike()
+        iv = iv_curve_htbr[iv_curve_htbr[c.Util.AMT_APPLICABLE_STRIKE]==atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+        list_res_iv.append({'date': optionset.eval_date, 'iv': iv})
+        if optionset.eval_date in dt_list_term_structure:
+            mdt_2 = optionset.select_maturity_date(nbr_maturity=1, min_holding=0)
+            mdt_3 = optionset.select_maturity_date(nbr_maturity=2, min_holding=0)
+            iv_curve_htbr2 = optionset.get_implied_vol_curves_htbr(mdt_2)
+            call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, mdt_2)
+            atm_k = call_list[0].applicable_strike()
+            iv_2 = iv_curve_htbr2[iv_curve_htbr2[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+            if mdt_3 is None:
+                iv_3 = None
+            else:
+                iv_curve_htbr3 = optionset.get_implied_vol_curves_htbr(mdt_3)
+                call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, mdt_3)
+                atm_k = call_list[0].applicable_strike()
+                iv_3 = iv_curve_htbr3[iv_curve_htbr3[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+            iv_term_structure.append({'date': optionset.eval_date, 'iv1': iv, 'iv2': iv_2, 'iv3': iv_3})
+        if not optionset.has_next(): break
+        optionset.next()
+    df_iv = pd.DataFrame(list_res_iv).sort_values(by='date', ascending=False)
+    df_res.loc[:, 'T:date'] = df_iv['date']
+    df_res.loc[:, 'U:iv'] = df_iv['iv']
+    print(df_iv)
+    df = pd.DataFrame(iv_term_structure)
+    df.to_csv('../data/' + name_code + '_iv_term_structure.csv')
+    return df_res
+
+
+def implied_vol_vw(df_metrics, df_res, dt_list_term_structure):
     optionset = BaseOptionSet(df_metrics)
     optionset.init()
     list_res_iv = []
@@ -252,8 +289,8 @@ name_code = c.Util.STR_SR
 core_id = 'sr_1901'
 end_date = datetime.date.today()
 last_week = datetime.date(2018, 8, 31)
-start_date = last_week
-# start_date = datetime.date(2017, 4, 1)
+# start_date = last_week
+start_date = datetime.date(2017, 4, 1)
 dt_histvol = start_date - datetime.timedelta(days=200)
 min_holding = 5
 
