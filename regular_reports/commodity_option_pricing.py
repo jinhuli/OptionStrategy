@@ -4,8 +4,8 @@ import back_test.model.constant as c
 import datetime
 
 """"""
-name_code = c.Util.STR_SR
-core_id = 'sr_1901'
+name_code = c.Util.STR_M
+core_id = 'm_1901'
 end_date = datetime.date(2018,9,7)
 last_week = datetime.date(2018, 8, 31)
 start_date = last_week

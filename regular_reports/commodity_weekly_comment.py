@@ -10,7 +10,7 @@ def iv_at_the_money(dt_date, dt_last, name_code):
     dict_iv_call = {}
     dict_iv_put = {}
     df_metrics = get_data.get_comoption_mktdata(dt_last, dt_date, name_code)
-    optionset = BaseOptionSet(df_metrics)
+    optionset = BaseOptionSet(df_metrics,rf=0.0)
     optionset.init()
     dt_maturity = optionset.select_maturity_date(0, 0)
     call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, dt_maturity)
@@ -44,6 +44,26 @@ def iv_volume_weighted(dt_date, dt_last, name_code):
     dt_maturity = optionset.select_maturity_date(0, 0)
     iv_volume_weighted = optionset.get_volume_weighted_iv(dt_maturity)*100
     dict_iv.update({dt_date: iv_volume_weighted})
+    return dict_iv
+
+def iv_htbr(dt_date, dt_last, name_code):
+    dict_iv = {}
+    df_metrics = get_data.get_comoption_mktdata(dt_last, dt_date, name_code)
+    optionset = BaseOptionSet(df_metrics,rf=0)
+    optionset.init()
+    dt_maturity = optionset.select_maturity_date(0, 0)
+    iv_curve_htbr = optionset.get_implied_vol_curves_htbr(dt_maturity)
+    call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, dt_maturity)
+    atm_k = call_list[0].applicable_strike()
+    iv = iv_curve_htbr[iv_curve_htbr[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]*100
+    dict_iv.update({dt_last: iv})
+    optionset.go_to(dt_date)
+    dt_maturity = optionset.select_maturity_date(0, 0)
+    iv_curve_htbr = optionset.get_implied_vol_curves_htbr(dt_maturity)
+    call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, dt_maturity)
+    atm_k = call_list[0].applicable_strike()
+    iv = iv_curve_htbr[iv_curve_htbr[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]*100
+    dict_iv.update({dt_date: iv})
     return dict_iv
 
 
@@ -291,29 +311,14 @@ for namecode in['m','sr']:
     m_iv_put_yesterday = m_dict_iv_put[dt_yesterday]
     m_hisvol_1M = list(calculate_histvol(m_df_future_c1['amt_close'], 20))[-1] * 100
     m_hisvol_3M = list(calculate_histvol(m_df_future_c1['amt_close'], 60))[-1] * 100
-    dict_iv = iv_volume_weighted(dt_date, dt_yesterday, namecode)
+    dict_iv = iv_htbr(dt_date, dt_yesterday, namecode)
     iv_today = dict_iv[dt_date]
     iv_last = dict_iv[dt_yesterday]
-
-    # sr_id_c1 = dict_core_underlying['sr']
-    # sr_df_future_c1 = get_mktdata_future_c1(dt_start, dt_date, 'sr')
-    # sr_df_future = get_mktdata_future(admin.table_futures_mktdata(), sr_id_c1, dt_yesterday, dt_date)
-    # sr_dict_iv_call, sr_dict_iv_put = iv_at_the_money(dt_date, dt_yesterday, 'sr')
-    # sr_iv_call_today = sr_dict_iv_call[dt_date]
-    # sr_iv_put_today = sr_dict_iv_put[dt_date]
-    # sr_iv_call_yesterday = sr_dict_iv_call[dt_yesterday]
-    # sr_iv_put_yesterday = sr_dict_iv_put[dt_yesterday]
-    # sr_hisvol_1M = list(calculate_histvol(sr_df_future_c1['amt_close'], 20))[-1] * 100
-    # sr_hisvol_3M = list(calculate_histvol(sr_df_future_c1['amt_close'], 60))[-1] * 100
-
-    #'上周白糖期权{}合约隐含波动率整体{}，平值合约隐含波动率为{:.2f}%，' \
-    #'前一周隐含波动率为{:.2f}%，较前一周{}约{:.1f}%。期货主力合约近1M历史波动率为{:.2f}%，近3M历史波动率为{:.2f}%，' \
-    #'平值期权隐含波动率较近1M历史波动率{}，较近3M历史波动率{}{}。'
 
     text_2 = '隐含波动率方面，{}期权{}月合约隐含波动率整体{}，其中，看跌期权平值合约隐含波动率为{:.2f}%，' \
              '较前一周({:.2f}%){}约{:.1f}%，' \
              '看涨期权平值合约隐含波动率为{:.2f}%，较前一周({:.2f}%){}约{:.1f}%。' \
-             '从成交量加权隐含波动率指标来看，{}期权隐含波动率为{:.2f}%，前一周该值为{:.2f}%，{}{:.2f}%。' \
+             '从认沽认购平价隐含波动率来看，{}期权隐含波动率为{:.2f}%，前一周该值为{:.2f}%，{}{:.2f}%。' \
              '期货主力合约近1M历史波动率为{:.2f}%，近3M历史波动率为{:.2f}%，' \
              '平值期权隐含波动率较近1M历史波动率{}，较近3M历史波动率{}{}。'\
              '\n \n'.format(
