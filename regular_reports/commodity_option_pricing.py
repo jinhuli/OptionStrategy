@@ -4,9 +4,9 @@ import back_test.model.constant as c
 import datetime
 
 """"""
-name_code = c.Util.STR_M
-core_id = 'm_1901'
-end_date = datetime.date(2018, 9, 4)
+name_code = c.Util.STR_SR
+core_id = 'sr_1901'
+end_date = datetime.date(2018,9,7)
 last_week = datetime.date(2018, 8, 31)
 start_date = last_week
 dt_histvol = start_date - datetime.timedelta(days=200)
@@ -20,6 +20,11 @@ optionset = BaseOptionSet(df_metrics,rf=0)
 optionset.init()
 optionset.go_to(end_date)
 dt_maturity = optionset.select_maturity_date(0,min_holding)
+call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0,dt_maturity)
+atm_call = optionset.select_higher_volume(call_list)
+atm_put = optionset.select_higher_volume(put_list)
+print('atm call iv: ',atm_call.get_implied_vol())
+print('atm put iv: ',atm_put.get_implied_vol())
 t_quote = optionset.get_T_quotes(dt_maturity)
 ivs_c1 = optionset.get_call_implied_vol_curve(dt_maturity)
 ivs_p1 = optionset.get_put_implied_vol_curve(dt_maturity)

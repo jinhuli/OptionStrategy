@@ -120,9 +120,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             if self.df_daily_data is None:
                 # TODO: Rise error if no daily data in high frequency senario.
                 return
-        # TODO: """ new added """
-        # self.df_data[Util.AMT_STRIKE_BEFORE_ADJ] = self.df_data.apply(Option50ETF.fun_strike_before_adj, axis=1)
-        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(Option50ETF.fun_applicable_strike, axis=1)
+        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(self.OptionUtilClass.fun_applicable_strike, axis=1)
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         if self.df_daily_data is not None:
             groups_daily = self.df_daily_data.groupby([Util.ID_INSTRUMENT])
@@ -293,8 +291,8 @@ class BaseOptionSet(AbstractBaseProductSet):
             columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
         df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
             columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
-        df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
-        df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        # df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        # df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         df = pd.merge(df_call[[Util.NAME_CONTRACT_MONTH, Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE,
                                Util.AMT_STRIKE,
                                Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_TRADING_VOLUME_CALL]],
@@ -330,9 +328,11 @@ class BaseOptionSet(AbstractBaseProductSet):
         df = self.get_implied_vol_curves(dt_maturity)
         df = df[(df[Util.PCT_IV_CALL] >= min_iv) & (df[Util.PCT_IV_CALL] <= max_iv) &
                 (df[Util.PCT_IV_PUT] >= min_iv) & (df[Util.PCT_IV_PUT] <= max_iv)]
+        if len(df) == 0:
+            return None
         iv_vw = (sum(df[Util.PCT_IV_CALL] * df[Util.AMT_TRADING_VOLUME_CALL]) +
-                 sum(df[Util.PCT_IV_PUT] * df[Util.AMT_TRADING_VOLUME_PUT])) \
-                / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
+                     sum(df[Util.PCT_IV_PUT] * df[Util.AMT_TRADING_VOLUME_PUT])) \
+                    / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
 
     def get_volume_weighted_iv_htbr(self, dt_maturity, min_iv=0.05, max_iv=1.5):
