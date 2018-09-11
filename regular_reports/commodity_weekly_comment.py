@@ -73,7 +73,7 @@ def get_mktdata_future_c1(start_date, end_date, name_code):
     query = admin.session_mktdata().query(table_f.c.dt_date, table_f.c.id_instrument,
                                           table_f.c.amt_close, table_f.c.amt_trading_volume). \
         filter((table_f.c.dt_date >= start_date) & (table_f.c.dt_date <= end_date)). \
-        filter(table_f.c.name_code == name_code)
+        filter(table_f.c.name_code == name_code).filter(table_f.c.flag_night != 1)
     df = pd.read_sql(query.statement, query.session.bind)
     df = df[df['id_instrument'].str.contains("_")]
     df = df.sort_values(by=['dt_date', 'amt_trading_volume'], ascending=False)
@@ -99,7 +99,7 @@ def get_volume_option(table_option, id_underlying, dt_start, dt_end):
                                           func.sum(table_option.c.amt_trading_volume).label('total_trading_volume')
                                           ) \
         .filter(table_option.c.dt_date >= dt_start).filter(table_option.c.dt_date <= dt_end) \
-        .filter(table_option.c.id_underlying == id_underlying) \
+        .filter(table_option.c.id_underlying == id_underlying).filter(table_option.c.flag_night != 1) \
         .group_by(table_option.c.dt_date, table_option.c.amt_strike, table_option.c.cd_option_type)
     df = pd.read_sql(query.statement, query.session.bind)
     return df
@@ -112,7 +112,7 @@ def get_volume_groupby_id_type(table_option, namecode, dt_start, dt_end):
                                           func.sum(table_option.c.amt_trading_volume).label('total_trading_volume')
                                           ) \
         .filter(table_option.c.dt_date >= dt_start).filter(table_option.c.dt_date <= dt_end) \
-        .filter(table_option.c.name_code == namecode) \
+        .filter(table_option.c.name_code == namecode).filter(table_option.c.flag_night != 1)  \
         .group_by(table_option.c.cd_option_type, table_option.c.dt_date, table_option.c.id_underlying)
     df = pd.read_sql(query.statement, query.session.bind)
     return df
@@ -124,7 +124,7 @@ def get_volume_groupby_id_option(table_option, namecode, dt_start, dt_end):
                                           func.sum(table_option.c.amt_trading_volume).label('total_trading_volume')
                                           ) \
         .filter(table_option.c.dt_date >= dt_start).filter(table_option.c.dt_date <= dt_end) \
-        .filter(table_option.c.name_code == namecode) \
+        .filter(table_option.c.name_code == namecode).filter(table_option.c.flag_night != 1)  \
         .group_by(table_option.c.dt_date, table_option.c.id_underlying)
     df = pd.read_sql(query.statement, query.session.bind)
     return df
@@ -136,7 +136,7 @@ def get_volume_groupby_id_future(table_future, namecode, dt_start, dt_end):
                                           func.sum(table_future.c.amt_trading_volume).label('total_trading_volume')
                                           ) \
         .filter(table_future.c.dt_date >= dt_start).filter(table_future.c.dt_date <= dt_end) \
-        .filter(table_future.c.name_code == namecode) \
+        .filter(table_future.c.name_code == namecode).filter(table_future.c.flag_night != 1)  \
         .group_by(table_future.c.dt_date, table_future.c.id_instrument)
     df = pd.read_sql(query.statement, query.session.bind)
     return df
