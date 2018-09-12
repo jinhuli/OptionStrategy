@@ -13,10 +13,12 @@ from sqlalchemy import func
 """当日成交持仓数据"""
 
 
-def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code,core_instrumentid):
+def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code, core_instrumentid):
     pu = PlotUtil()
-    df = df_option_metrics[(df_option_metrics['dt_date'] == dt_date)&(df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
-    df_lw = df_option_metrics[(df_option_metrics['dt_date'] == dt_last_week)&(df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
+    df = df_option_metrics[
+        (df_option_metrics['dt_date'] == dt_date) & (df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
+    df_lw = df_option_metrics[
+        (df_option_metrics['dt_date'] == dt_last_week) & (df_option_metrics[c.Util.ID_UNDERLYING] == core_instrumentid)]
     df_call = df[df['cd_option_type'] == 'call'].reset_index(drop=True)
     df_put = df[df['cd_option_type'] == 'put'].reset_index(drop=True)
     dflw_call = df_lw[df_lw['cd_option_type'] == 'call'].reset_index(drop=True)
@@ -87,11 +89,26 @@ def trade_volume(dt_date, dt_last_week, df_option_metrics, name_code,core_instru
     f3.savefig('../data/' + name_code + '_holdings.png', dpi=300,
                format='png', bbox_inches='tight')
 
+    f4, ax4 = plt.subplots()
+    p1 = ax4.bar(strikes, call_deltas, width=wt, color=pu.colors[0])
+    p2 = ax4.bar(strikes1, put_deltas, width=wt, color=pu.colors[1])
+    # p3, = ax3.plot(strikes, trading_call, color=pu.colors[2], linestyle=pu.lines[2], linewidth=2)
+    # p4, = ax3.plot(strikes, trading_put, color=pu.colors[3], linestyle=pu.lines[3], linewidth=2)
+
+    ax4.legend([p1, p2], ['看涨期权持仓量变化','看跌期权持仓量变化'], borderaxespad=0., frameon=False)
+    ax4.spines['top'].set_visible(False)
+    ax4.spines['right'].set_visible(False)
+    ax4.yaxis.set_ticks_position('left')
+    ax4.xaxis.set_ticks_position('bottom')
+    f4.set_size_inches((12, 8))
+
+    f4.savefig('../data/' + name_code + '_holding_delta.png', dpi=300,
+               format='png', bbox_inches='tight')
 
 """成交持仓认沽认购比P/C"""
 
 
-def pcr(dt_start, name_code, df_res):
+def pcr(dt_start, dt_end, name_code, df_res):
     optionMkt = admin.table_options_mktdata()
     futureMkt = admin.table_futures_mktdata()
     query_pcr = admin.session_mktdata().query(optionMkt.c.dt_date, optionMkt.c.cd_option_type,
@@ -100,12 +117,15 @@ def pcr(dt_start, name_code, df_res):
                                               func.sum(optionMkt.c.amt_trading_volume).label('total_trading_volume')
                                               ) \
         .filter(optionMkt.c.dt_date >= dt_start) \
+        .filter(optionMkt.c.dt_date <= dt_end) \
         .filter(optionMkt.c.name_code == name_code) \
         .group_by(optionMkt.c.cd_option_type, optionMkt.c.dt_date, optionMkt.c.id_underlying)
     query_srf = admin.session_mktdata().query(futureMkt.c.dt_date, futureMkt.c.id_instrument,
                                               futureMkt.c.amt_close, futureMkt.c.amt_trading_volume,
                                               futureMkt.c.amt_settlement) \
-        .filter(futureMkt.c.dt_date >= dt_start).filter(futureMkt.c.name_code == name_code) \
+        .filter(futureMkt.c.dt_date >= dt_start) \
+        .filter(futureMkt.c.dt_date <= dt_end) \
+        .filter(futureMkt.c.name_code == name_code) \
         .filter(futureMkt.c.flag_night != 1)
     df_pcr = pd.read_sql(query_pcr.statement, query_pcr.session.bind)
     df_srf = pd.read_sql(query_srf.statement, query_srf.session.bind)
@@ -168,73 +188,109 @@ def hist_vol(dt_start, df_future_c1_daily, df_res):
     return df_res
 
 
-def implied_vol(dt_start, df_iv, df_res):
-    df_tmp = df_iv[df_iv[c.Util.DT_DATE] >= dt_start].reset_index(drop=True)
-    df_res.loc[:, 'T:date'] = df_tmp[c.Util.DT_DATE]
-    df_res.loc[:, 'U:iv'] = df_tmp['average_iv'] *100
+""" 隐含波动率（包含期限结构分析） """
+
+def implied_vol(df_metrics, df_res, dt_list_term_structure):
+    optionset = BaseOptionSet(df_metrics,rf=0.0)
+    optionset.init()
+    list_res_iv = []
+    iv_term_structure = []
+    while optionset.current_index < optionset.nbr_index:
+        dt_maturity = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+        iv_curve_htbr = optionset.get_implied_vol_curves_htbr(dt_maturity)
+        call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, dt_maturity)
+        atm_k = call_list[0].applicable_strike()
+        iv = iv_curve_htbr[iv_curve_htbr[c.Util.AMT_APPLICABLE_STRIKE]==atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+        list_res_iv.append({'date': optionset.eval_date, 'iv': iv})
+        if optionset.eval_date in dt_list_term_structure:
+            mdt_2 = optionset.select_maturity_date(nbr_maturity=1, min_holding=0)
+            mdt_3 = optionset.select_maturity_date(nbr_maturity=2, min_holding=0)
+            iv_curve_htbr2 = optionset.get_implied_vol_curves_htbr(mdt_2)
+            call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, mdt_2)
+            atm_k = call_list[0].applicable_strike()
+            iv_2 = iv_curve_htbr2[iv_curve_htbr2[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+            if mdt_3 is None:
+                iv_3 = None
+            else:
+                iv_curve_htbr3 = optionset.get_implied_vol_curves_htbr(mdt_3)
+                call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, mdt_3)
+                atm_k = call_list[0].applicable_strike()
+                iv_3 = iv_curve_htbr3[iv_curve_htbr3[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+            iv_term_structure.append({'date': optionset.eval_date, 'iv1': iv, 'iv2': iv_2, 'iv3': iv_3})
+        if not optionset.has_next(): break
+        optionset.next()
+    df_iv = pd.DataFrame(list_res_iv).sort_values(by='date', ascending=False)
+    df_res.loc[:, 'T:date'] = df_iv['date']
+    df_res.loc[:, 'U:iv'] = df_iv['iv']
+    print(df_iv)
+    df = pd.DataFrame(iv_term_structure)
+    df.to_csv('../data/' + name_code + '_iv_term_structure.csv')
     return df_res
 
 
-def implied_vol_term_structure(dt_list):
+def implied_vol_vw(df_metrics, df_res, dt_list_term_structure):
+    optionset = BaseOptionSet(df_metrics)
+    optionset.init()
+    list_res_iv = []
     iv_term_structure = []
-    df_iv_atm_1 = get_data.get_iv_by_moneyness(dt_list[0], dt_list[-1], name_code, nbr_moneyness=0,
-                                               cd_mdt_selection='hp_8_1st')
-    df_iv_atm_2 = get_data.get_iv_by_moneyness(dt_list[0], dt_list[-1], name_code, nbr_moneyness=0,
-                                               cd_mdt_selection='hp_8_2nd')
-    df_iv_atm_3 = get_data.get_iv_by_moneyness(dt_list[0], dt_list[-1], name_code, nbr_moneyness=0,
-                                               cd_mdt_selection='hp_8_3rd')
-    for dt_date in dt_list:
-        iv_call_1 = df_iv_atm_1[
-            (df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'call')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_put_1 = df_iv_atm_1[(df_iv_atm_1[c.Util.DT_DATE] == dt_date) & (df_iv_atm_1[c.Util.CD_OPTION_TYPE] == 'put')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_1 = (iv_call_1 + iv_put_1) / 2
-        iv_call_2 = df_iv_atm_2[
-            (df_iv_atm_2[c.Util.DT_DATE] == dt_date) & (df_iv_atm_2[c.Util.CD_OPTION_TYPE] == 'call')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_put_2 = df_iv_atm_2[(df_iv_atm_2[c.Util.DT_DATE] == dt_date) & (df_iv_atm_2[c.Util.CD_OPTION_TYPE] == 'put')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_2 = (iv_call_2 + iv_put_2) / 2
-        iv_call_3 = df_iv_atm_3[
-            (df_iv_atm_3[c.Util.DT_DATE] == dt_date) & (df_iv_atm_3[c.Util.CD_OPTION_TYPE] == 'call')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_put_3 = df_iv_atm_3[(df_iv_atm_3[c.Util.DT_DATE] == dt_date) & (df_iv_atm_3[c.Util.CD_OPTION_TYPE] == 'put')][c.Util.PCT_IMPLIED_VOL].values[0]
-        iv_3 = (iv_call_3 + iv_put_3) / 2
-        iv_term_structure.append({'date': dt_date, 'iv1': iv_1, 'iv2': iv_2, 'iv3': iv_3})
+    while optionset.current_index < optionset.nbr_index:
+        dt_maturity = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+        iv_volume_weighted = optionset.get_volume_weighted_iv(dt_maturity)
+        list_res_iv.append({'date': optionset.eval_date, 'iv': iv_volume_weighted})
+        if optionset.eval_date in dt_list_term_structure:
+            mdt_2 = optionset.select_maturity_date(nbr_maturity=1, min_holding=0)
+            mdt_3 = optionset.select_maturity_date(nbr_maturity=2, min_holding=0)
+            iv_2 = optionset.get_volume_weighted_iv(mdt_2)
+            if mdt_3 is None:
+                iv_3 = None
+            else:
+                iv_3 = optionset.get_volume_weighted_iv(mdt_3)
+            iv_term_structure.append({'date': optionset.eval_date, 'iv1': iv_volume_weighted, 'iv2': iv_2, 'iv3': iv_3})
+        if not optionset.has_next(): break
+        optionset.next()
+    df_iv = pd.DataFrame(list_res_iv).sort_values(by='date', ascending=False)
+    df_res.loc[:, 'T:date'] = df_iv['date']
+    df_res.loc[:, 'U:iv'] = df_iv['iv']
+    print(df_iv)
     df = pd.DataFrame(iv_term_structure)
     df.to_csv('../data/' + name_code + '_iv_term_structure.csv')
 
+    return df_res
 
-def LLKSR_analysis(dt_start, df_iv, df_future_c1_daily, name_code):
-    df_iv = df_iv[df_iv[c.Util.DT_DATE] >= dt_start].dropna().reset_index(drop=True)
-    iv_atm = df_iv['average_iv']
-    dates = list(df_iv[c.Util.DT_DATE])
+
+"""" 隐含波动率与历史波动率趋势 """
+
+
+def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
+    iv_atm = series_iv
     df_estimated_iv = pd.DataFrame()
-    tmp = LLKSR(iv_atm, 5)
     df_estimated_iv['LLKSR_iv_5'] = LLKSR(iv_atm, 5)
     df_estimated_iv['LLKSR_iv_10'] = LLKSR(iv_atm, 10)
     df_estimated_iv['LLKSR_iv_20'] = LLKSR(iv_atm, 20)
-    # df_estimated_iv['MA_iv_5'] = c.Statistics.moving_average(iv_atm, n=5)
-
-    df_future_c1_daily.loc[:, 'histvol_20'] = Histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE], n=20)
+    df_future_c1_daily.loc[:, 'histvol_20'] = Histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE], n=20)*100
     df_histvol = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= dt_start].dropna().reset_index(drop=True)
-
+    dates = list(df_histvol[c.Util.DT_DATE])
     f1 = pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_5']), list(df_estimated_iv['LLKSR_iv_10']),
                                     list(df_estimated_iv['LLKSR_iv_20'])],
                             ['隐含波动率LLKSR趋势线 (h=5)', '隐含波动率LLKSR趋势线 (h=10)', '隐含波动率LLKSR趋势线 (h=20)'])
     f2 = pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_10']), list(df_histvol['histvol_20'])],
                             ['隐含波动率LLKSR趋势线 (h=10)', '历史波动率LLKSR趋势线 (h=10)'])
     f3 = pu.plot_line_chart(dates, [list(df_estimated_iv['LLKSR_iv_10']), list(iv_atm)],
-                       ['隐含波动率LLKSR趋势线 (h=10)', 'iv_atm'])
-    f4 = pu.plot_line_chart(dates, [list(df_iv['iv_call']), list(df_iv['iv_put'])],
-                            ['iv call', 'iv put'])
+                            ['隐含波动率LLKSR趋势线 (h=10)', 'iv_atm'])
     f1.savefig('../data/' + name_code + '_iv_LLKSRs.png', dpi=300, format='png', bbox_inches='tight')
     f2.savefig('../data/' + name_code + '_iv_hv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
     f3.savefig('../data/' + name_code + '_iv_LLKSR.png', dpi=300, format='png', bbox_inches='tight')
-    f4.savefig('../data/' + name_code + '_iv_call_put.png', dpi=300, format='png', bbox_inches='tight')
+
 
 """"""
 name_code = c.Util.STR_M
 core_id = 'm_1901'
-end_date = datetime.date(2018, 9, 4)
+# name_code = c.Util.STR_SR
+# core_id = 'sr_1901'
+end_date = datetime.date(2018,9,7)
 last_week = datetime.date(2018, 8, 31)
-start_date = datetime.date(2017, 1, 1)
+start_date = last_week
+# start_date = datetime.date(2017, 4, 1)
 dt_histvol = start_date - datetime.timedelta(days=200)
 min_holding = 5
 
@@ -245,59 +301,35 @@ pu = PlotUtil()
 
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
 df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
-df_iv_atm = get_data.get_iv_by_moneyness(start_date, end_date, name_code, nbr_moneyness=0)
-df_iv_atm_call = df_iv_atm[df_iv_atm[c.Util.CD_OPTION_TYPE] == 'call']
-df_iv_atm_put = df_iv_atm[df_iv_atm[c.Util.CD_OPTION_TYPE] == 'put']
-df_iv = df_iv_atm_call[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL, c.Util.DT_MATURITY]].rename(
-    columns={c.Util.PCT_IMPLIED_VOL: 'iv_call'})
-df_iv = df_iv.join(df_iv_atm_put[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE),
-                   on=c.Util.DT_DATE, how='outer').rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_put'})
-df_iv = df_iv.dropna().reset_index(drop=True)
-df_iv.loc[:, 'average_iv'] = (df_iv.loc[:, 'iv_call'] + df_iv.loc[:, 'iv_put'])/2
-
 d1 = max(df_metrics[c.Util.DT_DATE].values[0], df_future_c1_daily[c.Util.DT_DATE].values[0])
-
-
-""" T-quote IV """
-optionset = BaseOptionSet(df_metrics)
-optionset.init()
-
+df_metrics = df_metrics[(df_metrics[c.Util.DT_DATE] >= d1) & (df_metrics[c.Util.DT_DATE] <= end_date)].reset_index(
+    drop=True)
 
 """ 隐含波动率期限结构 """
 dt_1 = last_week - datetime.timedelta(days=7)
 dt_2 = last_week - datetime.timedelta(days=14)
-if name_code == c.Util.STR_SR:
-    implied_vol_term_structure([dt_2, dt_1, last_week, end_date])
-
 """ PCR """
-df_res = pcr(d1, name_code, df_res)
+df_res = pcr(d1, end_date, name_code, df_res)
+print('2.PCR Finished')
 
 """ 历史波动率 """
 df_res = hist_vol(d1, df_future_c1_daily, df_res)
+print('3.历史波动率 Finished')
 
 """ 隐含波动率 """
-df_res = implied_vol(d1, df_iv, df_res)
+df_res = implied_vol(df_metrics, df_res, [dt_2, dt_1, last_week, end_date])
 df_res = df_res.reset_index(drop=True)
-df_res.to_csv('../data/' + name_code + '_data_report.csv')
+print('4.隐含波动率 Finished')
+
+# df_res.to_csv('../data/' + name_code + '_data_report.csv')
+
 """当日成交持仓数据"""
+end_date = df_metrics[c.Util.DT_DATE].values[-1]
+print(end_date)
 trade_volume(end_date, last_week, df_metrics, name_code, core_id)
 
-
-LLKSR_analysis(d1, df_iv, df_future_c1_daily, name_code)
+"""波动率趋势分析"""
+LLKSR_analysis(d1, df_res['U:iv'] * 100, df_future_c1_daily, name_code)
 plt.show()
 
-""" 隐含波动率分析 """
 
-""" 隐含波动率曲面 """
-# optionset = BaseOptionSet(df_metrics)
-# optionset.init()
-# df_call_curve = optionset.get_call_implied_vol_curve(nbr_maturity=0)
-# df_put_curve = optionset.get_put_implied_vol_curve(nbr_maturity=0)
-# df_otm_curve = optionset.get_otm_implied_vol_curve(nbr_maturity=0)
-#
-# strikes = df_call_curve[[c.Util.AMT_APPLICABLE_STRIKE]]
-# curve_call = df_call_curve[[c.Util.PCT_IMPLIED_VOL]]
-# curve_put = df_put_curve[[c.Util.PCT_IMPLIED_VOL]]
-# curve_otm = df_otm_curve[[c.Util.PCT_IV_OTM_BY_HTBR]]
-# pu.plot_line_chart(strikes,[curve_call,curve_put],['curve_call','curve_put'])
-# pu.plot_line_chart(strikes,[curve_otm],['curve_otm'])

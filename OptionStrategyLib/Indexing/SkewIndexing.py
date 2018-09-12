@@ -192,6 +192,9 @@ class SkewIndexing(BaseOptionSet):
             eval_date = self.eval_date
             try:
                 vix, skew = self.calculate(eval_date)
+                # self.df_res.loc[eval_date, 'skew'] = skew
+                # self.df_res.loc[eval_date, 'vix'] = vix
+                # self.df_res.loc[eval_date, '50ETF'] = self.get_underlying_close()
                 if skew is not None and skew > 50 and skew < 200:
                     self.df_res.loc[eval_date,'skew'] = skew
                     self.df_res.loc[eval_date,'vix'] = vix
@@ -215,5 +218,6 @@ skew_indexing.init()
 skew_indexing.run()
 res = skew_indexing.df_res.sort_index(ascending=False)
 res.to_csv('../../data/skew.csv')
+# res.to_csv('../../data/vix.csv')
 
 

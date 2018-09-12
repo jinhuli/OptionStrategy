@@ -18,6 +18,10 @@ engine_dzqh = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/dzqh',
 
 metadata_dzqh = MetaData(engine_dzqh)
 
+engine_gc = create_engine('mysql+pymysql://root:liz1128@101.132.148.152/golden_copy', echo=False)
+
+metadata_gc = MetaData(engine_gc)
+
 def conn_dzqh():
     return engine_dzqh.connect()
 
@@ -51,6 +55,9 @@ def table_options_mktdata():
 
 def table_futures_mktdata():
     return Table('futures_mktdata', metadata, autoload=True)
+
+def table_futures_mktdata_gc():
+    return Table('futures_mktdata', metadata_gc, autoload=True)
 
 def table_futures_institution_positions():
     return Table('futures_institution_positions', metadata, autoload=True)

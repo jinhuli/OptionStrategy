@@ -94,6 +94,10 @@ class OptionM:
     MONEYNESS_POINT_HIGH = 5000
 
     @staticmethod
+    def fun_applicable_strike(df: pd.Series) -> float:
+        return df[Util.AMT_STRIKE]
+
+    @staticmethod
     def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
                                                    option_type: OptionType) -> float:
         # TODO
@@ -226,24 +230,6 @@ class OptionM:
                     # strike = 5100, spot = 5300, moneyness = (5300-5100)/100
                     rank = int(np.floor(option_type.value * (spot - strike) / 100) + 1)
             d.update({rank: strike})
-        # for strike in strikes:
-        #     if strike <= OptionM.MONEYNESS_POINT_LOW:
-        #         if spot <= OptionM.MONEYNESS_POINT_LOW:
-        #             # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
-        #             rank = int(np.floor(option_type.value * (spot - strike) / 25) + 1)
-        #         else:
-        #             # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
-        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.05
-        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.1)) + 1)
-        #     else:
-        #         if spot <= OptionM.MONEYNESS_POINT:
-        #             # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
-        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.1
-        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.05)) + 1)
-        #         else:
-        #             # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
-        #             rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
-        #     d.update({rank: strike})
         return d
 
     @staticmethod
@@ -274,6 +260,10 @@ class OptionM:
 class OptionSR:
     MONEYNESS_POINT_LOW = 3000
     MONEYNESS_POINT_HIGH = 10000
+
+    @staticmethod
+    def fun_applicable_strike(df: pd.Series) -> float:
+        return df[Util.AMT_STRIKE]
 
     @staticmethod
     def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
@@ -370,24 +360,7 @@ class OptionSR:
                     # strike = 5100, spot = 5300, moneyness = (5300-5100)/100
                     rank = int(np.floor(option_type.value * (spot - strike) / 100) + 1)
             d.update({rank: strike})
-        # for strike in strikes:
-        #     if strike <= OptionM.MONEYNESS_POINT_LOW:
-        #         if spot <= OptionM.MONEYNESS_POINT_LOW:
-        #             # strike = 2.9, spot=2.8, moneyness = (2.8-2.9)/0.05
-        #             rank = int(np.floor(option_type.value * (spot - strike) / 25) + 1)
-        #         else:
-        #             # strike = 2.9, spot = 3.1, moneyness = (3.0 - 2.9)/0.05 + (3.1 - 3.0)/0.1
-        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.05
-        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.1)) + 1)
-        #     else:
-        #         if spot <= OptionM.MONEYNESS_POINT:
-        #             # strike = 3.1, spot = 2.9, moneyness = (3.0 - 3.1)/0.1+(2.9 - 3.0)/0.05
-        #             rank = int(np.floor(option_type.value * ((OptionM.MONEYNESS_POINT - strike) / 0.1
-        #                                                      + (spot - OptionM.MONEYNESS_POINT) / 0.05)) + 1)
-        #         else:
-        #             # strike = 3.1, spot = 3.1, moneyness = (3.1-3.1)/0.1
-        #             rank = int(np.floor(option_type.value * (spot - strike) / 0.1) + 1)
-        #     d.update({rank: strike})
+
         return d
 
 
@@ -424,21 +397,6 @@ class Option50ETF:
         else:
             return df[Util.AMT_STRIKE]  # 分红除息日后用实际调整后的行权价
 
-            # @staticmethod
-            # def fun_applicable_multiplier(df: pd.Series) -> float:
-            #     eval_date = df[Util.DT_DATE]
-            #     contract_month = df[Util.NAME_CONTRACT_MONTH]
-            #     dividend_dates = ETF.DIVIDEND_DATES
-            #     dates = sorted(dividend_dates.keys(), reverse=False)
-            #     if eval_date < dates[0]:
-            #         return 10000  # 分红除息日前
-            #     elif eval_date < dates[1]:
-            #         if contract_month in dividend_dates[dates[1]]:
-            #             return 10000  # 分红除息日前
-            #         else:
-            #             return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
-            #     else:
-            #         return df[Util.NBR_MULTIPLIER]  # 分红除息日后用实际multiplier
 
     @staticmethod
     def get_moneyness_of_a_strike_by_nearest_strike(spot: float, strike: float, strikes: List[float],
@@ -803,8 +761,8 @@ class Util:
     NBR_MULTIPLIER = 'nbr_multiplier'
     AMT_HOLDING_VOLUME = 'amt_holding_volume'
     AMT_TRADING_VOLUME = 'amt_trading_volume'
-    AMT_CALL_TRADING_VOLUME = 'amt_call_trading_volume'
-    AMT_PUT_TRADING_VOLUME = 'amt_put_trading_volume'
+    AMT_TRADING_VOLUME_CALL = 'amtl_trading_volume_call'
+    AMT_TRADING_VOLUME_PUT = 'amt_trading_volume_put'
     AMT_TRADING_VALUE = 'amt_trading_value'
     AMT_MORNING_OPEN_15MIN = 'amt_morning_open_15min'
     AMT_MORNING_CLOSE_15MIN = 'amt_morning_close_15min'
@@ -818,6 +776,8 @@ class Util:
     PCT_IV_OTM_BY_HTBR = 'pct_iv_by_htbr'
     PCT_IV_CALL_BY_HTBR = 'pct_iv_call_by_htbr'
     PCT_IV_PUT_BY_HTBR = 'pct_iv_put_by_htbr'
+    PCT_IV_CALL = 'pct_iv_call'
+    PCT_IV_PUT = 'pct_iv_put'
     AMT_DELTA = 'amt_delta'
     AMT_THETA = 'amt_theta'
     AMT_VEGA = 'amt_vega'
@@ -849,6 +809,7 @@ class Util:
     STR_IF = 'iF'
     STR_SR = 'sr'
     STR_ALL = 'all'
+    STR_CU = 'cu'
     NAN_VALUE = -999.0
 
     LOW_FREQUENT = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]

@@ -109,21 +109,13 @@ class BaseOption(BaseProduct):
             )
             return binomial
 
-    # def _get_black_calculater(self) -> Union[BlackCalculator, None]:
-    #     if self.black_calculater is not None:
-    #         return self.black_calculater
-    #     dt_maturity = self.maturitydt()
-    #     strike = self.applicable_strike()
-    #     option_type = self.option_type()
-    #     vol = self.get_implied_vol()
-    #     spot = self.underlying_close()
-    #     self.black_calculater = BlackCalculator(self.eval_date, dt_maturity, strike, option_type, spot, vol, self.rf)
-    #     return self.black_calculater
-
     def _destroy_pricing_engine(self) -> None:
         self.implied_vol: float = None
-        # self.black_calculater: BlackCalculator = None
         self.pricing_engine = None
+
+    def go_to(self, dt: datetime.date):
+        super().go_to(dt)
+        self._destroy_pricing_engine()
 
     """ getters """
 

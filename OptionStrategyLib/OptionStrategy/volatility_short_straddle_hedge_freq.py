@@ -17,7 +17,6 @@ def open_signal(dt_date, df_status):
     return open_signal_tangent(dt_date, df_status)
 
 def close_signal(dt_date,option_maturity, df_status):
-    # TODO: 提前一周平仓？
     if dt_date >= option_maturity - datetime.timedelta(days=5):
         print('3.到期', dt_date)
         return True
@@ -25,7 +24,9 @@ def close_signal(dt_date,option_maturity, df_status):
         return close_signal_tangent(dt_date, df_status)
 
 def open_signal_tangent(dt_date, df_status):
-    if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
+
+    # if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
+    if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
     # if df_status.loc[dt_date,'diff_5'] <= 0:
         print('1.open', dt_date)
         return True
@@ -33,20 +34,20 @@ def open_signal_tangent(dt_date, df_status):
         return False
 
 def close_signal_tangent(dt_date, df_status):
-    if df_status.loc[dt_date,'diff_5'] > 0:
+    if df_status.loc[dt_date,'last_diff_5'] > 0:
         print('2.close', dt_date)
         return True
     else:
         return False
 
 pu = PlotUtil()
-start_date = datetime.date(2015, 1, 1)
+start_date = datetime.date(2016, 2, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 20 # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
-m = 2 # 期权notional倍数
+m = 1 # 期权notional倍数
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -79,7 +80,10 @@ df_iv_stats['diff_5'] = df_iv_stats['LLT_5'].diff()
 df_iv_stats['diff_3'] = df_iv_stats['LLT_3'].diff()
 
 df_iv_stats = df_iv_stats.set_index(c.Util.DT_DATE)
-
+df_iv_stats['last_diff_20'] = df_iv_stats['diff_20'].diff()
+df_iv_stats['last_diff_10'] = df_iv_stats['diff_10'].diff()
+df_iv_stats['last_diff_5'] = df_iv_stats['diff_5'].diff()
+df_iv_stats['last_diff_3'] = df_iv_stats['diff_3'].diff()
 
 """ Volatility Strategy: Straddle """
 d1 = df_future_c1_daily[c.Util.DT_DATE].values[0]
@@ -165,7 +169,7 @@ while optionset.eval_date <= end_date:
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
         maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
-        list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(0, maturity1)
+        list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0, maturity=maturity1)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()
@@ -184,7 +188,7 @@ while optionset.eval_date <= end_date:
     # Delta hedge
     # if not empty_position and (idx_hedge % 2 == 0 or flag_hedge):
     if not empty_position :
-        iv_htbr = optionset.get_iv_by_otm_iv_curve(nbr_maturiy=0, strike=atm_call.applicable_strike())
+        iv_htbr = optionset.get_iv_by_otm_iv_curve(dt_maturity=maturity1, strike=atm_call.applicable_strike())
         delta_call = atm_call.get_delta(iv_htbr)
         delta_put = atm_put.get_delta(iv_htbr)
         gamma_call = atm_call.get_gamma(iv_htbr)

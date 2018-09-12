@@ -40,11 +40,11 @@ start_date = datetime.date(2015, 2, 1)
 # start_date = datetime.date(2017, 2, 1)
 end_date = datetime.date(2018, 8, 31)
 d1 = start_date
-min_holding = 20
+min_holding = 15
 nbr_maturity = 1
 slippage = 0
 pct_underlying_invest = 1.0
-alpha = 0.05
+alpha = 0.1
 
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
@@ -54,7 +54,7 @@ calendar = c.Calendar(sorted(df_underlying[c.Util.DT_DATE].unique()))
 pu = PlotUtil()
 
 
-moneyness = -2
+moneyness = -5
 df = pd.DataFrame()
 #
 d1 = calendar.firstBusinessDayNextMonth(d1)
@@ -137,5 +137,5 @@ while d2 <= end_date:
     d1 = calendar.firstBusinessDayNextMonth(d1)
     d2 = d1 + datetime.timedelta(days=365)
 print(df)
-df.to_csv('../accounts_data/buy_put_rolling_alpha='+str(alpha)+'-unitmatch.csv')
+df.to_csv('../accounts_data/buy_put_rolling_alpha='+str(alpha)+'_m='+str(moneyness)+'-unitmatch.csv')
 
