@@ -81,10 +81,10 @@ df_iv_stats['diff_5'] = df_iv_stats['LLT_5'].diff()
 df_iv_stats['diff_3'] = df_iv_stats['LLT_3'].diff()
 
 df_iv_stats = df_iv_stats.set_index(c.Util.DT_DATE)
-df_iv_stats['last_diff_20'] = df_iv_stats['diff_20'].diff()
-df_iv_stats['last_diff_10'] = df_iv_stats['diff_10'].diff()
-df_iv_stats['last_diff_5'] = df_iv_stats['diff_5'].diff()
-df_iv_stats['last_diff_3'] = df_iv_stats['diff_3'].diff()
+df_iv_stats['last_diff_20'] = df_iv_stats['diff_20'].shift()
+df_iv_stats['last_diff_10'] = df_iv_stats['diff_10'].shift()
+df_iv_stats['last_diff_5'] = df_iv_stats['diff_5'].shift()
+df_iv_stats['last_diff_3'] = df_iv_stats['diff_3'].shift()
 
 """ Volatility Strategy: Straddle """
 d1 = df_future_c1_daily[c.Util.DT_DATE].values[0]
