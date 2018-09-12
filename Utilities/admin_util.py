@@ -60,6 +60,9 @@ def table_options_mktdata():
 def table_futures_mktdata():
     return Table('futures_mktdata', metadata, autoload=True)
 
+def table_futures_mktdata_gc():
+    return Table('futures_mktdata', metadata_gc, autoload=True)
+
 def table_futures_institution_positions():
     return Table('futures_institution_positions', metadata, autoload=True)
 

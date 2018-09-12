@@ -113,12 +113,16 @@ class BaseOptionSet(AbstractBaseProductSet):
             self.nbr_index = len(self.date_list)
         else:
             mask = self.df_data.apply(Util.filter_invalid_data, axis=1)
+            # TODO:
+            # 高频数据预处理：根据日频数据的id_instrument与dt_datetime，
+            # 对高频数据（df_data）进行补充，缺失数据用前值代替，成交量填0.
+
+
             self.df_data = self.df_data[mask].reset_index(drop=True)
             self.date_list = sorted(self.df_data[Util.DT_DATE].unique())
             self.datetime_list = sorted(self.df_data[Util.DT_DATETIME].unique())
             self.nbr_index = len(self.datetime_list)
             if self.df_daily_data is None:
-                # TODO: Rise error if no daily data in high frequency senario.
                 return
         self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(self.OptionUtilClass.fun_applicable_strike, axis=1)
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
@@ -303,11 +307,24 @@ class BaseOptionSet(AbstractBaseProductSet):
         df['amt_ttm'] = ttm
         return df
 
+    # 根据行权价在OTM IMPLIED CURVE上选择对应的波动率
     def get_iv_by_otm_iv_curve(self, dt_maturity, strike):
         df = self.get_otm_implied_vol_curve(dt_maturity)
         iv = df[df[Util.AMT_APPLICABLE_STRIKE] == strike][Util.PCT_IV_OTM_BY_HTBR].values[0]
         return iv
 
+    #平值隐含波动率根据平价公式与HTB RATE调整，认沽与认购隐含波动率相同。
+    def get_atm_iv_by_htbr(self, dt_maturity):
+        t_qupte = self.get_T_quotes(dt_maturity)
+        t_qupte.loc[:, 'diff'] = abs(
+            t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
+        atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
+        # atm_strike = atm_series[Util.AMT_STRIKE]
+        htb_r = self.fun_htb_rate(atm_series, self.rf)
+        iv = self.fun_htb_rate_adjusted_iv(atm_series, OptionType.CALL, htb_r)
+        return iv
+
+    # 隐含波动率曲线（OTM）
     def get_otm_implied_vol_curve(self, dt_maturity):
         t_qupte = self.get_T_quotes(dt_maturity)
         t_qupte.loc[:, 'diff'] = abs(
@@ -324,6 +341,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             [Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY, Util.PCT_IV_OTM_BY_HTBR,
              Util.AMT_HTB_RATE]]
 
+    # 成交量加权均价隐含波动率（商品期权）
     def get_volume_weighted_iv(self, dt_maturity, min_iv=0.05, max_iv=1.5):
         df = self.get_implied_vol_curves(dt_maturity)
         df = df[(df[Util.PCT_IV_CALL] >= min_iv) & (df[Util.PCT_IV_CALL] <= max_iv) &
@@ -335,6 +353,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                     / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
 
+    # 成交量加权均价隐含波动率HTB Rate调整（商品期权）
     def get_volume_weighted_iv_htbr(self, dt_maturity, min_iv=0.05, max_iv=1.5):
         df = self.get_implied_vol_curves_htbr(dt_maturity)
         df = df[(df[Util.PCT_IV_CALL_BY_HTBR] >= min_iv) & (df[Util.PCT_IV_CALL_BY_HTBR] <= max_iv) &
@@ -343,6 +362,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                  sum(df[Util.PCT_IV_PUT_BY_HTBR] * df[Util.AMT_TRADING_VOLUME_PUT])) \
                 / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
+
 
     def get_implied_vol_curves(self, dt_maturity):
         t_qupte = self.get_T_quotes(dt_maturity)

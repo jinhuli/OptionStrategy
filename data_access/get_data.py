@@ -190,6 +190,18 @@ def get_future_mktdata(start_date, end_date, name_code):
         df = df_mkt.join(df_c.set_index('id_instrument'), how='left', on='id_instrument')
     return df
 
+def get_mktdata_future_c1_daily(start_date, end_date, name_code):
+    table_cf = admin.table_futures_mktdata_gc()
+    query = admin.session_gc().query(table_cf.c.dt_date, table_cf.c.id_instrument,
+                                          table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_high,
+                                          table_cf.c.amt_low,
+                                          table_cf.c.amt_trading_volume). \
+        filter((table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date)). \
+        filter(table_cf.c.name_code == name_code)
+    df = pd.read_sql(query.statement, query.session.bind)
+    df = df[df['id_instrument'].str.contains("_")]
+    df = c.FutureUtil.get_futures_daily_c1(df)
+    return df
 
 def get_dzqh_cf_minute(start_date, end_date, name_code):
     table_cf = admin.table_cf_minute()
@@ -245,6 +257,7 @@ def get_dzqh_cf_c1_daily(start_date, end_date, name_code):
     df = df[df['id_instrument'].str.contains("_")]
     df = c.FutureUtil.get_futures_daily_c1(df)
     return df
+
 
 
 def get_mktdata_cf_c1_daily(start_date, end_date, name_code):

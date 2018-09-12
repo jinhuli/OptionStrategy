@@ -809,6 +809,7 @@ class Util:
     STR_IF = 'iF'
     STR_SR = 'sr'
     STR_ALL = 'all'
+    STR_CU = 'cu'
     NAN_VALUE = -999.0
 
     LOW_FREQUENT = [FrequentType.DAILY, FrequentType.WEEKLY, FrequentType.MONTHLY, FrequentType.YEARLY]
