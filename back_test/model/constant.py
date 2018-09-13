@@ -804,6 +804,7 @@ class Util:
     STR_INDEX_50ETF = 'index_50etf'
     STR_INDEX_50SH = 'index_50sh'
     STR_INDEX_300SH = 'index_300sh'
+    STR_INDEX_300SH_TOTAL_RETURN = 'index_300sh_total_return'
     STR_M = 'm'
     STR_IH = 'ih'
     STR_IF = 'iF'

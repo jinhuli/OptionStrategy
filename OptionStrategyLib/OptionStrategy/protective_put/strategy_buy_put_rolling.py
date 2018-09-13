@@ -44,12 +44,12 @@ pct_underlying_invest = 1.0
 
 ##############
 alpha = 0.0
-moneyness = -2
+moneyness = -5
 #################
 
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_option_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
-df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_300SH)
+df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_300SH_TOTAL_RETURN)
 
 
 calendar = c.Calendar(sorted(df_underlying[c.Util.DT_DATE].unique()))
@@ -65,7 +65,7 @@ while d2 <= end_date:
     print(d1)
     df_metrics_1 = df_metrics[(df_metrics[c.Util.DT_DATE] >= d1)&(df_metrics[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
     df_underlying_1 = df_underlying[(df_underlying[c.Util.DT_DATE] >= d1)&(df_underlying[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
-    df_option_underlying_1 = df_option_underlying[(df_option_underlying[c.Util.DT_DATE] >= d1)&(df_option_underlying[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
+    # df_option_underlying_1 = df_option_underlying[(df_option_underlying[c.Util.DT_DATE] >= d1)&(df_option_underlying[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
     df_underlying_with_alpha = df_underlying_1[[c.Util.DT_DATE, c.Util.ID_INSTRUMENT, c.Util.AMT_CLOSE]]
     df_underlying_with_alpha.loc[:, 'r'] = np.log(df_underlying_with_alpha[c.Util.AMT_CLOSE]).diff()
     df_underlying_with_alpha.loc[:, 'r1'] = np.log(df_underlying_with_alpha[c.Util.AMT_CLOSE]).diff() + alpha / 252
