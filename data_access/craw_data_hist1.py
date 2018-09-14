@@ -10,6 +10,10 @@ from Utilities import admin_write_util as admin
 import pandas as pd
 import numpy as np
 
+"""
+SH300 TR
+wind data
+"""
 
 w.start()
 

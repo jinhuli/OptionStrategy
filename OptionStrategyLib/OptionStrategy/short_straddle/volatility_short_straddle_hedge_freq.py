@@ -25,8 +25,8 @@ def close_signal(dt_date,option_maturity, df_status):
 
 def open_signal_tangent(dt_date, df_status):
 
-    if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
-    # if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
+    # if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
+    if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
     # if df_status.loc[dt_date,'diff_5'] <= 0:
         print('1.open', dt_date)
         return True
@@ -34,8 +34,8 @@ def open_signal_tangent(dt_date, df_status):
         return False
 
 def close_signal_tangent(dt_date, df_status):
-    # if df_status.loc[dt_date,'last_diff_5'] > 0:
-    if df_status.loc[dt_date,'diff_5'] > 0:
+    if df_status.loc[dt_date,'last_diff_5'] > 0:
+    # if df_status.loc[dt_date,'diff_5'] > 0:
         print('2.close', dt_date)
         return True
     else:

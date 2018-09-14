@@ -283,12 +283,12 @@ def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
 
 
 """"""
-name_code = c.Util.STR_M
-core_id = 'm_1901'
-# name_code = c.Util.STR_SR
-# core_id = 'sr_1901'
-end_date = datetime.date(2018,9,7)
-last_week = datetime.date(2018, 8, 31)
+# name_code = c.Util.STR_M
+# core_id = 'm_1901'
+name_code = c.Util.STR_SR
+core_id = 'sr_1901'
+end_date = datetime.date(2018,9,13)
+last_week = datetime.date(2018, 9, 7)
 start_date = last_week
 # start_date = datetime.date(2017, 4, 1)
 dt_histvol = start_date - datetime.timedelta(days=200)
@@ -321,15 +321,15 @@ df_res = implied_vol(df_metrics, df_res, [dt_2, dt_1, last_week, end_date])
 df_res = df_res.reset_index(drop=True)
 print('4.隐含波动率 Finished')
 
-# df_res.to_csv('../data/' + name_code + '_data_report.csv')
-
+df_res.to_csv('../data/' + name_code + '_data_report.csv')
+print(df_res)
 """当日成交持仓数据"""
 end_date = df_metrics[c.Util.DT_DATE].values[-1]
 print(end_date)
 trade_volume(end_date, last_week, df_metrics, name_code, core_id)
 
 """波动率趋势分析"""
-LLKSR_analysis(d1, df_res['U:iv'] * 100, df_future_c1_daily, name_code)
+# LLKSR_analysis(d1, df_res['U:iv'] * 100, df_future_c1_daily, name_code)
 plt.show()
 
 
