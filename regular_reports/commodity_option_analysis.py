@@ -341,11 +341,11 @@ vol_60 = Histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE],n=60)
 vol_90 = Histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE],n=90)
 
 df = df_future_c1_daily[[c.Util.DT_DATE,c.Util.AMT_CLOSE]]
-df['hist_vol_10'] = vol_10
-df['hist_vol_20'] = vol_20
-df['hist_vol_30'] = vol_30
-df['hist_vol_60'] = vol_60
-df['hist_vol_90'] = vol_90
+df['hist_vol_10'] = vol_10*100
+df['hist_vol_20'] = vol_20*100
+df['hist_vol_30'] = vol_30*100
+df['hist_vol_60'] = vol_60*100
+df['hist_vol_90'] = vol_90*100
 df = df.dropna()
 df = df.sort_values(c.Util.DT_DATE,ascending=False)
 print(df)
