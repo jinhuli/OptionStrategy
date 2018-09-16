@@ -57,17 +57,18 @@ def wind_future_daily(dt,contracts):
 
 
 today = datetime.date.today()
-beg_date = datetime.date(2010, 1, 1)
-# end_date = datetime.date(2010, 1, 10)
+beg_date = datetime.date(2018, 9, 10)
+end_date = datetime.date(2018, 9, 14)
 end_date = datetime.date.today()
 
-data_contracts = w.wset("futurecc","startdate=2010-01-01;enddate="+today.strftime("%Y-%m-%d")+";wind_code=CU.SHF;field=wind_code,contract_issue_date,last_trade_date,last_delivery_mouth")
+# data_contracts = w.wset("futurecc","startdate=2010-01-01;enddate="+end_date.strftime("%Y-%m-%d")+";wind_code=CU.SHF;field=wind_code,contract_issue_date,last_trade_date,last_delivery_mouth")
+data_contracts = w.wset("futurecc","startdate=2017-09-15;enddate=2018-09-15;wind_code=CU.SHF")
 df_contracts = pd.DataFrame(data=np.transpose(data_contracts.Data), columns=data_contracts.Fields)
 date_range = w.tdays(beg_date, end_date, "").Data[0]
 date_range = sorted(date_range,reverse=True)
 for dt in date_range:
     c_str = ""
-    contracts = df_contracts[(df_contracts['contract_issue_date'] <=dt)&(df_contracts['last_delivery_mouth'] >=dt)]['wind_code'].values
+    contracts = df_contracts[(df_contracts['contract_issue_date'] <=dt)&(df_contracts['last_delivery_month'] >=dt)]['wind_code'].values
     for c in contracts:
         c_str += c +","
     c_str = c_str[0:len(c_str)-2]
@@ -75,7 +76,7 @@ for dt in date_range:
     df1 = wind_future_daily(dt,c_str)
     try:
         df1.to_sql('futures_mktdata', con=admin.engine_gc, if_exists='append', index=False)
+        print(dt, ' finished.')
     except Exception as e:
         print(e)
         pass
-    print(dt,' finished.')

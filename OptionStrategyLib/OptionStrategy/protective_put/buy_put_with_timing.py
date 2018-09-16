@@ -40,11 +40,13 @@ def filtration_LLT(df, name_column):
     df = df.set_index(c.Util.DT_DATE)
     return df
 
+
 def reverse(dt_date, df_status):
     if df_status.loc[dt_date, 'last_diff_20'] >= 0 and df_status.loc[dt_date, 'diff_20'] < 0:
         return True
     else:
         return False
+
 
 def upward_tangent(dt_date, df_status):
     if df_status.loc[dt_date, 'diff_20'] > 0:
@@ -66,7 +68,7 @@ def downward_tangent(dt_date, df_status):
 start_date = datetime.date(2017, 1, 1)
 end_date = datetime.date(2018, 8, 31)
 nbr_maturity = 1
-moneyness = 0
+moneyness = -5
 
 ############
 dt_close_position = end_date - datetime.timedelta(days=5)
@@ -78,10 +80,6 @@ pu = PlotUtil()
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
 df_underlying_llt = filtration_LLT(df_underlying, c.Util.AMT_CLOSE)
-# dates = list(df_status.index)
-# llt = list(df_status['LLT_20'])
-# closes = list(df_status[c.Util.AMT_CLOSE])
-# pu.plot_line_chart(dates, [closes,llt], ['closes','LLT_20'])
 
 df_iv = get_data.get_iv_by_moneyness(start_date, end_date, c.Util.STR_50ETF)
 df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == c.Util.STR_PUT].dropna().reset_index(drop=True)
@@ -124,10 +122,10 @@ while optionset.has_next():
                                                                                    execute_type=c.ExecuteType.EXECUTE_ALL_UNITS)
         account.add_record(execution_record, account.dict_holding[order.id_instrument])
         total_premium += execution_record[c.Util.TRADE_BOOK_VALUE]
-        # hedged = False
-        maturity = optionset.select_maturity_date(nbr_maturity=nbr_maturity, min_holding=min_holding)
-        atm_put, premium = buy_put(moneyness, maturity)
-        total_premium += premium
+        hedged = False
+        # maturity = optionset.select_maturity_date(nbr_maturity=nbr_maturity, min_holding=min_holding)
+        # atm_put, premium = buy_put(moneyness, maturity)
+        # total_premium += premium
 
     # """ 平仓认沽期权 """
     # if hedged:
@@ -139,16 +137,18 @@ while optionset.has_next():
     #         account.add_record(execution_record, account.dict_holding[order.id_instrument])
     #         total_premium += execution_record[c.Util.TRADE_BOOK_VALUE]
     #         hedged = False
-
-    # """ 买入认沽期权 """
+    #
+    """ 买入认沽期权 """
     # if not hedged and upward_tangent(optionset.eval_date, df_iv_llt):
-    #     print('1. buy option', optionset.eval_date)
-    #     maturity = optionset.select_maturity_date(nbr_maturity=nbr_maturity, min_holding=min_holding)
-    #     atm_put, premium = buy_put(moneyness, maturity)
-    #     total_premium += premium
-    #     hedged = True
+    if not hedged:
+        print('1. buy option', optionset.eval_date)
+        maturity = optionset.select_maturity_date(nbr_maturity=nbr_maturity, min_holding=min_holding)
+        atm_put, premium = buy_put(moneyness, maturity)
+        total_premium += premium
+        hedged = True
 
     account.daily_accounting(optionset.eval_date)
+    print(optionset.eval_date,account.account.loc[optionset.eval_date,c.Util.PORTFOLIO_NPV])
     optionset.next()
     underlying.next()
 
@@ -159,6 +159,10 @@ analysis['total_premium'] = total_premium
 print(analysis)
 dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])
-pu.plot_line_chart(dates, [npv], ['npv'])
 
+df_underlying.loc[:, 'npv_50etf'] = df_underlying.loc[:, c.Util.AMT_CLOSE] / \
+                                               df_underlying.loc[0, c.Util.AMT_CLOSE]
+analysis_50ETF = account.get_netvalue_analysis(df_underlying['npv_50etf'])
+pu.plot_line_chart(dates, [npv], ['npv'])
+pu.plot_line_chart(list(df_underlying[c.Util.DT_DATE]), [list(df_underlying['npv_50etf'])], ['npv base'])
 plt.show()

@@ -14,10 +14,10 @@ dt_histvol = start_date - datetime.timedelta(days=40)
 # min_holding = 18
 
 
-name_code = name_code_option = c.Util.STR_INDEX_50ETF
+name_code = name_code_option = c.Util.STR_CU
 # df_metrics = get_data.get_comoption_mktdata(start_date, end_date,name_code)
-# df_future_c1_daily = get_data.get_mktdata_future_c1_daily(dt_histvol, end_date, name_code)
-df_future_c1_daily = get_data.get_index_mktdata(dt_histvol, end_date, name_code)
+df_future_c1_daily = get_data.get_mktdata_future_c1_daily(dt_histvol, end_date, name_code)
+# df_future_c1_daily = get_data.get_index_mktdata(dt_histvol, end_date, name_code)
 
 
 """ 历史波动率 """
