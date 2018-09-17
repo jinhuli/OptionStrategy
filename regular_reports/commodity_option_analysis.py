@@ -283,10 +283,10 @@ def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
 
 
 """"""
-name_code = c.Util.STR_M
-core_id = 'm_1901'
-# name_code = c.Util.STR_SR
-# core_id = 'sr_1901'
+# name_code = c.Util.STR_M
+# core_id = 'm_1901'
+name_code = c.Util.STR_SR
+core_id = 'sr_1901'
 end_date = datetime.date(2018, 9, 14)
 last_week = datetime.date(2018, 9, 7)
 start_date = last_week
