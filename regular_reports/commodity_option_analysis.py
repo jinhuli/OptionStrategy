@@ -287,7 +287,7 @@ def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
 # core_id = 'm_1901'
 name_code = c.Util.STR_SR
 core_id = 'sr_1901'
-end_date = datetime.date(2018, 9, 14)
+end_date = datetime.date(2018, 9, 19)
 last_week = datetime.date(2018, 9, 7)
 start_date = last_week
 # start_date = datetime.date(2017, 4, 1)
@@ -352,4 +352,4 @@ print(df)
 df.to_csv('../data/'+name_code+'_histvol.csv')
 
 
-plt.show()
+# plt.show()

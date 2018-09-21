@@ -58,7 +58,7 @@ def wind_future_daily(dt,contracts):
 
 today = datetime.date.today()
 beg_date = datetime.date(2018, 9, 10)
-end_date = datetime.date(2018, 9, 14)
+# end_date = datetime.date(2018, 9, 14)
 end_date = datetime.date.today()
 
 # data_contracts = w.wset("futurecc","startdate=2010-01-01;enddate="+end_date.strftime("%Y-%m-%d")+";wind_code=CU.SHF;field=wind_code,contract_issue_date,last_trade_date,last_delivery_mouth")
