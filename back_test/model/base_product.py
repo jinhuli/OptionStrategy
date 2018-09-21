@@ -257,6 +257,12 @@ class BaseProduct(AbstractBaseProduct):
             return
         return ret
 
+    def mktprice_volume_weighted(self) -> Union[float, None]:
+        ret = self.current_state[Util.AMT_TRADING_VALUE]/self.current_state[Util.AMT_TRADING_VOLUME]/self.multiplier()
+        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
+            return
+        return ret
+
     def mktprice_morning_open_15min(self) -> Union[float, None]:
         ret = self.current_state[Util.AMT_MORNING_OPEN_15MIN]
         if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):

@@ -38,7 +38,7 @@ def get_50option_mktdata(start_date, end_date):
                                               Option_mkt.pct_implied_vol
                                               ) \
         .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
-        .filter(Option_mkt.datasource == 'wind')
+        .filter(Option_mkt.datasource == 'wind').filter(Option_mkt.name_code == '50etf')
     query_option = admin.session_mktdata().query(options.id_instrument, options.cd_option_type,
                                                  options.amt_strike, options.name_contract_month,
                                                  options.dt_maturity, options.nbr_multiplier) \

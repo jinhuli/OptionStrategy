@@ -11,6 +11,7 @@ from Utilities import admin_write_util as admin
 w.start()
 
 date = datetime.date.today()
+# date = datetime.date(2018,9,18)
 
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
@@ -29,6 +30,7 @@ equity_index_intraday = admin.table_index_mktdata_intraday()
 option_mktdata_intraday = admin.table_option_mktdata_intraday()
 
 dc = DataCollection()
+
 
 ##################### GET STOCK MKT DATA #########################################
 #
@@ -362,6 +364,16 @@ for db_data in db_datas:
         continue
 
 ##################################### MKT DAILY #############################################
+
+# wind CU option
+
+db_data = dc.table_options().wind_cu_option(dt_date)
+if len(db_data) == 0: print('no data')
+try:
+    conn.execute(options_mktdata_daily.insert(), db_data)
+    print('wind CU option -- inserted into data base succefully')
+except Exception as e:
+    print(e)
 # wind 50ETF option
 res = options_mktdata_daily.select((options_mktdata_daily.c.dt_date == dt_date)
                                    & (options_mktdata_daily.c.name_code == '50etf')).execute()

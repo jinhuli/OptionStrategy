@@ -80,6 +80,8 @@ class OptionUtil:
             return OptionM
         elif name_code == Util.STR_SR:
             return OptionSR
+        elif name_code == Util.STR_CU:
+            return OptionCU
         else:
             return None
 
@@ -88,6 +90,11 @@ class OptionUtil:
         df = df[df[Util.DT_MATURITY] == mdt].reset_index(drop=True)
         return df
 
+class OptionCU:
+
+    @staticmethod
+    def fun_applicable_strike(df: pd.Series) -> float:
+        return df[Util.AMT_STRIKE]
 
 class OptionM:
     MONEYNESS_POINT_LOW = 2000
@@ -523,7 +530,16 @@ class OptionFilter:
                        'sr_1707': datetime.date(2017, 5, 23),
                        'sr_1709': datetime.date(2017, 7, 25),
                        'sr_1711': datetime.date(2017, 9, 25),
-                       'sr_1801': datetime.date(2017, 11, 24)
+                       'sr_1801': datetime.date(2017, 11, 24),
+                       'cu_1901': datetime.date(2018, 12, 25),
+                       'cu_1902': datetime.date(2018, 1, 25),
+                       'cu_1903': datetime.date(2018, 2, 22),
+                       'cu_1904': datetime.date(2018, 3, 25),
+                       'cu_1905': datetime.date(2018, 4, 24),
+                       'cu_1906': datetime.date(2018, 5, 27),
+                       'cu_1907': datetime.date(2018, 6, 24),
+                       'cu_1908': datetime.date(2018, 7, 25),
+                       'cu_1909': datetime.date(2018, 8, 26),
                        }
 
     @staticmethod
@@ -797,6 +813,9 @@ class Util:
     AMT_PUT_QUOTE = 'amt_put_quote'
     AMT_TTM = 'amt_ttm'
     AMT_HTB_RATE='amt_HTB_rate'
+    AMT_CLOSE_VOLUME_WEIGHTED = 'amt_close_volume_weighted'
+    CD_CLOSE = 'cd_close'
+    CD_CLOSE_VOLUME_WEIGHTED = 'cd_close_volume_weighted'
     NAME_CODE = 'name_code'
     STR_CALL = 'call'
     STR_PUT = 'put'
@@ -891,11 +910,13 @@ class Util:
         "50etf": 0.0,
         "m": 0.0,
         "sr": 0.0,
+        "cu": 0.0,
     }
     DICT_OPTION_TRANSACTION_FEE = {  # 元/手
         "50etf": 0.0,
         "m": 0.0,
         "sr": 0.0,
+        "cu": 0.0,
     }
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
         'm':None,
@@ -909,7 +930,8 @@ class Util:
         'sr':10,
         'if': 300,
         'ih': 300,
-        'ic': 200
+        'ic': 200,
+        'cu':5
     }
     DICT_OPTION_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,

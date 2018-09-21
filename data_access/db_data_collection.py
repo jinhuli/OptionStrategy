@@ -235,6 +235,63 @@ class DataCollection():
                 db_data.append(db_row)
             return db_data
 
+        def wind_cu_option(self,datestr):
+            data=w.wss("CU1901C46000.SHF,CU1901C47000.SHF,CU1901C48000.SHF,CU1901C49000.SHF,CU1901C50000.SHF,CU1901C51000.SHF,CU1901C52000.SHF,CU1901P46000.SHF,CU1901P47000.SHF,CU1901P48000.SHF,CU1901P49000.SHF,CU1901P50000.SHF,CU1901P51000.SHF,CU1901P52000.SHF,CU1902C46000.SHF,CU1902C47000.SHF,CU1902C48000.SHF,CU1902C49000.SHF,CU1902C50000.SHF,CU1902C51000.SHF,CU1902C52000.SHF,CU1902P46000.SHF,CU1902P47000.SHF,CU1902P48000.SHF,CU1902P49000.SHF,CU1902P50000.SHF,CU1902P51000.SHF,CU1902P52000.SHF,CU1903C46000.SHF,CU1903C47000.SHF,CU1903C48000.SHF,CU1903C49000.SHF,CU1903C50000.SHF,CU1903C51000.SHF,CU1903C52000.SHF,CU1903P46000.SHF,CU1903P47000.SHF,CU1903P48000.SHF,CU1903P49000.SHF,CU1903P50000.SHF,CU1903P51000.SHF,CU1903P52000.SHF,CU1904C46000.SHF,CU1904C47000.SHF,CU1904C48000.SHF,CU1904C49000.SHF,CU1904C50000.SHF,CU1904C51000.SHF,CU1904C52000.SHF,CU1904P46000.SHF,CU1904P47000.SHF,CU1904P48000.SHF,CU1904P49000.SHF,CU1904P50000.SHF,CU1904P51000.SHF,CU1904P52000.SHF,CU1905C46000.SHF,CU1905C47000.SHF,CU1905C48000.SHF,CU1905C49000.SHF,CU1905C50000.SHF,CU1905C51000.SHF,CU1905C52000.SHF,CU1905P46000.SHF,CU1905P47000.SHF,CU1905P48000.SHF,CU1905P49000.SHF,CU1905P50000.SHF,CU1905P51000.SHF,CU1905P52000.SHF,CU1906C46000.SHF,CU1906C47000.SHF,CU1906C48000.SHF,CU1906C49000.SHF,CU1906C50000.SHF,CU1906C51000.SHF,CU1906C52000.SHF,CU1906P46000.SHF,CU1906P47000.SHF,CU1906P48000.SHF,CU1906P49000.SHF,CU1906P50000.SHF,CU1906P51000.SHF,CU1906P52000.SHF,CU1907C46000.SHF,CU1907C47000.SHF,CU1907C48000.SHF,CU1907C49000.SHF,CU1907C50000.SHF,CU1907C51000.SHF,CU1907C52000.SHF,CU1907P46000.SHF,CU1907P47000.SHF,CU1907P48000.SHF,CU1907P49000.SHF,CU1907P50000.SHF,CU1907P51000.SHF,CU1907P52000.SHF,CU1908C46000.SHF,CU1908C47000.SHF,CU1908C48000.SHF,CU1908C49000.SHF,CU1908C50000.SHF,CU1908C51000.SHF,CU1908C52000.SHF,CU1908P46000.SHF,CU1908P47000.SHF,CU1908P48000.SHF,CU1908P49000.SHF,CU1908P50000.SHF,CU1908P51000.SHF,CU1908P52000.SHF,CU1909C47000.SHF,CU1909C48000.SHF,CU1909C49000.SHF,CU1909C50000.SHF,CU1909C51000.SHF,CU1909C52000.SHF,CU1909P47000.SHF,CU1909P48000.SHF,CU1909P49000.SHF,CU1909P50000.SHF,CU1909P51000.SHF,CU1909P52000.SHF", "pre_close,open,high,low,close,volume,amt,oi,oi_chg,pre_settle,settle","tradeDate="+datestr+";priceAdj=U;cycle=D")
+            # w.wset("optionchain", "date=2018-09-21;us_code=CU.SHF;option_var=全部;call_put=全部")
+            df = pd.DataFrame(data=np.transpose(data.Data), columns=data.Fields)
+            df['id'] = data.Codes
+            db_data = []
+            flag_night = -1
+            name_code = 'cu'
+            datasource = 'wind'
+            cd_exchange = 'shf'
+            for (i2, row) in df.iterrows():
+                dt_date = datetime.datetime.strptime(datestr, "%Y-%m-%d").date()
+                windcode = row['id']
+                tmp = row['id'].lower()
+                id_instrument = tmp[0:2]+'_'+tmp[2:6]+'_'+tmp[6]+'_'+tmp[7:12]
+                amt_strike = tmp[7:11]
+                if tmp[6] == 'c':
+                    cd_option_type = 'call'
+                elif tmp[6] == 'p':
+                    cd_option_type = 'put'
+                else:
+                    cd_option_type = None
+                id_underlying = tmp[0:2]+'_'+tmp[2:6]
+                amt_last_settlement = row['PRE_SETTLE']
+                amt_open = row['OPEN']
+                amt_high = row['HIGH']
+                amt_low = row['LOW']
+                amt_close = row['CLOSE']
+                amt_settlement = row['SETTLE']
+                amt_trading_volume = row['VOLUME']
+                amt_trading_value = row['AMT']
+                amt_holding_volume = row['OI']
+                db_row = {'dt_date': dt_date,
+                          'id_instrument': id_instrument,
+                          'flag_night': flag_night,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'name_code': name_code,
+                          'id_underlying': id_underlying,
+                          'amt_strike': float(amt_strike),
+                          'cd_option_type': cd_option_type,
+                          'amt_last_settlement': float(amt_last_settlement),
+                          'amt_open': float(amt_open),
+                          'amt_high': float(amt_high),
+                          'amt_low': float(amt_low),
+                          'amt_close': float(amt_close),
+                          'amt_settlement': float(amt_settlement),
+                          'amt_trading_volume': float(amt_trading_volume),
+                          'amt_trading_value': float(amt_trading_value),
+                          'amt_holding_volume': float(amt_holding_volume),
+                          'cd_exchange': cd_exchange,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+
+            return db_data
+
         def wind_data_50etf_option(self, datestr):
 
             db_data = []

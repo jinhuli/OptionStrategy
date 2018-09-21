@@ -197,25 +197,16 @@ def implied_vol(df_metrics, df_res, dt_list_term_structure):
     iv_term_structure = []
     while optionset.current_index < optionset.nbr_index:
         dt_maturity = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
-        iv_curve_htbr = optionset.get_implied_vol_curves_htbr(dt_maturity)
-        call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, dt_maturity)
-        atm_k = call_list[0].applicable_strike()
-        iv = iv_curve_htbr[iv_curve_htbr[c.Util.AMT_APPLICABLE_STRIKE]==atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+        iv = optionset.get_atm_iv_by_htbr(dt_maturity)
         list_res_iv.append({'date': optionset.eval_date, 'iv': iv})
         if optionset.eval_date in dt_list_term_structure:
             mdt_2 = optionset.select_maturity_date(nbr_maturity=1, min_holding=0)
             mdt_3 = optionset.select_maturity_date(nbr_maturity=2, min_holding=0)
-            iv_curve_htbr2 = optionset.get_implied_vol_curves_htbr(mdt_2)
-            call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, mdt_2)
-            atm_k = call_list[0].applicable_strike()
-            iv_2 = iv_curve_htbr2[iv_curve_htbr2[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+            iv_2 = optionset.get_atm_iv_by_htbr(mdt_2)
             if mdt_3 is None:
                 iv_3 = None
             else:
-                iv_curve_htbr3 = optionset.get_implied_vol_curves_htbr(mdt_3)
-                call_list, put_list = optionset.get_options_list_by_moneyness_mthd1(0, mdt_3)
-                atm_k = call_list[0].applicable_strike()
-                iv_3 = iv_curve_htbr3[iv_curve_htbr3[c.Util.AMT_APPLICABLE_STRIKE] == atm_k][c.Util.PCT_IV_PUT_BY_HTBR].values[0]
+                iv_3 = optionset.get_atm_iv_by_htbr(mdt_3)
             iv_term_structure.append({'date': optionset.eval_date, 'iv1': iv, 'iv2': iv_2, 'iv3': iv_3})
         if not optionset.has_next(): break
         optionset.next()
@@ -283,12 +274,10 @@ def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
 
 
 """"""
-# name_code = c.Util.STR_M
-# core_id = 'm_1901'
-name_code = c.Util.STR_SR
-core_id = 'sr_1901'
-end_date = datetime.date(2018, 9, 19)
-last_week = datetime.date(2018, 9, 7)
+
+
+end_date = datetime.date(2018, 9, 21)
+last_week = datetime.date(2018, 9, 17)
 start_date = last_week
 # start_date = datetime.date(2017, 4, 1)
 dt_histvol = start_date - datetime.timedelta(days=200)
@@ -297,8 +286,42 @@ min_holding = 5
 """"""
 df_res = pd.DataFrame()
 pu = PlotUtil()
-""""""
 
+""" 白糖 """
+name_code = c.Util.STR_SR
+core_id = 'sr_1901'
+df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
+df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
+d1 = max(df_metrics[c.Util.DT_DATE].values[0], df_future_c1_daily[c.Util.DT_DATE].values[0])
+df_metrics = df_metrics[(df_metrics[c.Util.DT_DATE] >= d1) & (df_metrics[c.Util.DT_DATE] <= end_date)].reset_index(
+    drop=True)
+
+""" 隐含波动率期限结构 """
+dt_1 = last_week - datetime.timedelta(days=7)
+dt_2 = last_week - datetime.timedelta(days=14)
+""" PCR """
+df_res = pcr(d1, end_date, name_code, df_res)
+print('2.PCR Finished')
+
+""" 历史波动率 """
+df_res = hist_vol(d1, df_future_c1_daily, df_res)
+print('3.历史波动率 Finished')
+
+""" 隐含波动率 """
+df_res = implied_vol(df_metrics, df_res, [dt_2, dt_1, last_week, end_date])
+df_res = df_res.reset_index(drop=True)
+print('4.隐含波动率 Finished')
+
+df_res.to_csv('../data/' + name_code + '_data_report.csv')
+print(df_res)
+"""当日成交持仓数据"""
+end_date = df_metrics[c.Util.DT_DATE].values[-1]
+print(end_date)
+trade_volume(end_date, last_week, df_metrics, name_code, core_id)
+
+""" 豆粕 """
+name_code = c.Util.STR_M
+core_id = 'm_1901'
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
 df_future_c1_daily = get_data.get_future_c1_by_option_daily(dt_histvol, end_date, name_code, min_holding)
 d1 = max(df_metrics[c.Util.DT_DATE].values[0], df_future_c1_daily[c.Util.DT_DATE].values[0])

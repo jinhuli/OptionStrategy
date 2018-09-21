@@ -1,4 +1,4 @@
-from data_access.get_data import get_50option_mktdata as option_data
+from data_access.get_data import get_50option_mktdata as option_data,get_comoption_mktdata
 from back_test.model.base_option_set import BaseOptionSet
 from back_test.model.constant import Util, OptionUtil
 import datetime
@@ -9,6 +9,7 @@ import pandas as pd
 class SkewIndexing(BaseOptionSet):
     def __init__(self, start_date, end_date):
         df_metrics = option_data(start_date, end_date)
+        # df_metrics = get_comoption_mktdata(start_date, end_date,Util.STR_CU)
         super().__init__(df_metrics, rf=0.03)
 
     def fun_otm_quote(self, df):
