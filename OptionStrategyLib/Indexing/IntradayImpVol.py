@@ -9,8 +9,8 @@ import pandas as pd
 class IntradayImpVol(BaseOptionSet):
     def __init__(self, start_date, end_date, min_holding):
         df_daily = option_data(start_date, end_date)
-        self.df_intraday = intraday_data(start_date, end_date)
-        super().__init__(df_data=df_daily, rf=0.03)
+        df_intraday = intraday_data(start_date, end_date)
+        super().__init__(df_data=df_intraday,df_daily_data=df_daily, rf=0.03)
         self.min_holding = min_holding
 
 
@@ -36,16 +36,18 @@ min_holding = 8
 Impvol = IntradayImpVol(start_date, end_date, min_holding)
 Impvol.init()
 
-maturity = Impvol.select_maturity_date(nbr_maturity, min_holding=Impvol.min_holding)
-iv_htr = Impvol.get_atm_iv_by_htbr(maturity)
-iv_avg = Impvol.get_atm_iv_average(nbr_maturity)
-print('iv_htr : ', iv_htr)
-print('iv_avg : ', iv_avg)
+# maturity = Impvol.select_maturity_date(nbr_maturity, min_holding=Impvol.min_holding)
+# iv_htr = Impvol.get_atm_iv_by_htbr(maturity)
+# iv_avg = Impvol.get_atm_iv_average(nbr_maturity)
+# print('iv_htr : ', iv_htr)
+# print('iv_avg : ', iv_avg)
+#
+#
+# atm_call, atm_put = Impvol.get_atm_options(nbr_maturity) # 基于收盘价的平值期权
+# id_atm_call = atm_call.id_instrument()
 
-
-atm_call, atm_put = Impvol.get_atm_options(nbr_maturity) # 基于收盘价的平值期权
-id_atm_call = atm_call.id_instrument()
-
+maturity = Impvol.select_maturity_date(nbr_maturity=nbr_maturity,min_holding=min_holding)
+iv = Impvol.get_atm_iv_by_htbr(maturity)
 
 
 

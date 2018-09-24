@@ -532,14 +532,14 @@ class OptionFilter:
                        'sr_1711': datetime.date(2017, 9, 25),
                        'sr_1801': datetime.date(2017, 11, 24),
                        'cu_1901': datetime.date(2018, 12, 25),
-                       'cu_1902': datetime.date(2018, 1, 25),
-                       'cu_1903': datetime.date(2018, 2, 22),
-                       'cu_1904': datetime.date(2018, 3, 25),
-                       'cu_1905': datetime.date(2018, 4, 24),
-                       'cu_1906': datetime.date(2018, 5, 27),
-                       'cu_1907': datetime.date(2018, 6, 24),
-                       'cu_1908': datetime.date(2018, 7, 25),
-                       'cu_1909': datetime.date(2018, 8, 26),
+                       'cu_1902': datetime.date(2019, 1, 25),
+                       'cu_1903': datetime.date(2019, 2, 22),
+                       'cu_1904': datetime.date(2019, 3, 25),
+                       'cu_1905': datetime.date(2019, 4, 24),
+                       'cu_1906': datetime.date(2019, 5, 27),
+                       'cu_1907': datetime.date(2019, 6, 24),
+                       'cu_1908': datetime.date(2019, 7, 25),
+                       'cu_1909': datetime.date(2019, 8, 26),
                        }
 
     @staticmethod

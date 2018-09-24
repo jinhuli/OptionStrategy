@@ -57,7 +57,7 @@ def get_50option_mktdata(start_date, end_date):
 
 
 def get_50option_intraday(start_date, end_date):
-    OptionIntra = admin.table_option_mktdata_intraday()
+    OptionIntra = admin.table_option_mktdata_intraday_gc()
     query = admin.session_intraday().query(OptionIntra.c.dt_datetime,
                                            OptionIntra.c.dt_date,
                                            OptionIntra.c.id_instrument,
@@ -66,7 +66,17 @@ def get_50option_intraday(start_date, end_date):
                                            OptionIntra.c.amt_trading_value) \
         .filter(OptionIntra.c.dt_date >= start_date).filter(OptionIntra.c.dt_date <= end_date)
     df = pd.read_sql(query.statement, query.session.bind)
-    return df
+    IndexIntra = admin.table_index_mktdata_intraday()
+    query1 = admin.session_intraday().query(IndexIntra.c.dt_datetime,
+                                            IndexIntra.c.dt_date,
+                                            IndexIntra.c.id_instrument,
+                                            IndexIntra.c.amt_close)\
+        .filter(IndexIntra.c.dt_date >= start_date).filter(IndexIntra.c.dt_date <= end_date)\
+        .filter(IndexIntra.c.id_instrument == 'index_50etf')
+    df_etf = pd.read_sql(query1.statement, query1.session.bind)
+    df_etf = df_etf[[c.Util.DT_DATETIME, c.Util.ID_INSTRUMENT, c.Util.AMT_CLOSE]].rename(columns={'amt_close': c.Util.AMT_UNDERLYING_CLOSE})
+    df_option_metrics = df.join(df_etf.set_index('dt_datetime'), how='left', on='dt_datetime')
+    return df_option_metrics
 
 
 def get_50option_minute_with_underlying(start_date, end_date):
