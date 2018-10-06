@@ -297,8 +297,8 @@ def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
 
 """"""
 
-end_date = datetime.date(2018, 9, 21)
-last_week = datetime.date(2018, 9, 14)
+end_date = datetime.date(2018, 9, 28)
+last_week = datetime.date(2018, 9, 21)
 start_date = last_week
 # start_date = datetime.date(2017, 4, 1)
 dt_histvol = start_date - datetime.timedelta(days=200)

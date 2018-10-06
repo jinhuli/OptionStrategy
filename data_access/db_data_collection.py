@@ -267,6 +267,16 @@ class DataCollection():
                 amt_trading_volume = row['VOLUME']
                 amt_trading_value = row['AMT']
                 amt_holding_volume = row['OI']
+                if pd.isnull(amt_open): amt_open = -999.0
+                if pd.isnull(amt_high): amt_high = -999.0
+                if pd.isnull(amt_low): amt_low = -999.0
+                if pd.isnull(amt_close): amt_close = -999.0
+                if pd.isnull(amt_settlement): amt_settlement = -999.0
+                if pd.isnull(amt_last_settlement): amt_last_settlement = -999.0
+                if pd.isnull(amt_trading_volume): amt_trading_volume = -999.0
+                if pd.isnull(amt_trading_volume): amt_trading_volume = -999.0
+                if pd.isnull(amt_trading_value): amt_trading_value = -999.0
+                if pd.isnull(amt_holding_volume): amt_holding_volume =  -999.0
                 db_row = {'dt_date': dt_date,
                           'id_instrument': id_instrument,
                           'flag_night': flag_night,
