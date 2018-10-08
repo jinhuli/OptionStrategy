@@ -106,10 +106,10 @@ def table_option_atm_iv():
 def table_implied_volatilities():
     return Table('implied_volatilities_by_moneyness',metadata_metrics, autoload=True)
 
-def table_cf_minute():
+def table_cf_minute_gc():
     return Table('cf_minute',metadata_gc, autoload=True)
 
-def table_cf_daily():
-    return Table('cf_day',metadata_dzqh, autoload=True)
+# def table_cf_daily():
+#     return Table('cf_day',metadata_dzqh, autoload=True)
 
 

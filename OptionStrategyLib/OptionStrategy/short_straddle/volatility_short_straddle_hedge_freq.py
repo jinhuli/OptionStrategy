@@ -1,6 +1,7 @@
 from back_test.model.base_option_set import BaseOptionSet
 from back_test.model.base_account import BaseAccount
-from data_access import get_data
+#from data_access import get_data
+import data_access.get_data as get_data
 import back_test.model.constant as c
 import datetime
 import numpy as np
@@ -25,8 +26,8 @@ def close_signal(dt_date,option_maturity, df_status):
 
 def open_signal_tangent(dt_date, df_status):
 
-    # if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
-    if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
+    if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
+    # if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
     # if df_status.loc[dt_date,'diff_5'] <= 0:
         print('1.open', dt_date)
         return True
@@ -34,8 +35,8 @@ def open_signal_tangent(dt_date, df_status):
         return False
 
 def close_signal_tangent(dt_date, df_status):
-    if df_status.loc[dt_date,'last_diff_5'] > 0:
-    # if df_status.loc[dt_date,'diff_5'] > 0:
+    # if df_status.loc[dt_date,'last_diff_5'] > 0:
+    if df_status.loc[dt_date,'diff_5'] > 0:
         print('2.close', dt_date)
         return True
     else:
@@ -54,8 +55,8 @@ m = 1 # 期权notional倍数
 name_code = c.Util.STR_IH
 name_code_option = c.Util.STR_50ETF
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
-df_future_c1_daily = get_data.get_mktdata_cf_c1_daily(dt_histvol, end_date, name_code)
-df_futures_all_daily = get_data.get_mktdata_cf_daily(start_date, end_date, name_code)  # daily data of all future contracts
+df_future_c1_daily = get_data.get_mktdata_future_c1_daily(dt_histvol, end_date, name_code)
+df_futures_all_daily = get_data.get_mktdata_future_daily(start_date, end_date, name_code)  # daily data of all future contracts
 
 """ 隐含波动率 """
 df_iv = get_data.get_iv_by_moneyness(dt_histvol,end_date,name_code_option)
