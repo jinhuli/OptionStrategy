@@ -23,11 +23,8 @@ def buy_put(moneyness, maturity1):
         print('Given moneyness not available, choose min strike')
         list_atm_put = optionset.get_deepest_otm_put_list(maturity1)
     atm_put = optionset.select_higher_volume(list_atm_put)
-    # underlying_value = unit_underlying * underlying.mktprice_close() * underlying.multiplier() # 加入alpha的市值
-
-    # underlying_value = unit_underlying * atm_put.underlying_close() * underlying.multiplier() # 50ETF市值
-    # unit = get_option_unit(atm_put, underlying_value)
-    unit = unit_underlying * underlying.multiplier()/atm_put.multiplier()
+    # unit = unit_underlying * underlying.multiplier()/atm_put.multiplier() # 50ETF
+    unit = equal_50etf_unit * underlying.multiplier()/atm_put.multiplier() # 沪深300指数
     order = account.create_trade_order(atm_put, c.LongShort.LONG, unit)
     record = atm_put.execute_order(order, slippage=slippage)
     account.add_record(record, atm_put)
@@ -44,17 +41,22 @@ min_holding = 15
 nbr_maturity = 1
 slippage = 0
 pct_underlying_invest = 1.0
-alpha = 0.1
+
+##############
+alpha = 0.0
+moneyness = -5
+#################
 
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
-df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
+df_option_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_50ETF)
+df_underlying = get_data.get_index_mktdata(start_date, end_date, c.Util.STR_INDEX_300SH_TOTAL_RETURN)
 
 
 calendar = c.Calendar(sorted(df_underlying[c.Util.DT_DATE].unique()))
 pu = PlotUtil()
 
 
-moneyness = -5
+
 df = pd.DataFrame()
 #
 d1 = calendar.firstBusinessDayNextMonth(d1)
@@ -63,6 +65,7 @@ while d2 <= end_date:
     print(d1)
     df_metrics_1 = df_metrics[(df_metrics[c.Util.DT_DATE] >= d1)&(df_metrics[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
     df_underlying_1 = df_underlying[(df_underlying[c.Util.DT_DATE] >= d1)&(df_underlying[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
+    # df_option_underlying_1 = df_option_underlying[(df_option_underlying[c.Util.DT_DATE] >= d1)&(df_option_underlying[c.Util.DT_DATE] <= d2)].reset_index(drop=True)
     df_underlying_with_alpha = df_underlying_1[[c.Util.DT_DATE, c.Util.ID_INSTRUMENT, c.Util.AMT_CLOSE]]
     df_underlying_with_alpha.loc[:, 'r'] = np.log(df_underlying_with_alpha[c.Util.AMT_CLOSE]).diff()
     df_underlying_with_alpha.loc[:, 'r1'] = np.log(df_underlying_with_alpha[c.Util.AMT_CLOSE]).diff() + alpha / 252
@@ -95,7 +98,11 @@ while d2 <= end_date:
     record_underlying = underlying.execute_order(order_underlying, slippage=slippage)
     account.add_record(record_underlying, underlying)
     maturity1 = optionset.select_maturity_date(nbr_maturity=nbr_maturity, min_holding=min_holding)
+    equal_50etf_unit = unit_underlying*underlying.mktprice_close()/optionset.eligible_options[0].underlying_close()
     atm_put,premium = buy_put(moneyness,maturity1)
+
+    # SH300指数
+
     total_premium = premium
     while optionset.has_next():
         """ 最终平仓 """
@@ -137,5 +144,5 @@ while d2 <= end_date:
     d1 = calendar.firstBusinessDayNextMonth(d1)
     d2 = d1 + datetime.timedelta(days=365)
 print(df)
-df.to_csv('../accounts_data/buy_put_rolling_alpha='+str(alpha)+'_m='+str(moneyness)+'-unitmatch.csv')
+df.to_csv('../../accounts_data/buy_put_rolling-sh300-_alpha='+str(alpha)+'_m='+str(moneyness)+'-unitmatch.csv')
 

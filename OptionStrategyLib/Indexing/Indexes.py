@@ -1,4 +1,4 @@
-from data_access.get_data import get_50option_mktdata as option_data,get_comoption_mktdata
+from data_access.get_data import get_50option_mktdata as option_data
 from back_test.model.base_option_set import BaseOptionSet
 from back_test.model.constant import Util, OptionUtil
 import datetime
@@ -6,11 +6,11 @@ import math
 import pandas as pd
 
 
-class SkewIndexing(BaseOptionSet):
+class Indexing():
     def __init__(self, start_date, end_date):
         df_metrics = option_data(start_date, end_date)
-        # df_metrics = get_comoption_mktdata(start_date, end_date,Util.STR_CU)
-        super().__init__(df_metrics, rf=0.03)
+        self.optionset = BaseOptionSet(df_metrics, rf=0.03)
+        self.optionset.init()
 
     def fun_otm_quote(self, df):
         if df[Util.AMT_APPLICABLE_STRIKE] > df['mid_k']:
@@ -79,7 +79,7 @@ class SkewIndexing(BaseOptionSet):
         df[Util.DT_MATURITY] = maturitydt
         ttm = ((maturitydt - eval_date).total_seconds() / 60.0) / (365.0 * 1440)
         df['amt_ttm'] = ttm
-        df['amt_fv'] = math.exp(self.rf * (ttm))
+        df['amt_fv'] = math.exp(self.optionset.rf * (ttm))
         df = df.sort_values(by=Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
         dk = df[Util.AMT_APPLICABLE_STRIKE].diff(periods = 2).dropna() / 2.0
         dk.loc[1] = df.loc[1,Util.AMT_APPLICABLE_STRIKE] - df.loc[0,Util.AMT_APPLICABLE_STRIKE]
@@ -151,14 +151,14 @@ class SkewIndexing(BaseOptionSet):
         return sigma
 
     def calculate(self, eval_date):
-        df_daily_state = self.get_current_state()
-        mdt = self.get_maturities_list()[0]
-        if (mdt - self.eval_date).days <= 5:
-            mdt1 = self.get_maturities_list()[1]
-            mdt2 = self.get_maturities_list()[2]
+        df_daily_state = self.optionset.get_current_state()
+        mdt = self.optionset.get_maturities_list()[0]
+        if (mdt - self.optionset.eval_date).days <= 5:
+            mdt1 = self.optionset.get_maturities_list()[1]
+            mdt2 = self.optionset.get_maturities_list()[2]
         else:
-            mdt1 = self.get_maturities_list()[0]
-            mdt2 = self.get_maturities_list()[1]
+            mdt1 = self.optionset.get_maturities_list()[0]
+            mdt2 = self.optionset.get_maturities_list()[1]
         df_mdt1 = OptionUtil.get_df_by_mdt(df_daily_state, mdt1)
         df_mdt2 = OptionUtil.get_df_by_mdt(df_daily_state, mdt2)
         t_quotes1 = self.get_T_quotes(df_mdt1, eval_date)
@@ -183,42 +183,56 @@ class SkewIndexing(BaseOptionSet):
         vix = 100 * math.sqrt((T1 * sigma1 * w + T2 * sigma2 * (1 - w)) * N365 / N30)
         return vix, skew
 
+    def get_atm_options(self, maturity):
+        list_atm_call, list_atm_put = self.optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0, maturity=maturity)
+        atm_call = self.optionset.select_higher_volume(list_atm_call)
+        atm_put = self.optionset.select_higher_volume(list_atm_put)
+        return atm_call, atm_put
+
+    def get_atm_iv_average(self, maturity):
+        atm_call, atm_put = self.get_atm_options(maturity)
+        iv_call = atm_call.get_implied_vol()
+        iv_put = atm_put.get_implied_vol()
+        iv_avg = (iv_call + iv_put) / 2
+        return iv_avg
+
     def run(self):
         self.df_res = pd.DataFrame()
-        # self.df_data = self.df_data[self.df_data[Util.NBR_MULTIPLIER]==10000]
-        print('=' * 100)
-        print("%10s %20s %20s" % ('date', 'vix', 'skew'))
-        print('-' * 100)
-        while self.current_index < self.nbr_index:
-            eval_date = self.eval_date
+        print('=' * 120)
+        print("%10s %20s %20s %20s %20s %20s" % ('eval_date', 'vix', 'skew', 'iv_htr', 'iv_avg', 'htbr'))
+        print('-' * 120)
+        while self.optionset.current_index < self.optionset.nbr_index:
+            eval_date = self.optionset.eval_date
             try:
+                maturity = self.optionset.select_maturity_date(nbr_maturity, min_holding=min_holding)
+                iv_htr = self.optionset.get_atm_iv_by_htbr(maturity)
+                iv_avg = self.get_atm_iv_average(maturity)
+                htbr = self.optionset.get_htb_rate(maturity)
                 vix, skew = self.calculate(eval_date)
-                # self.df_res.loc[eval_date, 'skew'] = skew
-                # self.df_res.loc[eval_date, 'vix'] = vix
-                # self.df_res.loc[eval_date, '50ETF'] = self.get_underlying_close()
-                if skew is not None and skew > 50 and skew < 200:
-                    self.df_res.loc[eval_date,'skew'] = skew
-                    self.df_res.loc[eval_date,'vix'] = vix
-                    # self.df_res.loc[eval_date,'ir'] = self.implied_rf
-                # self.df_res.loc[eval_date,'skew'] = skew
-                print("%10s %20s %20s %20s" % (eval_date,vix, skew, self.implied_rf))
+                self.df_res.loc[eval_date, 'skew'] = skew
+                self.df_res.loc[eval_date, 'vix'] = vix
+                self.df_res.loc[eval_date, '50ETF'] = self.optionset.get_underlying_close()
+                self.df_res.loc[eval_date, 'htb_rate'] = htbr
+                self.df_res.loc[eval_date, 'iv_atm_htr'] = iv_htr
+                self.df_res.loc[eval_date, 'iv_atm_avg'] = iv_avg
+                print("%10s %20s %20s %20s %20s %20s" % (eval_date,vix, skew, iv_htr,iv_avg,htbr))
 
             except:
                 pass
-            if not self.has_next():break
-            self.next()
+            if not self.optionset.has_next():break
+            self.optionset.next()
 
 
 
 
-# start_date = datetime.date(2015, 1, 11)
-start_date = datetime.date.today() - datetime.timedelta(days=10)
+start_date = datetime.date(2015, 1, 11)
+# start_date = datetime.date.today() - datetime.timedelta(days=10)
 end_date = datetime.date.today()
-skew_indexing = SkewIndexing(start_date, end_date)
-skew_indexing.init()
+nbr_maturity = 0
+min_holding = 8
+skew_indexing = Indexing(start_date, end_date)
 skew_indexing.run()
 res = skew_indexing.df_res.sort_index(ascending=False)
-res.to_csv('../../data/skew.csv')
-# res.to_csv('../../data/vix.csv')
+res.to_csv('../../data/indexes.csv')
 
 

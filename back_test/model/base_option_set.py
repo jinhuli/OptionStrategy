@@ -288,15 +288,20 @@ class BaseOptionSet(AbstractBaseProductSet):
         return spot
 
 
-    def get_T_quotes(self, dt_maturity):
+    def get_T_quotes(self, dt_maturity, cd_option_price):
         df_current = self.get_current_state()
         df_mdt = df_current[df_current[Util.DT_MATURITY] == dt_maturity].reset_index(drop=True)
-        df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
-            columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
-        df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
-            columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
-        # df_call = df_call.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
-        # df_put = df_put.drop_duplicates(Util.AMT_APPLICABLE_STRIKE).reset_index(drop=True)
+        if cd_option_price == Util.CD_CLOSE_VOLUME_WEIGHTED:
+            df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
+                columns={Util.AMT_CLOSE_VOLUME_WEIGHTED: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
+            df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
+                columns={Util.AMT_CLOSE_VOLUME_WEIGHTED: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
+        else:
+            df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
+                columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
+            df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
+                columns={Util.AMT_CLOSE: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
+
         df = pd.merge(df_call[[Util.NAME_CONTRACT_MONTH, Util.DT_DATE, Util.AMT_CALL_QUOTE, Util.AMT_APPLICABLE_STRIKE,
                                Util.AMT_STRIKE,
                                Util.DT_MATURITY, Util.AMT_UNDERLYING_CLOSE, Util.AMT_TRADING_VOLUME_CALL]],
@@ -314,8 +319,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         return iv
 
     #平值隐含波动率根据平价公式与HTB RATE调整，认沽与认购隐含波动率相同。
-    def get_atm_iv_by_htbr(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_atm_iv_by_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -325,8 +330,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         return iv
 
     # 隐含波动率曲线（OTM）
-    def get_otm_implied_vol_curve(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_otm_implied_vol_curve(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -364,16 +369,16 @@ class BaseOptionSet(AbstractBaseProductSet):
         return iv_vw
 
 
-    def get_implied_vol_curves(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_implied_vol_curves(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL,
                         Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_implied_vol_curves_htbr(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_implied_vol_curves_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -387,20 +392,20 @@ class BaseOptionSet(AbstractBaseProductSet):
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_TRADING_VOLUME_CALL,
                         Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT_BY_HTBR, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_call_implied_vol_curve(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_call_implied_vol_curve(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
                         Util.DT_MATURITY, Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL]]
 
-    def get_put_implied_vol_curve(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_put_implied_vol_curve(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
                         Util.DT_MATURITY, Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_call_implied_vol_curve_htbr(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_call_implied_vol_curve_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -411,8 +416,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_HTB_RATE, Util.AMT_TRADING_VOLUME_CALL]]
 
-    def get_put_implied_vol_curve_htbr(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_put_implied_vol_curve_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]
@@ -459,8 +464,8 @@ class BaseOptionSet(AbstractBaseProductSet):
             iv = pricing_engine.estimate_vol(P)
         return iv
 
-    def get_htb_rate(self, dt_maturity):
-        t_qupte = self.get_T_quotes(dt_maturity)
+    def get_htb_rate(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+        t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
         atm_series = t_qupte.loc[t_qupte['diff'].idxmin()]

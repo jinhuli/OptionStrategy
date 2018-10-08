@@ -87,6 +87,10 @@ def table_index_mktdata_intraday():
 def table_option_mktdata_intraday():
     return Table('option_mktdata_intraday', metadata_intraday, autoload=True)
 
+def table_option_mktdata_intraday_gc():
+    return Table('option_mktdata_intraday', metadata_gc, autoload=True)
+
+
 def table_option_metrics():
     return Table('option_metrics', metadata_metrics, autoload=True)
 

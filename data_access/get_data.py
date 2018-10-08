@@ -38,7 +38,7 @@ def get_50option_mktdata(start_date, end_date):
                                               Option_mkt.pct_implied_vol
                                               ) \
         .filter(Option_mkt.dt_date >= start_date).filter(Option_mkt.dt_date <= end_date) \
-        .filter(Option_mkt.datasource == 'wind')
+        .filter(Option_mkt.datasource == 'wind').filter(Option_mkt.name_code == '50etf')
     query_option = admin.session_mktdata().query(options.id_instrument, options.cd_option_type,
                                                  options.amt_strike, options.name_contract_month,
                                                  options.dt_maturity, options.nbr_multiplier) \
@@ -57,7 +57,7 @@ def get_50option_mktdata(start_date, end_date):
 
 
 def get_50option_intraday(start_date, end_date):
-    OptionIntra = admin.table_option_mktdata_intraday()
+    OptionIntra = admin.table_option_mktdata_intraday_gc()
     query = admin.session_intraday().query(OptionIntra.c.dt_datetime,
                                            OptionIntra.c.dt_date,
                                            OptionIntra.c.id_instrument,
@@ -66,7 +66,17 @@ def get_50option_intraday(start_date, end_date):
                                            OptionIntra.c.amt_trading_value) \
         .filter(OptionIntra.c.dt_date >= start_date).filter(OptionIntra.c.dt_date <= end_date)
     df = pd.read_sql(query.statement, query.session.bind)
-    return df
+    IndexIntra = admin.table_index_mktdata_intraday()
+    query1 = admin.session_intraday().query(IndexIntra.c.dt_datetime,
+                                            IndexIntra.c.dt_date,
+                                            IndexIntra.c.id_instrument,
+                                            IndexIntra.c.amt_close)\
+        .filter(IndexIntra.c.dt_date >= start_date).filter(IndexIntra.c.dt_date <= end_date)\
+        .filter(IndexIntra.c.id_instrument == 'index_50etf')
+    df_etf = pd.read_sql(query1.statement, query1.session.bind)
+    df_etf = df_etf[[c.Util.DT_DATETIME, c.Util.ID_INSTRUMENT, c.Util.AMT_CLOSE]].rename(columns={'amt_close': c.Util.AMT_UNDERLYING_CLOSE})
+    df_option_metrics = df.join(df_etf.set_index('dt_datetime'), how='left', on='dt_datetime')
+    return df_option_metrics
 
 
 def get_50option_minute_with_underlying(start_date, end_date):
@@ -190,7 +200,7 @@ def get_future_mktdata(start_date, end_date, name_code):
         df = df_mkt.join(df_c.set_index('id_instrument'), how='left', on='id_instrument')
     return df
 
-def get_mktdata_future_c1_daily(start_date, end_date, name_code):
+def get_gc_future_c1_daily(start_date, end_date, name_code):
     table_cf = admin.table_futures_mktdata_gc()
     query = admin.session_gc().query(table_cf.c.dt_date, table_cf.c.id_instrument,
                                           table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_high,
@@ -260,21 +270,21 @@ def get_dzqh_cf_c1_daily(start_date, end_date, name_code):
 
 
 
-def get_mktdata_cf_c1_daily(start_date, end_date, name_code):
+def get_mktdata_future_c1_daily(start_date, end_date, name_code):
     table_cf = admin.table_futures_mktdata()
     query = admin.session_mktdata().query(table_cf.c.dt_date, table_cf.c.id_instrument,
                                           table_cf.c.amt_open, table_cf.c.amt_close, table_cf.c.amt_high,
                                           table_cf.c.amt_low,
                                           table_cf.c.amt_trading_volume). \
         filter((table_cf.c.dt_date >= start_date) & (table_cf.c.dt_date <= end_date)). \
-        filter(table_cf.c.name_code == name_code)
+        filter(table_cf.c.name_code == name_code).filter(table_cf.c.flag_night != 1)
     df = pd.read_sql(query.statement, query.session.bind)
     df = df[df['id_instrument'].str.contains("_")]
     df = c.FutureUtil.get_futures_daily_c1(df)
     return df
 
 
-def get_mktdata_cf_daily(start_date, end_date, name_code):
+def get_mktdata_future_daily(start_date, end_date, name_code):
     table_cf = admin.table_futures_mktdata()
     table_contracts = admin.table_future_contracts()
     query = admin.session_mktdata().query(table_cf.c.dt_date, table_cf.c.id_instrument,

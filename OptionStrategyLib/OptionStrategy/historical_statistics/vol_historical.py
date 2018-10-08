@@ -13,10 +13,11 @@ end_date = datetime.date.today()
 dt_histvol = start_date - datetime.timedelta(days=40)
 # min_holding = 18
 
-""" commodity option """
+
 name_code = name_code_option = c.Util.STR_CU
-df_metrics = get_data.get_comoption_mktdata(start_date, end_date,name_code)
+# df_metrics = get_data.get_comoption_mktdata(start_date, end_date,name_code)
 df_future_c1_daily = get_data.get_mktdata_future_c1_daily(dt_histvol, end_date, name_code)
+# df_future_c1_daily = get_data.get_index_mktdata(dt_histvol, end_date, name_code)
 
 
 """ 历史波动率 """
@@ -36,4 +37,4 @@ df['hist_vol_90'] = vol_90
 df = df.dropna()
 df = df.sort_values(c.Util.DT_DATE,ascending=False)
 print(df)
-df.to_csv('../../../data/cu_histvol.csv')
+df.to_csv('../../../data/'+name_code+'_histvol.csv')

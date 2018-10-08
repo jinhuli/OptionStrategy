@@ -4,6 +4,7 @@ from regular_reports.report_util import *
 from data_access import get_data
 from back_test.model import constant as c
 from back_test.model.base_option_set import BaseOptionSet
+from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVolatilityModels as Histvol
 
 
 def iv_at_the_money(dt_date, dt_last, name_code):
@@ -186,8 +187,8 @@ def fun_report_namecode(namecode):
 
 
 # Eval Settings and Data
-dt_date = datetime.date(2018, 9, 7)  # Set as Friday
-dt_yesterday = datetime.date(2018, 8, 31) # last friday
+dt_date = datetime.date(2018, 9, 21)  # Set as Friday
+dt_yesterday = datetime.date(2018, 9, 14) # last friday
 
 # Eval Settings and Data
 
@@ -302,13 +303,16 @@ for namecode in ['m', 'sr']:
 
 for namecode in['m','sr']:
     m_id_c1 = dict_core_underlying[namecode]
-    m_df_future_c1 = get_mktdata_future_c1(dt_start, dt_date, namecode)
-    m_df_future = get_mktdata_future(admin.table_futures_mktdata(), m_id_c1, dt_yesterday, dt_date)
+    # m_df_future_c1 = get_mktdata_future_c1(dt_start, dt_date, namecode)
+    m_df_future_c1 = get_data.get_future_c1_by_option_daily(dt_start, dt_date, namecode, min_holding=5)
+    # m_df_future = get_mktdata_future(admin.table_futures_mktdata(), m_id_c1, dt_yesterday, dt_date)
     m_dict_iv_call, m_dict_iv_put = iv_at_the_money(dt_date, dt_yesterday, namecode)
     m_iv_call_today = m_dict_iv_call[dt_date]
     m_iv_put_today = m_dict_iv_put[dt_date]
     m_iv_call_yesterday = m_dict_iv_call[dt_yesterday]
     m_iv_put_yesterday = m_dict_iv_put[dt_yesterday]
+    m_df_future_c1['hist_60-1'] = calculate_histvol(m_df_future_c1['amt_close'], 60)
+    m_df_future_c1['hist_60-2'] = Histvol.hist_vol(m_df_future_c1['amt_close'], 60)
     m_hisvol_1M = list(calculate_histvol(m_df_future_c1['amt_close'], 20))[-1] * 100
     m_hisvol_3M = list(calculate_histvol(m_df_future_c1['amt_close'], 60))[-1] * 100
     dict_iv = iv_htbr(dt_date, dt_yesterday, namecode)
