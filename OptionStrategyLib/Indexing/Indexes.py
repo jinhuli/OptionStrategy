@@ -4,6 +4,7 @@ from back_test.model.constant import Util, OptionUtil
 import datetime
 import math
 import pandas as pd
+import Utilities.admin_write_util as admin
 
 
 class Indexing():
@@ -201,6 +202,7 @@ class Indexing():
         print('=' * 120)
         print("%10s %20s %20s %20s %20s %20s" % ('eval_date', 'vix', 'skew', 'iv_htr', 'iv_avg', 'htbr'))
         print('-' * 120)
+        table_iv = admin.table_implied_volatilities()
         while self.optionset.current_index < self.optionset.nbr_index:
             eval_date = self.optionset.eval_date
             try:
@@ -216,7 +218,29 @@ class Indexing():
                 self.df_res.loc[eval_date, 'iv_atm_htr'] = iv_htr
                 self.df_res.loc[eval_date, 'iv_atm_avg'] = iv_avg
                 print("%10s %20s %20s %20s %20s %20s" % (eval_date,vix, skew, iv_htr,iv_avg,htbr))
-
+                res = {
+                    'dt_date': self.optionset.eval_date,
+                    'name_code': Util.STR_50ETF,
+                    'id_underlying': 'index_50etf',
+                    'cd_option_type': 'ivix',
+                    'cd_mdt_selection': 'hp_8_1st',
+                    'cd_atm_criterion': 'nearest_strike',
+                    'nbr_moneyness': 0,
+                    'cd_source': 'quantlib',
+                    'id_instrument': None,
+                    'dt_maturity': maturity,
+                    'pct_implied_vol': vix/100.0,
+                    'amt_close': None,
+                    'amt_strike': None,
+                    'amt_applicable_strike': None,
+                    'amt_underlying_close': None
+                }
+                try:
+                    admin.conn_metrics().execute(table_iv.insert(), res)
+                    print('inserted into data base succefully ', res['dt_date'])
+                except Exception as e:
+                    print(e)
+                    pass
             except:
                 pass
             if not self.optionset.has_next():break
