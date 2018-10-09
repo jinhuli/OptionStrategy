@@ -23,14 +23,14 @@ class BaseInstrument(BaseProduct):
 
     """ Long position only in base instrument. """
 
-    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+    def execute_order(self, order: Order, slippage=0,slippage_rate=0.0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
         if order is None: return
-        if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
-            order.trade_all_unit(slippage)
-        elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
-            order.trade_with_current_volume(int(self.trading_volume()), slippage)
-        else:
-            return
+        # if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
+        order.trade_all_unit(slippage=slippage,slippage_rate=slippage_rate)
+        # elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
+        #     order.trade_with_current_volume(int(self.trading_volume()), slippage)
+        # else:
+        #     return
         execution_record: pd.Series = order.execution_res
         # calculate margin requirement
         margin_requirement = 0.0

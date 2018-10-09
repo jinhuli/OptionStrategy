@@ -71,6 +71,11 @@ class ExecuteType(Enum):
     EXECUTE_WITH_MAX_VOLUME = 1
 
 
+class CdTradePrice(Enum):
+    CLOSE = 0
+    VOLUME_WEIGHTED = 1
+    OPEN = 2
+
 class OptionUtil:
     @staticmethod
     def get_option_util_class(name_code):
@@ -861,6 +866,7 @@ class Util:
     TRADE_MARGIN_CAPITAL = 'trade_margin_capital'
     TRADE_MARKET_VALUE = 'trade_market_value'  # 头寸市值
     TRADE_BOOK_VALUE = 'trade_book_value'  # 头寸规模（含多空符号），例如，空一手豆粕（3000点，乘数10）得到头寸规模为-30000，而建仓时点头寸市值为0。
+    ABS_TRADE_BOOK_VALUE = 'abs_trade_book_value'
     TRADE_LONG_SHORT = 'long_short'
     AVERAGE_POSITION_COST = 'average_position_cost'  # 历史多次交易同一品种的平均成本(总头寸规模绝对值/unit)
     TRADE_REALIZED_PNL = 'realized_pnl'
@@ -879,6 +885,8 @@ class Util:
     MARGIN_UNREALIZED_PNL = 'margin_unrealized_pnl'
     NONMARGIN_UNREALIZED_PNL = 'nonmargin_unrealized_pnl'
     PORTFOLIO_DELTA = 'portfolio_delta'
+    TURNOVER = 'turnover'
+    DAILY_EXCECUTED_AMOUNT = 'daily_executed_amount' # abs value
     BILLION = 1000000000.0
     TRADE_BOOK_COLUMN_LIST = [DT_DATE, TRADE_LONG_SHORT, TRADE_UNIT,
                               LAST_PRICE, TRADE_MARGIN_CAPITAL,
@@ -890,7 +898,8 @@ class Util:
                        PORTFOLIO_VALUE, PORTFOLIO_NPV, PORTFOLIO_UNREALIZED_PNL,
                        PORTFOLIO_LEVERAGE, TRADE_REALIZED_PNL,
                        PORTFOLIO_SHORT_POSITION_SCALE, PORTFOLIO_LONG_POSITION_SCALE,
-                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL,PORTFOLIO_DELTA
+                       MARGIN_UNREALIZED_PNL, NONMARGIN_UNREALIZED_PNL,PORTFOLIO_DELTA,
+                       DAILY_EXCECUTED_AMOUNT,TURNOVER
                        ]
     DICT_FUTURE_MARGIN_RATE = {  # 合约价值的百分比
         'm': 0.05,
@@ -913,10 +922,10 @@ class Util:
         "cu": 0.0,
     }
     DICT_OPTION_TRANSACTION_FEE = {  # 元/手
-        "50etf": 0.0,
-        "m": 0.0,
-        "sr": 0.0,
-        "cu": 0.0,
+        "50etf": 5.0,
+        "m": 5.0,
+        "sr": 5.0,
+        "cu": 5.0,
     }
     DICT_TRANSACTION_FEE_RATE = {  # 百分比
         'm':None,

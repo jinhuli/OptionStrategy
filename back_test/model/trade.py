@@ -113,11 +113,14 @@ class Order(object):
     def uuid(self) -> uuid:
         return self._uuid
 
-    def trade_all_unit(self, slippage: int = 1) -> None:
+    def trade_all_unit(self, slippage, slippage_rate) -> None:
         executed_units = self.trade_unit
         name_code = self.id_instrument.split("_")[0]
         # buy at slippage tick size higher and sell lower.
-        if slippage > 0:
+        if slippage_rate > 0:
+            executed_price = self.trade_price + self.long_short.value * slippage_rate * self.trade_price
+            slippage_cost = 0.0  # 滑点费用暂不在交易手续费中统计。
+        elif slippage > 0:
             executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
             # slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
             slippage_cost = 0.0  # 滑点费用暂不在交易手续费中统计。
@@ -142,37 +145,37 @@ class Order(object):
         self.execution_res = excution_res
 
 
-    def trade_with_current_volume(self,
-                                  max_volume: int,
-                                  slippage: int = 1) -> None:
-        if self.trade_unit < max_volume:
-            executed_units = self.trade_unit
-            self.status = OrderStatus.COMPLETE
-            self.pending_unit = 0.0
-        else:
-            executed_units = max_volume
-            self.status = OrderStatus.PROCESSING
-            self.pending_unit = self.trade_unit - max_volume
-            # self.pending_order = Order(self.dt_trade,self.id_instrument,self.trade_type,
-            #                            self.pending_unit,None,None)
-
-        name_code = self.id_instrument.split("_")[0]
-        # buy at slippage tick size higher and sell lower.
-        executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
-        # transaction cost will be added in base_product
-        slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
-        excution_res = pd.Series(
-            {
-                Util.UUID: uuid.uuid4(),
-                Util.DT_TRADE: self.dt_trade,
-                Util.ID_INSTRUMENT: self.id_instrument,
-                Util.TRADE_LONG_SHORT: self.long_short,
-                Util.TRADE_UNIT: executed_units,
-                Util.TRADE_PRICE: executed_price,
-                # Util.TRADE_TYPE: self.trade_type,
-                Util.TIME_SIGNAL: self.time_signal,
-                Util.TRANSACTION_COST: slippage_cost
-            }
-        )
-
-        self.execution_res = excution_res
+    # def trade_with_current_volume(self,
+    #                               max_volume: int,
+    #                               slippage: int = 0) -> None:
+    #     if self.trade_unit < max_volume:
+    #         executed_units = self.trade_unit
+    #         self.status = OrderStatus.COMPLETE
+    #         self.pending_unit = 0.0
+    #     else:
+    #         executed_units = max_volume
+    #         self.status = OrderStatus.PROCESSING
+    #         self.pending_unit = self.trade_unit - max_volume
+    #         # self.pending_order = Order(self.dt_trade,self.id_instrument,self.trade_type,
+    #         #                            self.pending_unit,None,None)
+    #
+    #     name_code = self.id_instrument.split("_")[0]
+    #     # buy at slippage tick size higher and sell lower.
+    #     executed_price = self.trade_price + self.long_short.value * slippage * Util.DICT_TICK_SIZE[name_code]
+    #     # transaction cost will be added in base_product
+    #     slippage_cost = slippage * Util.DICT_TICK_SIZE[name_code] * executed_units
+    #     excution_res = pd.Series(
+    #         {
+    #             Util.UUID: uuid.uuid4(),
+    #             Util.DT_TRADE: self.dt_trade,
+    #             Util.ID_INSTRUMENT: self.id_instrument,
+    #             Util.TRADE_LONG_SHORT: self.long_short,
+    #             Util.TRADE_UNIT: executed_units,
+    #             Util.TRADE_PRICE: executed_price,
+    #             # Util.TRADE_TYPE: self.trade_type,
+    #             Util.TIME_SIGNAL: self.time_signal,
+    #             Util.TRANSACTION_COST: slippage_cost
+    #         }
+    #     )
+    #
+    #     self.execution_res = excution_res

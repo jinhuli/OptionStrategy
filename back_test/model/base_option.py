@@ -338,14 +338,14 @@ class BaseOption(BaseProduct):
             return int(self.id_underlying()[-2:]) in Util.MAIN_CONTRACT_159
         return True
 
-    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS) -> pd.Series:
+    def execute_order(self, order: Order, slippage=0,slippage_rate=0.0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS) -> pd.Series:
         if order is None or order.trade_unit==0: return
-        if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
-            order.trade_all_unit(slippage)
-        elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
-            order.trade_with_current_volume(int(self.trading_volume()), slippage)
-        else:
-            return
+        # if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
+        order.trade_all_unit(slippage=slippage,slippage_rate=slippage_rate)
+        # elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
+        #     order.trade_with_current_volume(int(self.trading_volume()), slippage)
+        # else:
+        #     return
         execution_record: pd.Series = order.execution_res
         if order.long_short == LongShort.LONG:
             # 无保证金交易的情况下，trade_market_value有待从现金账户中全部扣除。

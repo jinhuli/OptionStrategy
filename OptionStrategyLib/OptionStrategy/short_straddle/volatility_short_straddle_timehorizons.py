@@ -24,19 +24,14 @@ def close_signal(dt_date,option_maturity, df_status, horizon):
         return close_signal_tangent(dt_date, df_status, horizon)
 
 def open_signal_tangent(dt_date, df_status, horizon):
-
-    # if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
-    # if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
-    if df_status.loc[dt_date,'diff_'+str(horizon)] <= 0:
+    if df_status.loc[dt_date,'last_diff_'+str(horizon)] <= 0:
         # print('1.open', dt_date)
         return True
     else:
         return False
 
 def close_signal_tangent(dt_date, df_status, horizon):
-    # if df_status.loc[dt_date,'last_diff_5'] > 0:
-    # if df_status.loc[dt_date,'diff_5'] > 0:
-    if df_status.loc[dt_date,'diff_'+str(horizon)] > 0:
+    if df_status.loc[dt_date,'last_diff_'+str(horizon)] > 0:
         # print('2.close', dt_date)
         return True
     else:
@@ -72,7 +67,7 @@ min_holding = 20 # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1 # 期权notional倍数
-horizons = [5,10,15,20]
+cd_trade_price=c.CdTradePrice.VOLUME_WEIGHTED
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -107,7 +102,7 @@ df_c_all = df_futures_all_daily[df_futures_all_daily[c.Util.DT_DATE] >= d].reset
 
 df_sharpe = pd.DataFrame()
 df_return = pd.DataFrame()
-for h_open in [5,10,15,20]:
+for h_open in [3,5,10,15,20]:
     sharpes = {}
     returns = {}
     for h_close in [3,5,10,15,20]:
@@ -116,8 +111,6 @@ for h_open in [5,10,15,20]:
         d1 = optionset.eval_date
         hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY,df_c1_daily=df_c1,df_futures_all_daily=df_c_all)
         hedging.init()
-        print(optionset.eval_date, hedging.eval_date)
-
         account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
         empty_position = True
         unit_p = None
@@ -126,7 +119,7 @@ for h_open in [5,10,15,20]:
         maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
         id_future = hedging.current_state[c.Util.ID_FUTURE]
         idx_hedge = 0
-        print(id_future)
+        flag_hedge = False
         while optionset.eval_date <= end_date:
             if account.cash <=0 : break
             if maturity1 > end_date: # Final close out all.
@@ -157,12 +150,15 @@ for h_open in [5,10,15,20]:
                             long_short = c.LongShort.SHORT
                         else:
                             long_short = c.LongShort.LONG
-                        order = Order(holding.eval_date, hedging.name_code(), trade_unit, df[c.Util.AMT_CLOSE].values[0],
+                        trade_price = df[c.Util.AMT_TRADING_VALUE].values[0] / df[c.Util.AMT_TRADING_VOLUME].values[
+                            0] / hedging.multiplier()
+                        order = Order(holding.eval_date, hedging.name_code(), trade_unit, trade_price,
                                       holding.eval_datetime, long_short)
                         record = hedging.execute_order(order,slippage=slippage)
                         account.add_record(record, holding)
                 hedging.synthetic_unit = 0
                 id_future = hedging.current_state[c.Util.ID_FUTURE]
+                flag_hedge = True
 
             # 触发平仓信号
             if not empty_position:
@@ -170,7 +166,7 @@ for h_open in [5,10,15,20]:
                 moneyness_call = optionset.get_option_moneyness(atm_call)
                 if close_signal(optionset.eval_date,maturity1,df_iv_stats,h_close):
                     for option in account.dict_holding.values():
-                        order = account.create_close_order(option)
+                        order = account.create_close_order(option,cd_trade_price=cd_trade_price)
                         record = option.execute_order(order,slippage=slippage)
                         account.add_record(record, option)
                         hedging.synthetic_unit = 0
@@ -189,8 +185,8 @@ for h_open in [5,10,15,20]:
                 hedging.amt_option = 1 / 1000  # 50ETF与IH点数之比
                 unit_c = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier())*m
                 unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier())*m
-                order_c = account.create_trade_order(atm_call, long_short, unit_c)
-                order_p = account.create_trade_order(atm_put, long_short, unit_p)
+                order_c = account.create_trade_order(atm_call, long_short, unit_c,cd_trade_price=cd_trade_price)
+                order_p = account.create_trade_order(atm_put, long_short, unit_p,cd_trade_price=cd_trade_price)
                 record_call = atm_call.execute_order(order_c, slippage=slippage)
                 record_put = atm_put.execute_order(order_p, slippage=slippage)
                 account.add_record(record_call, atm_call)
@@ -212,9 +208,10 @@ for h_open in [5,10,15,20]:
                     long_short = c.LongShort.LONG
                 else:
                     long_short = c.LongShort.SHORT
-                order_u = account.create_trade_order(hedging, long_short, hedge_unit)
+                order_u = account.create_trade_order(hedging, long_short, hedge_unit,cd_trade_price=cd_trade_price)
                 record_u = hedging.execute_order(order_u, slippage=slippage)
                 account.add_record(record_u, hedging)
+                flag_hedge = False
 
             idx_hedge += 1
             account.daily_accounting(optionset.eval_date)
@@ -225,7 +222,6 @@ for h_open in [5,10,15,20]:
             optionset.next()
             hedging.next()
 
-        df_records = pd.DataFrame(account.list_records)
         res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
         print(res)
         sharpe = res['夏普比率']

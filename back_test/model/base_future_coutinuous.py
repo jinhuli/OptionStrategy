@@ -87,16 +87,15 @@ class BaseFutureCoutinuous(BaseProduct):
             vwap = df_today['volume_price'].sum() / df_today[Util.AMT_TRADING_VOLUME].sum()
             return vwap
 
-    # TODO: 主力连续的仓换月周/日；移仓换月成本
 
-    def execute_order(self, order: Order, slippage=0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
+    def execute_order(self, order: Order, slippage=0,slippage_rate=0.0, execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
         if order is None or order.trade_unit == 0: return
-        if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
-            order.trade_all_unit(slippage)
-        elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
-            order.trade_with_current_volume(int(self.trading_volume()), slippage)
-        else:
-            return
+        # if execute_type == ExecuteType.EXECUTE_ALL_UNITS:
+        order.trade_all_unit(slippage=slippage,slippage_rate=slippage_rate)
+        # elif execute_type == ExecuteType.EXECUTE_WITH_MAX_VOLUME:
+        #     order.trade_with_current_volume(int(self.trading_volume()), slippage,slippage_rate)
+        # else:
+        #     return
         execution_record: pd.Series = order.execution_res
         # calculate margin requirement
         margin_requirement = self.get_initial_margin(order.long_short) * execution_record[Util.TRADE_UNIT]
