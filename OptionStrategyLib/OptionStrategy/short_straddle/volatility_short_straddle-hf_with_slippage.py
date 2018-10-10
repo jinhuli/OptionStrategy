@@ -18,21 +18,21 @@ def open_signal(dt_date, df_status):
 
 def close_signal(dt_date,option_maturity, df_status):
     if dt_date >= option_maturity - datetime.timedelta(days=5):
-        print('3.到期', dt_date)
+        # print('3.到期', dt_date)
         return True
     else:
         return close_signal_tangent(dt_date, df_status)
 
 def write_signal_tangent(dt_date, df_status):
     if df_status.loc[dt_date,'last_diff_5'] <= 0:
-        print('1.open', dt_date)
+        # print('1.open', dt_date)
         return True
     else:
         return False
 
 def close_signal_tangent(dt_date, df_status):
     if df_status.loc[dt_date,'last_diff_5'] > 0:
-        print('2.close', dt_date)
+        # print('2.close', dt_date)
         return True
     else:
         return False
@@ -64,7 +64,6 @@ init_fund = c.Util.BILLION
 slippage_rate = 1.5/1000
 m = 1 # 期权notional倍数
 cd_trade_price=c.CdTradePrice.VOLUME_WEIGHTED
-hedge_frequencies = [1,2,3,4,5]
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -99,8 +98,9 @@ df_metrics = df_metrics[df_metrics[c.Util.DT_DATE] >= d].reset_index(drop=True)
 df_c1 = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= d].reset_index(drop=True)
 df_c_all = df_futures_all_daily[df_futures_all_daily[c.Util.DT_DATE] >= d].reset_index(drop=True)
 
-sharpes = {}
-for hf in [2]:
+df_hedge = pd.DataFrame()
+for d_critirian in np.arange(0.0,0.25,0.05):
+    last_delta = 0.0
     optionset = BaseOptionSet(df_metrics)
     optionset.init()
     d1 = optionset.eval_date
@@ -114,12 +114,9 @@ for hf in [2]:
     empty_position = True
     unit_p = None
     unit_c = None
-    atm_strike = None
     buy_write = c.BuyWrite.WRITE
     maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
     id_future = hedging.current_state[c.Util.ID_FUTURE]
-    idx_hedge = 0
-    flag_hedge = False
     print(id_future)
     while optionset.eval_date <= end_date:
         if account.cash <=0 : break
@@ -157,8 +154,8 @@ for hf in [2]:
                     record = hedging.execute_order(order,slippage_rate=slippage_rate)
                     account.add_record(record, holding)
             hedging.synthetic_unit = 0
+            last_delta = 0.0
             id_future = hedging.current_state[c.Util.ID_FUTURE]
-            flag_hedge = True
 
         # 触发平仓信号：平仓所有头寸，包括hedge position
         if not empty_position:
@@ -170,6 +167,7 @@ for hf in [2]:
                     record = option.execute_order(order,slippage_rate=slippage_rate)
                     account.add_record(record, option)
                     hedging.synthetic_unit = 0
+                    last_delta = 0.0
                 empty_position = True
                 continue
 
@@ -196,24 +194,24 @@ for hf in [2]:
             empty_position = False
 
         # Delta hedge
-        if not empty_position and (idx_hedge%hf==0 or flag_hedge):
-            print(optionset.eval_date,idx_hedge)
+        if not empty_position:
             iv_htbr = optionset.get_iv_by_otm_iv_curve(dt_maturity=maturity1, strike=atm_call.applicable_strike())
             delta_call = atm_call.get_delta(iv_htbr)
             delta_put = atm_put.get_delta(iv_htbr)
             options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
-            hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta,  buy_write)
-            hedging.synthetic_unit += - hedge_unit
-            if hedge_unit > 0:
-                long_short = c.LongShort.LONG
-            else:
-                long_short = c.LongShort.SHORT
-            order_u = account.create_trade_order(hedging, long_short, hedge_unit,cd_trade_price=cd_trade_price)
-            record_u = hedging.execute_order(order_u, slippage_rate=slippage_rate)
-            account.add_record(record_u, hedging)
-            flag_hedge = False
+            delta = delta_call+delta_put
+            if abs(delta-last_delta)>d_critirian:
+                last_delta = delta
+                hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta,  buy_write)
+                hedging.synthetic_unit += - hedge_unit
+                if hedge_unit > 0:
+                    long_short = c.LongShort.LONG
+                else:
+                    long_short = c.LongShort.SHORT
+                order_u = account.create_trade_order(hedging, long_short, hedge_unit,cd_trade_price=cd_trade_price)
+                record_u = hedging.execute_order(order_u, slippage_rate=slippage_rate)
+                account.add_record(record_u, hedging)
 
-        idx_hedge += 1
         account.daily_accounting(optionset.eval_date)
         total_liquid_asset = account.cash + account.get_portfolio_margin_capital()
         # print(optionset.eval_date,hedging.eval_date,
@@ -223,12 +221,8 @@ for hf in [2]:
         hedging.next()
 
     res = account.analysis()
-    sharpes.update({str(hf): res['夏普比率']})
-    print(res)
-    dates = list(account.account.index)
-    npv = list(account.account[c.Util.PORTFOLIO_NPV])
-    pu.plot_line_chart(dates, [npv], ['npv'])
+    # sharpes.update({str(d_critirian): res['夏普比率']})
+    df_hedge['delta exposure = '+str(d_critirian)] = res
 
-    plt.show()
-df_sharpe = pd.DataFrame(sharpes)
-df_sharpe.to_csv('../../accounts_data/short_straddle_hedge_frequencies-sharpe.csv')
+print(df_hedge)
+df_hedge.to_csv('../../accounts_data/short_straddle_hedge_frequencies-sharpe.csv')

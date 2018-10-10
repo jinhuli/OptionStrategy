@@ -297,7 +297,7 @@ def LLKSR_analysis(dt_start, series_iv, df_future_c1_daily, name_code):
 
 """"""
 
-end_date = datetime.date(2018, 9, 28)
+end_date = datetime.date(2018, 10, 9)
 last_week = datetime.date(2018, 9, 21)
 start_date = last_week
 # start_date = datetime.date(2017, 4, 1)
@@ -309,6 +309,7 @@ df_res = pd.DataFrame()
 pu = PlotUtil()
 
 """ 白糖 """
+print('SR')
 name_code = c.Util.STR_SR
 core_id = 'sr_1901'
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
@@ -338,6 +339,8 @@ print(end_date)
 trade_volume(end_date, last_week, df_metrics, name_code, core_id)
 
 """ 豆粕 """
+print('M')
+
 name_code = c.Util.STR_M
 core_id = 'm_1901'
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
@@ -368,6 +371,8 @@ trade_volume(end_date, last_week, df_metrics, name_code, core_id)
 
 
 """ 铜 """
+print('CU')
+
 name_code = c.Util.STR_CU
 core_id = 'cu_1901'
 df_metrics = get_data.get_comoption_mktdata(start_date, end_date, name_code)
@@ -382,7 +387,7 @@ dt_2 = last_week - datetime.timedelta(days=14)
 df_res = pcr(d1, end_date, name_code, df_res)
 print('2.PCR Finished')
 """ 隐含波动率 """
-df_res = implied_vol(df_metrics, df_res, [dt_2, dt_1, last_week, end_date],name_code)
+# df_res = implied_vol(df_metrics, df_res, [dt_2, dt_1, last_week, end_date],name_code)
 df_res = df_res.reset_index(drop=True)
 print('4.隐含波动率 Finished')
 """ 历史波动率 """
@@ -392,9 +397,9 @@ print('3.历史波动率 Finished')
 df_res.to_csv('../data/' + name_code + '_data_report.csv')
 print(df_res)
 """当日成交持仓数据"""
-end_date = df_metrics[c.Util.DT_DATE].values[-1]
-print(end_date)
-trade_volume(end_date, last_week, df_metrics, name_code, core_id)
+# end_date = df_metrics[c.Util.DT_DATE].values[-1]
+# print(end_date)
+# trade_volume(end_date, last_week, df_metrics, name_code, core_id)
 
 # """ CU 历史波动率"""
 # name_code = c.Util.STR_CU
