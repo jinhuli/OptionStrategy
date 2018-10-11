@@ -11,7 +11,7 @@ from Utilities import admin_write_util as admin
 w.start()
 
 # date = datetime.date.today()
-date = datetime.date(2018,10,8)
+date = datetime.date(2018,9,7)
 
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
@@ -451,22 +451,22 @@ else:
     print('czce option -- already exists')
 
 # equity index futures
-res = futures_mktdata_daily.select((futures_mktdata_daily.c.dt_date == dt_date)
-                                   & (futures_mktdata_daily.c.cd_exchange == 'cfe')).execute()
-if res.rowcount == 0:
-    df = dc.table_future_contracts().get_future_contract_ids(dt_date)
-    for (idx_oc, row) in df.iterrows():
-        # print(row)
-        db_data = dc.table_futures().wind_index_future_daily(dt_date, row['id_instrument'], row['windcode'])
-        # print(db_data)
-        try:
-            conn.execute(futures_mktdata_daily.insert(), db_data)
-            print(row)
-            print('equity index futures -- inserted into data base succefully')
-        except Exception as e:
-            print(e)
-else:
-    print('equity index futures -- already exists')
+# res = futures_mktdata_daily.select((futures_mktdata_daily.c.dt_date == dt_date)
+#                                    & (futures_mktdata_daily.c.cd_exchange == 'cfe')).execute()
+# if res.rowcount == 0:
+df = dc.table_future_contracts().get_future_contract_ids(dt_date)
+for (idx_oc, row) in df.iterrows():
+    # print(row)
+    db_data = dc.table_futures().wind_index_future_daily(dt_date, row['id_instrument'], row['windcode'])
+    # print(db_data)
+    try:
+        conn.execute(futures_mktdata_daily.insert(), db_data)
+        print(row)
+        print('equity index futures -- inserted into data base succefully')
+    except Exception as e:
+        print(e)
+# else:
+#     print('equity index futures -- already exists')
 
 # dce futures data
 # dce futures data (type = 0), day

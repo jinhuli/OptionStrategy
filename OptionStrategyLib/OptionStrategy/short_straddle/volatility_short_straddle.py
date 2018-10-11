@@ -62,7 +62,7 @@ def filtration(df_iv_stats, name_column):
 
 pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
-end_date = datetime.date(2018, 8, 8)
+end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15 # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
@@ -172,7 +172,7 @@ while optionset.eval_date <= end_date:
                 record = option.execute_order(order,slippage=slippage)
                 account.add_record(record, option)
                 hedging.synthetic_unit = 0
-            empty_position = True 
+            empty_position = True
             continue
 
     # 开仓
@@ -227,7 +227,7 @@ while optionset.eval_date <= end_date:
 account.account.to_csv('../../accounts_data/short_straddle_account.csv')
 account.trade_records.to_csv('../../accounts_data/short_straddle_records.csv')
 res = account.analysis()
-res['期权平均持仓天数'] = len(account.account)/option_trade_times
+res['平均持仓天数'] = len(account.account)/option_trade_times
 print(res)
 dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])

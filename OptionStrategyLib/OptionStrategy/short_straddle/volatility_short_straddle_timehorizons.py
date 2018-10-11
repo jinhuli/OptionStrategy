@@ -61,9 +61,9 @@ def filtration(df_iv_stats, name_column):
 
 pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
-end_date = datetime.date(2018, 8, 8)
+end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 20 # 20 sharpe ratio较优
+min_holding = 15
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1 # 期权notional倍数
@@ -102,9 +102,11 @@ df_c_all = df_futures_all_daily[df_futures_all_daily[c.Util.DT_DATE] >= d].reset
 
 df_sharpe = pd.DataFrame()
 df_return = pd.DataFrame()
+df_drawdown = pd.DataFrame()
 for h_open in [3,5,10,15,20]:
     sharpes = {}
     returns = {}
+    drawdowns = {}
     for h_close in [3,5,10,15,20]:
         optionset = BaseOptionSet(df_metrics)
         optionset.init()
@@ -228,12 +230,16 @@ for h_open in [3,5,10,15,20]:
         r = res['年化收益率']
         sharpes.update({'close_horizen_'+str(h_close):sharpe})
         returns.update({'close_horizen_'+str(h_close):r})
+        drawdowns.update({'close_horizen_'+str(h_close):res['最大回撤率']})
     s_sharpe = pd.Series(sharpes)
     s_return = pd.Series(returns)
+    s_drawdown = pd.Series(drawdowns)
     df_sharpe['open_horizen_'+str(h_open)] = s_sharpe
     df_return['open_horizen_'+str(h_open)] = s_return
+    df_drawdown['open_horizen_'+str(h_open)] = s_drawdown
 
 # plt.show()
 print(df_sharpe)
 df_sharpe.to_csv('../../accounts_data/short_straddle_time_horizons-sharpe.csv')
 df_return.to_csv('../../accounts_data/short_straddle_time_horizons-return.csv')
+df_drawdown.to_csv('../../accounts_data/short_straddle_time_horizons-drawdown.csv')

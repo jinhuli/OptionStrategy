@@ -73,22 +73,22 @@ df_future_c1_daily = get_data.get_mktdata_future_c1_daily(dt_histvol, end_date, 
 df_futures_all_daily = get_data.get_mktdata_future_daily(start_date, end_date, name_code)  # daily data of all future contracts
 
 """ 隐含波动率 """
-df_iv = get_data.get_iv_by_moneyness(dt_histvol,end_date,name_code_option)
-df_ivix = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='ivix']
-df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='call']
-df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put']
-df_iv_htbr = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put_call_htbr']
-df_data = df_iv_call[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_call'})
-df_data = df_data.join(df_iv_put[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE),on=c.Util.DT_DATE,how='outer')\
-    .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_put'})
-df_data = df_data.dropna().reset_index(drop=True)
-df_data.loc[:,'average_iv'] = (df_data.loc[:,'iv_call'] + df_data.loc[:,'iv_put'])/2
-# df_data = df_iv_htbr.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'average_iv'})
-# df_data = df_ivix.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'average_iv'})
-# df_data['iv_htbr'] = df_iv_htbr.reset_index(drop=True)[c.Util.PCT_IMPLIED_VOL]
-# df_data.to_csv('iv.csv')
-df_iv_stats = df_data[[c.Util.DT_DATE, 'average_iv']]
-df_iv_stats = filtration(df_iv_stats,'average_iv')
+# df_iv = get_data.get_iv_by_moneyness(dt_histvol,end_date,name_code_option)
+# df_ivix = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='ivix']
+# df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='call']
+# df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put']
+# df_iv_htbr = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put_call_htbr']
+# df_data = df_iv_call[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_call'})
+# df_data = df_data.join(df_iv_put[[c.Util.DT_DATE,c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE),on=c.Util.DT_DATE,how='outer')\
+#     .rename(columns={c.Util.PCT_IMPLIED_VOL:'iv_put'})
+# df_data = df_data.dropna().reset_index(drop=True)
+# df_data.loc[:,'average_iv'] = (df_data.loc[:,'iv_call'] + df_data.loc[:,'iv_put'])/2
+# # df_data = df_iv_htbr.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'average_iv'})
+# # df_data = df_ivix.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'average_iv'})
+# # df_data['iv_htbr'] = df_iv_htbr.reset_index(drop=True)[c.Util.PCT_IMPLIED_VOL]
+# # df_data.to_csv('iv.csv')
+# df_iv_stats = df_data[[c.Util.DT_DATE, 'average_iv']]
+# df_iv_stats = filtration(df_iv_stats,'average_iv')
 
 """ Volatility Strategy: Straddle """
 d1 = df_future_c1_daily[c.Util.DT_DATE].values[0]
@@ -104,12 +104,11 @@ for d_critirian in np.arange(0.0,0.5,0.01):
     optionset = BaseOptionSet(df_metrics)
     optionset.init()
     d1 = optionset.eval_date
-    hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY,df_c1_daily=df_c1,df_futures_all_daily=df_c_all)
+
+    hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY, df_c1_daily=df_c1, df_futures_all_daily=df_c_all)
     hedging.init()
     print(optionset.eval_date, hedging.eval_date)
-
     account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
-
     option_trade_times = 0
     empty_position = True
     unit_p = None
@@ -117,16 +116,16 @@ for d_critirian in np.arange(0.0,0.5,0.01):
     buy_write = c.BuyWrite.WRITE
     maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
     id_future = hedging.current_state[c.Util.ID_FUTURE]
+    idx_hedge = 0
     print(id_future)
     while optionset.eval_date <= end_date:
-        if account.cash <=0 : break
-        if maturity1 > end_date: # Final close out all.
+        if account.cash <= 0: break
+        if maturity1 > end_date:  # Final close out all.
             close_out_orders = account.creat_close_out_order()
             for order in close_out_orders:
                 execution_record = account.dict_holding[order.id_instrument].execute_order(order, slippage=0,
                                                                                            execute_type=c.ExecuteType.EXECUTE_ALL_UNITS)
                 account.add_record(execution_record, account.dict_holding[order.id_instrument])
-
             account.daily_accounting(optionset.eval_date)
             print(optionset.eval_date, ' close out ')
             print(optionset.eval_date, hedging.eval_date,
@@ -138,53 +137,49 @@ for d_critirian in np.arange(0.0,0.5,0.01):
         if id_future != hedging.current_state[c.Util.ID_FUTURE]:
             for holding in account.dict_holding.values():
                 if isinstance(holding, SytheticOption):
-                    df = hedging.df_all_futures_daily[(hedging.df_all_futures_daily[c.Util.DT_DATE] == hedging.eval_date) & (
-                        hedging.df_all_futures_daily[c.Util.ID_FUTURE] == id_future)]
-                    # print('移仓：')
-                    # print(df)
-                    # print(id_future,hedging.current_state[c.Util.ID_FUTURE])
+                    df = hedging.df_all_futures_daily[
+                        (hedging.df_all_futures_daily[c.Util.DT_DATE] == hedging.eval_date) & (
+                            hedging.df_all_futures_daily[c.Util.ID_FUTURE] == id_future)]
                     trade_unit = account.trade_book.loc[hedging.name_code(), c.Util.TRADE_UNIT]
                     if account.trade_book.loc[hedging.name_code(), c.Util.TRADE_LONG_SHORT] == c.LongShort.LONG:
                         long_short = c.LongShort.SHORT
                     else:
                         long_short = c.LongShort.LONG
-                    trade_price = df[c.Util.AMT_TRADING_VALUE].values[0]/df[c.Util.AMT_TRADING_VOLUME].values[0]/hedging.multiplier()
+                    trade_price = df[c.Util.AMT_TRADING_VALUE].values[0] / df[c.Util.AMT_TRADING_VOLUME].values[
+                        0] / hedging.multiplier()
                     order = Order(holding.eval_date, hedging.name_code(), trade_unit, trade_price,
                                   holding.eval_datetime, long_short)
-                    record = hedging.execute_order(order,slippage_rate=slippage_rate)
+                    record = hedging.execute_order(order, slippage_rate=slippage_rate)
                     account.add_record(record, holding)
             hedging.synthetic_unit = 0
             last_delta = 0.0
             id_future = hedging.current_state[c.Util.ID_FUTURE]
 
-        # 触发平仓信号：平仓所有头寸，包括hedge position
-        if not empty_position:
-            moneyness_put = optionset.get_option_moneyness(atm_put)
-            moneyness_call = optionset.get_option_moneyness(atm_call)
-            if close_signal(optionset.eval_date,maturity1,df_iv_stats):
-                for option in account.dict_holding.values():
-                    order = account.create_close_order(option,cd_trade_price=cd_trade_price)
-                    record = option.execute_order(order,slippage_rate=slippage_rate)
-                    account.add_record(record, option)
-                    hedging.synthetic_unit = 0
-                    last_delta = 0.0
-                empty_position = True
-                continue
+        # 平仓：距到期8日
+        if not empty_position and (maturity1 - optionset.eval_date).days <= 8:
+            for option in account.dict_holding.values():
+                order = account.create_close_order(option, cd_trade_price=cd_trade_price)
+                record = option.execute_order(order, slippage_rate=slippage_rate)
+                account.add_record(record, option)
+                hedging.synthetic_unit = 0
+                last_delta = 0.0
+            empty_position = True
+            maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 
-        # 开仓
-        if empty_position and open_signal(optionset.eval_date,df_iv_stats):
+        # 开仓：距到期1M
+        if empty_position and (maturity1 - optionset.eval_date).days <= 30:
             option_trade_times += 1
             buy_write = c.BuyWrite.WRITE
             long_short = c.LongShort.SHORT
-            maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
-            list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0, maturity=maturity1)
+            list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
+                                                                                        maturity=maturity1)
             atm_call = optionset.select_higher_volume(list_atm_call)
             atm_put = optionset.select_higher_volume(list_atm_put)
             atm_strike = atm_call.strike()
             spot = atm_call.underlying_close()
             hedging.amt_option = 1 / 1000  # 50ETF与IH点数之比
-            unit_c = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier())*m
-            unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier())*m
+            unit_c = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier()) * m
+            unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier()) * m
             order_c = account.create_trade_order(atm_call, long_short, unit_c, cd_trade_price=cd_trade_price)
             order_p = account.create_trade_order(atm_put, long_short, unit_p, cd_trade_price=cd_trade_price)
             record_call = atm_call.execute_order(order_c, slippage_rate=slippage_rate)
@@ -212,17 +207,15 @@ for d_critirian in np.arange(0.0,0.5,0.01):
                 record_u = hedging.execute_order(order_u, slippage_rate=slippage_rate)
                 account.add_record(record_u, hedging)
 
+        idx_hedge += 1
         account.daily_accounting(optionset.eval_date)
         total_liquid_asset = account.cash + account.get_portfolio_margin_capital()
-        # print(optionset.eval_date,hedging.eval_date,
-        #       account.account.loc[optionset.eval_date, c.Util.PORTFOLIO_NPV], int(account.cash),int(total_liquid_asset))
-        if not optionset.has_next():break
+        if not optionset.has_next(): break
         optionset.next()
         hedging.next()
 
     res = account.analysis()
-    # sharpes.update({str(d_critirian): res['夏普比率']})
     df_hedge['delta exposure = '+str(d_critirian)] = res
 
 print(df_hedge)
-df_hedge.to_csv('../../accounts_data/short_straddle_hedge_frequencies-sharpe.csv')
+df_hedge.to_csv('../../accounts_data/short_straddle_hedge_frequencies-no_timing-sharpe.csv')

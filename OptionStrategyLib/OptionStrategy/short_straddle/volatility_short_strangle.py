@@ -62,7 +62,7 @@ def filtration(df_iv_stats, name_column):
 
 pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
-end_date = datetime.date(2018, 8, 8)
+end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15 # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
