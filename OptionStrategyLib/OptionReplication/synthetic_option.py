@@ -13,6 +13,8 @@ import datetime
 
 
 class SytheticOption(BaseFutureCoutinuous):
+    #  TODO: HEDGE SHOULD BE INDEPENDENT, AND INCLUDE BaseFutureCoutinuous/BaseInstruemnt, NOT A CHILD CLASS OF ANY PRODUCT.
+
     def __init__(self, df_c1_data,
                  df_c1_daily=None,
                  df_futures_all_daily=None,
@@ -32,8 +34,8 @@ class SytheticOption(BaseFutureCoutinuous):
         super().__init__(df_future_c1=df_c1_data, df_future_c1_daily=df_c1_daily,
                          df_futures_all_daily=df_futures_all_daily, df_underlying_index_daily=df_index_daily,
                          rf=rf, frequency=frequency)
-        self.synthetic_unit: int = 0
-        self.amt_option = 0
+        self.synthetic_unit = 0
+        self.amt_option = 1
 
     def get_c1_with_start_dates(self):
         df = self.df_daily_data.drop_duplicates(Util.ID_INSTRUMENT)[[Util.DT_DATE, Util.ID_INSTRUMENT]]

@@ -907,6 +907,7 @@ class Util:
         'if': 0.15,
         'ih': 0.15,
         'ic': 0.15,
+        'index':0.15
     }
     DICT_TRANSACTION_FEE = {  # 元/手
         'm': 3.0,
@@ -914,6 +915,7 @@ class Util:
         'if': None,
         'ih': None,
         'ic': None,
+        "index": 0
     }
     DICT_OPTION_TRANSACTION_FEE_RATE = {  # 百分比
         "50etf": 0.0,
@@ -933,6 +935,8 @@ class Util:
         'if': 6.9 / 10000.0,
         'ih': 6.9 / 10000.0,
         'ic': 6.9 / 10000.0,
+        "index": None
+
     }
     DICT_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,
@@ -940,7 +944,8 @@ class Util:
         'if': 300,
         'ih': 300,
         'ic': 200,
-        'cu':5
+        'cu':5,
+        'index':1
     }
     DICT_OPTION_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,

@@ -10,7 +10,7 @@ from back_test.model.base_option import BaseOption
 class BaseAccount():
     def __init__(self, init_fund, leverage=1.0, rf=0.03):
         # super().__init__()
-        self.df_records = pd.DataFrame()
+        # self.df_records = pd.DataFrame()
         # self.list_records = []
         self.trade_records = pd.DataFrame()
         self.trade_book = pd.DataFrame(columns=Util.TRADE_BOOK_COLUMN_LIST)

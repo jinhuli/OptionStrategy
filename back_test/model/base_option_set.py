@@ -28,7 +28,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                  flag_calculate_iv: bool = True,
                  rf: float = 0.03):
         super().__init__()
-        self._name_code: str = df_data.loc[0, Util.ID_INSTRUMENT].split('_')[0]
+        self._name_code = df_data.loc[0, Util.ID_INSTRUMENT].split('_')[0]
         self.df_data: pd.DataFrame = df_data
         if frequency in Util.LOW_FREQUENT:
             self.df_daily_data = df_data
@@ -691,6 +691,7 @@ class BaseOptionSet(AbstractBaseProductSet):
     def select_higher_volume(self, options: List[BaseOption]) -> BaseOption:
         volume0 = 0.0
         res_option = None
+        if options is None: return
         for option in options:
             volume = option.trading_volume()
             if volume >= volume0: res_option = option

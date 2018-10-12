@@ -139,7 +139,7 @@ while optionset.eval_date <= end_date:
     optionset.next()
 
 # account.account.to_csv('account.csv')
-df_records = pd.DataFrame(account.list_records)
+# df_records = pd.DataFrame(account.list_records)
 # df_records.to_csv('df_records.csv')
 res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
 print(res)
