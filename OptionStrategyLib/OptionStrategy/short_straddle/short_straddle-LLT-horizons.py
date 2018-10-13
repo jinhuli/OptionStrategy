@@ -47,15 +47,18 @@ def close_signal_tangent(dt_date, df_status,h):
 def filtration(df_iv_stats, name_column):
     """ Filtration : LLT """
     df_iv_stats['LLT_20'] = LLT(df_iv_stats[name_column], 20)
+    df_iv_stats['LLT_15'] = LLT(df_iv_stats[name_column], 15)
     df_iv_stats['LLT_10'] = LLT(df_iv_stats[name_column], 10)
     df_iv_stats['LLT_5'] = LLT(df_iv_stats[name_column], 5)
     df_iv_stats['LLT_3'] = LLT(df_iv_stats[name_column], 3)
     df_iv_stats['diff_20'] = df_iv_stats['LLT_20'].diff()
+    df_iv_stats['diff_15'] = df_iv_stats['LLT_15'].diff()
     df_iv_stats['diff_10'] = df_iv_stats['LLT_10'].diff()
     df_iv_stats['diff_5'] = df_iv_stats['LLT_5'].diff()
     df_iv_stats['diff_3'] = df_iv_stats['LLT_3'].diff()
     df_iv_stats = df_iv_stats.set_index(c.Util.DT_DATE)
     df_iv_stats['last_diff_20'] = df_iv_stats['diff_20'].shift()
+    df_iv_stats['last_diff_15'] = df_iv_stats['diff_15'].shift()
     df_iv_stats['last_diff_10'] = df_iv_stats['diff_10'].shift()
     df_iv_stats['last_diff_5'] = df_iv_stats['diff_5'].shift()
     df_iv_stats['last_diff_3'] = df_iv_stats['diff_3'].shift()

@@ -129,6 +129,16 @@ class BaseProduct(AbstractBaseProduct):
         else:
             return True
 
+    def has_next_minute(self) -> bool:
+        if self.frequency in Util.LOW_FREQUENT or self.current_index == self.nbr_index:
+            return False
+        else:
+            dt_next_bar = self.df_data.loc[self.current_index + 1, Util.DT_DATE]
+            if self.eval_date == dt_next_bar:
+                return True
+            else:
+                return False
+
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
 
@@ -317,6 +327,13 @@ class BaseProduct(AbstractBaseProduct):
             return
         return ret
 
+    def trading_value(self) -> Union[float, None]:
+        ret = self.current_state[Util.AMT_TRADING_VALUE]
+        if ret is None or ret == Util.NAN_VALUE or np.isnan(ret):
+            return
+        return ret
+
+
     """ last settlement, daily"""
 
     def mktprice_last_settlement(self) -> float:
@@ -351,3 +368,16 @@ class BaseProduct(AbstractBaseProduct):
 
     def get_maintain_margin(self, long_short: LongShort) -> float:
         return 0.0
+
+
+    def calulate_volume_weighted_price_start(self):
+        self.total_trading_value = 0
+        self.total_trading_volume = 0
+
+    def calulate_volume_weighted_price(self):
+        if self.trading_volume() is not None and self.trading_value() is not None:
+            self.total_trading_value += self.trading_value()
+            self.total_trading_volume += self.trading_volume()
+
+    def calulate_volume_weighted_price_stop(self):
+        return self.total_trading_value/self.total_trading_volume

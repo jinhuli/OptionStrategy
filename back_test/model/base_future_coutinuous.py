@@ -119,7 +119,7 @@ class BaseFutureCoutinuous(BaseProduct):
             Util.TRADE_MARKET_VALUE] = 0.0  # Init value of a future trade is ZERO, except for transaction cost.
         return execution_record
 
-    # """ 高频数据下按照当日成交量加权均价开仓，结束后时间点移动到下一个交易日第一个时间点。 """
+    # """ 高频数据下按照当日成交量加权均价开仓，结束后时间点移动到本交易日的最后一个bar。 """
     def execute_order_by_VWAP(self, order: Order, slippage=0,
                               execute_type: ExecuteType = ExecuteType.EXECUTE_ALL_UNITS):
         if self.frequency in Util.LOW_FREQUENT:
@@ -127,7 +127,7 @@ class BaseFutureCoutinuous(BaseProduct):
         else:
             total_trade_value = 0.0
             total_volume_value = 0.0
-            while not self.is_last_minute():
+            while self.has_next_minute():
                 total_trade_value += self.mktprice_close() * self.trading_volume()
                 total_volume_value += self.trading_volume()
                 self.next()

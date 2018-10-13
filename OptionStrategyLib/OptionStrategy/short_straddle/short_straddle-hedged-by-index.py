@@ -86,19 +86,18 @@ while optionset.eval_date <= end_date:
     # 平仓：距到期8日
     if not empty_position and (maturity1 - optionset.eval_date).days <= 8:
         for option in account.dict_holding.values():
-            if isinstance(option,BaseOption):
-                order = account.create_close_order(option, cd_trade_price=cd_trade_price)
-            else:
-                order = account.create_close_order(option, cd_trade_price=cd_hedge_price)
+            if not isinstance(option,BaseOption): continue
+            order = account.create_close_order(option, cd_trade_price=cd_trade_price)
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
-            hedging.synthetic_unit = 0
-            last_delta = 0
+            # hedging.synthetic_unit = 0
+            # last_delta = 0
         empty_position = True
         maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 
     # 开仓：距到期1M
-    if empty_position and (maturity1 - optionset.eval_date).days <= 30:
+    # if empty_position and (maturity1 - optionset.eval_date).days <= 30:
+    if empty_position:
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
@@ -119,14 +118,9 @@ while optionset.eval_date <= end_date:
         empty_position = False
 
     # Delta hedge
-    if not empty_position:
-        iv_htbr = optionset.get_iv_by_otm_iv_curve(dt_maturity=maturity1, strike=atm_call.applicable_strike())
-        delta_call = atm_call.get_delta(iv_htbr)
-        delta_put = atm_put.get_delta(iv_htbr)
-        options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
-        delta = delta_call+delta_put
-        if abs(delta - last_delta) > d_critirian:
-            last_delta = delta
+    if not empty_position or hedging.synthetic_unit != 0:
+        if empty_position:
+            last_delta = delta = 0.0
             hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta, buy_write)
             hedging.synthetic_unit += - hedge_unit
             if hedge_unit > 0:
@@ -136,6 +130,23 @@ while optionset.eval_date <= end_date:
             order_u = account.create_trade_order(hedging, long_short, hedge_unit, cd_trade_price=cd_hedge_price)
             record_u = hedging.execute_order(order_u, slippage=slippage)
             account.add_record(record_u, hedging)
+        else:
+            iv_htbr = optionset.get_iv_by_otm_iv_curve(dt_maturity=maturity1, strike=atm_call.applicable_strike())
+            delta_call = atm_call.get_delta(iv_htbr)
+            delta_put = atm_put.get_delta(iv_htbr)
+            options_delta = unit_c * atm_call.multiplier() * delta_call + unit_p * atm_put.multiplier() * delta_put
+            delta = delta_call+delta_put
+            if abs(delta - last_delta) > d_critirian:
+                last_delta = delta
+                hedge_unit = hedging.get_hedge_rebalancing_unit(options_delta, buy_write)
+                hedging.synthetic_unit += - hedge_unit
+                if hedge_unit > 0:
+                    long_short = c.LongShort.LONG
+                else:
+                    long_short = c.LongShort.SHORT
+                order_u = account.create_trade_order(hedging, long_short, hedge_unit, cd_trade_price=cd_hedge_price)
+                record_u = hedging.execute_order(order_u, slippage=slippage)
+                account.add_record(record_u, hedging)
 
     idx_hedge += 1
     account.daily_accounting(optionset.eval_date)

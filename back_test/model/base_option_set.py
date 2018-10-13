@@ -117,14 +117,14 @@ class BaseOptionSet(AbstractBaseProductSet):
             # 高频数据预处理：根据日频数据的id_instrument与dt_datetime，
             # 对高频数据（df_data）进行补充，缺失数据用前值代替，成交量填0.
 
-
             self.df_data = self.df_data[mask].reset_index(drop=True)
             self.date_list = sorted(self.df_data[Util.DT_DATE].unique())
             self.datetime_list = sorted(self.df_data[Util.DT_DATETIME].unique())
             self.nbr_index = len(self.datetime_list)
             if self.df_daily_data is None:
                 return
-        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(self.OptionUtilClass.fun_applicable_strike, axis=1)
+        self.df_data[Util.AMT_APPLICABLE_STRIKE] = self.df_data.apply(self.OptionUtilClass.fun_applicable_strike,
+                                                                      axis=1)
         groups = self.df_data.groupby([Util.ID_INSTRUMENT])
         if self.df_daily_data is not None:
             groups_daily = self.df_daily_data.groupby([Util.ID_INSTRUMENT])
@@ -230,6 +230,16 @@ class BaseOptionSet(AbstractBaseProductSet):
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
 
+    def has_next_minute(self) -> bool:
+        if self.frequency in Util.LOW_FREQUENT or self.current_index == self.nbr_index:
+            return False
+        else:
+            next_datetime = pd.to_datetime(self.datetime_list[self.current_index + 1])
+            if self.eval_date == next_datetime.date():
+                return True
+            else:
+                return False
+
     def get_current_state(self) -> pd.DataFrame:
         df_current_state = self.df_data[self.df_data[Util.DT_DATE] == self.eval_date].reset_index(drop=True)
         return df_current_state
@@ -287,15 +297,16 @@ class BaseOptionSet(AbstractBaseProductSet):
                 spot = option_list[0].underlying_close()
         return spot
 
-
     def get_T_quotes(self, dt_maturity, cd_option_price):
         df_current = self.get_current_state()
         df_mdt = df_current[df_current[Util.DT_MATURITY] == dt_maturity].reset_index(drop=True)
         if cd_option_price == Util.CD_CLOSE_VOLUME_WEIGHTED:
             df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
-                columns={Util.AMT_CLOSE_VOLUME_WEIGHTED: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
+                columns={Util.AMT_CLOSE_VOLUME_WEIGHTED: Util.AMT_CALL_QUOTE,
+                         Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
             df_put = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_PUT].rename(
-                columns={Util.AMT_CLOSE_VOLUME_WEIGHTED: Util.AMT_PUT_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
+                columns={Util.AMT_CLOSE_VOLUME_WEIGHTED: Util.AMT_PUT_QUOTE,
+                         Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_PUT})
         else:
             df_call = df_mdt[df_mdt[Util.CD_OPTION_TYPE] == Util.STR_CALL].rename(
                 columns={Util.AMT_CLOSE: Util.AMT_CALL_QUOTE, Util.AMT_TRADING_VOLUME: Util.AMT_TRADING_VOLUME_CALL})
@@ -318,8 +329,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         iv = df[df[Util.AMT_APPLICABLE_STRIKE] == strike][Util.PCT_IV_OTM_BY_HTBR].values[0]
         return iv
 
-    #平值隐含波动率根据平价公式与HTB RATE调整，认沽与认购隐含波动率相同。
-    def get_atm_iv_by_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    # 平值隐含波动率根据平价公式与HTB RATE调整，认沽与认购隐含波动率相同。
+    def get_atm_iv_by_htbr(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -330,7 +341,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         return iv
 
     # 隐含波动率曲线（OTM）
-    def get_otm_implied_vol_curve(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_otm_implied_vol_curve(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -354,8 +365,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         if len(df) == 0:
             return None
         iv_vw = (sum(df[Util.PCT_IV_CALL] * df[Util.AMT_TRADING_VOLUME_CALL]) +
-                     sum(df[Util.PCT_IV_PUT] * df[Util.AMT_TRADING_VOLUME_PUT])) \
-                    / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
+                 sum(df[Util.PCT_IV_PUT] * df[Util.AMT_TRADING_VOLUME_PUT])) \
+                / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
 
     # 成交量加权均价隐含波动率HTB Rate调整（商品期权）
@@ -368,8 +379,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                 / sum(df[Util.AMT_TRADING_VOLUME_CALL] + df[Util.AMT_TRADING_VOLUME_PUT])
         return iv_vw
 
-
-    def get_implied_vol_curves(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_implied_vol_curves(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
@@ -377,7 +387,7 @@ class BaseOptionSet(AbstractBaseProductSet):
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL,
                         Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_implied_vol_curves_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_implied_vol_curves_htbr(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -392,19 +402,19 @@ class BaseOptionSet(AbstractBaseProductSet):
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_TRADING_VOLUME_CALL,
                         Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT_BY_HTBR, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_call_implied_vol_curve(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_call_implied_vol_curve(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte[Util.PCT_IV_CALL] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.CALL), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
                         Util.DT_MATURITY, Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL, Util.AMT_TRADING_VOLUME_CALL]]
 
-    def get_put_implied_vol_curve(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_put_implied_vol_curve(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte[Util.PCT_IV_PUT] = t_qupte.apply(lambda x: self.fun_iv(x, OptionType.PUT), axis=1)
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE,
                         Util.DT_MATURITY, Util.AMT_PUT_QUOTE, Util.PCT_IV_PUT, Util.AMT_TRADING_VOLUME_PUT]]
 
-    def get_call_implied_vol_curve_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_call_implied_vol_curve_htbr(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -416,7 +426,7 @@ class BaseOptionSet(AbstractBaseProductSet):
         return t_qupte[[Util.AMT_APPLICABLE_STRIKE, Util.AMT_UNDERLYING_CLOSE, Util.DT_MATURITY,
                         Util.AMT_CALL_QUOTE, Util.PCT_IV_CALL_BY_HTBR, Util.AMT_HTB_RATE, Util.AMT_TRADING_VOLUME_CALL]]
 
-    def get_put_implied_vol_curve_htbr(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_put_implied_vol_curve_htbr(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -464,7 +474,7 @@ class BaseOptionSet(AbstractBaseProductSet):
             iv = pricing_engine.estimate_vol(P)
         return iv
 
-    def get_htb_rate(self, dt_maturity, cd_option_price = Util.CD_CLOSE):
+    def get_htb_rate(self, dt_maturity, cd_option_price=Util.CD_CLOSE):
         t_qupte = self.get_T_quotes(dt_maturity, cd_option_price)
         t_qupte.loc[:, 'diff'] = abs(
             t_qupte.loc[:, Util.AMT_APPLICABLE_STRIKE] - t_qupte.loc[:, Util.AMT_UNDERLYING_CLOSE])
@@ -564,8 +574,8 @@ class BaseOptionSet(AbstractBaseProductSet):
         # 返回的option放在list里，是因为可能有相邻行权价的期权同时处于一个nearest strike
         return call_ret, put_ret
 
-
-    def get_dict_moneyness_and_options(self, dt_maturity: datetime.date, option_type:OptionType) -> Dict[int, List[BaseOption]]:
+    def get_dict_moneyness_and_options(self, dt_maturity: datetime.date, option_type: OptionType) -> Dict[
+        int, List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         if option_type == OptionType.CALL:
             dict_strike_options = mdt_calls.get(dt_maturity)
@@ -574,10 +584,10 @@ class BaseOptionSet(AbstractBaseProductSet):
         spot = list(dict_strike_options.values())[0][0].underlying_close()
         strikes = list(dict_strike_options.keys())
         dict_moneyness_strikes = Option50ETF.get_strike_monenyes_rank_dict_nearest_strike(spot, strikes,
-                                                                                           OptionType.PUT)
+                                                                                          OptionType.PUT)
         dict_res = {}
         for m in dict_moneyness_strikes:
-            dict_res.update({m:dict_strike_options[dict_moneyness_strikes[m]]})
+            dict_res.update({m: dict_strike_options[dict_moneyness_strikes[m]]})
         return dict_res
 
     """ Mthd1: Determine atm option as the NEAREST strike from spot. 
