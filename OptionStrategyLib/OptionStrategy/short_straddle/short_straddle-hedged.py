@@ -21,7 +21,7 @@ slippage = 0
 m = 1  # 期权notional倍数
 cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
 cd_hedge_price = c.CdTradePrice.CLOSE
-d_critirian = 0.1
+d_critirian = 0.03
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -173,4 +173,4 @@ dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])
 pu.plot_line_chart(dates,[npv],['npv'])
 
-# plt.show()
+plt.show()

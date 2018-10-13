@@ -14,30 +14,30 @@ from back_test.model.trade import Order
 """ Open/Close Position Signal """
 
 
-def open_signal(dt_date, df_status):
-    return write_signal_tangent(dt_date, df_status)
+def open_signal(dt_date, df_status,h):
+    return write_signal_tangent(dt_date, df_status,h)
 
 
-def close_signal(dt_date, option_maturity, df_status):
+def close_signal(dt_date, option_maturity, df_status,h):
     if dt_date >= option_maturity - datetime.timedelta(days=8):
         print('3.到期', dt_date)
         return True
     else:
-        return close_signal_tangent(dt_date, df_status)
+        return close_signal_tangent(dt_date, df_status,h)
 
 
-def write_signal_tangent(dt_date, df_status):
+def write_signal_tangent(dt_date, df_status,h):
     # if df_status.loc[dt_date,'diff_5'] <= 0:
-    if df_status.loc[dt_date, 'last_diff_5'] <= 0:
+    if df_status.loc[dt_date, 'last_diff_'+str(h)] <= 0:
         print('1.open', dt_date)
         return True
     else:
         return False
 
 
-def close_signal_tangent(dt_date, df_status):
+def close_signal_tangent(dt_date, df_status,h):
     # if df_status.loc[dt_date,'diff_5'] > 0:
-    if df_status.loc[dt_date, 'last_diff_5'] > 0:
+    if df_status.loc[dt_date, 'last_diff_'+str(h)] > 0:
         print('2.close', dt_date)
         return True
     else:
@@ -118,9 +118,7 @@ for h_open in [3, 5, 10, 15, 20]:
         optionset = BaseOptionSet(df_metrics)
         optionset.init()
         d1 = optionset.eval_date
-
         account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
-
         option_trade_times = 0
         empty_position = True
         unit_p = None
@@ -139,7 +137,7 @@ for h_open in [3, 5, 10, 15, 20]:
                 account.daily_accounting(optionset.eval_date)
                 break
 
-            if not empty_position and close_signal(optionset.eval_date, maturity1, df_iv_stats):
+            if not empty_position and close_signal(optionset.eval_date, maturity1, df_iv_stats,h_close):
                 for option in account.dict_holding.values():
                     order = account.create_close_order(option, cd_trade_price=cd_trade_price)
                     record = option.execute_order(order, slippage=slippage)
@@ -148,7 +146,7 @@ for h_open in [3, 5, 10, 15, 20]:
                 maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 
             # 开仓：距到期1M
-            if empty_position and open_signal(optionset.eval_date, df_iv_stats):
+            if empty_position and open_signal(optionset.eval_date, df_iv_stats,h_open):
                 option_trade_times += 1
                 buy_write = c.BuyWrite.WRITE
                 long_short = c.LongShort.SHORT
