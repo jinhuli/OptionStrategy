@@ -23,8 +23,6 @@ def close_signal(dt_date,option_maturity, df_status):
         return close_signal_tangent(dt_date, df_status)
 
 def write_signal_tangent(dt_date, df_status):
-    # if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
-    # if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
     # if df_status.loc[dt_date,'diff_5'] <= 0:
     if df_status.loc[dt_date,'last_diff_5'] <= 0:
         print('1.open', dt_date)
@@ -33,7 +31,6 @@ def write_signal_tangent(dt_date, df_status):
         return False
 
 def close_signal_tangent(dt_date, df_status):
-    # if df_status.loc[dt_date,'last_diff_5'] > 0:
     # if df_status.loc[dt_date,'diff_5'] > 0:
     if df_status.loc[dt_date,'last_diff_5'] > 0:
         print('2.close', dt_date)
@@ -44,10 +41,10 @@ def close_signal_tangent(dt_date, df_status):
 
 def filtration(df_iv_stats, name_column):
     """ Filtration : LLT """
-    df_iv_stats['LLT_20'] = LLT(df_iv_stats['average_iv'], 20)
-    df_iv_stats['LLT_10'] = LLT(df_iv_stats['average_iv'], 10)
-    df_iv_stats['LLT_5'] = LLT(df_iv_stats['average_iv'], 5)
-    df_iv_stats['LLT_3'] = LLT(df_iv_stats['average_iv'], 3)
+    df_iv_stats['LLT_20'] = LLT(df_iv_stats[name_column], 20)
+    df_iv_stats['LLT_10'] = LLT(df_iv_stats[name_column], 10)
+    df_iv_stats['LLT_5'] = LLT(df_iv_stats[name_column], 5)
+    df_iv_stats['LLT_3'] = LLT(df_iv_stats[name_column], 3)
     df_iv_stats['diff_20'] = df_iv_stats['LLT_20'].diff()
     df_iv_stats['diff_10'] = df_iv_stats['LLT_10'].diff()
     df_iv_stats['diff_5'] = df_iv_stats['LLT_5'].diff()
@@ -89,9 +86,9 @@ df_data = df_data.dropna().reset_index(drop=True)
 df_data.loc[:,'average_iv'] = (df_data.loc[:,'iv_call'] + df_data.loc[:,'iv_put'])/2
 # df_data = df_iv_htbr.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'average_iv'})
 # df_data = df_ivix.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'average_iv'})
-# df_data['iv_htbr'] = df_iv_htbr.reset_index(drop=True)[c.Util.PCT_IMPLIED_VOL]
+df_data['iv_htbr'] = df_iv_htbr.reset_index(drop=True)[c.Util.PCT_IMPLIED_VOL]
 # df_data.to_csv('iv.csv')
-df_iv_stats = df_data[[c.Util.DT_DATE, 'average_iv']]
+df_iv_stats = df_data[[c.Util.DT_DATE, 'average_iv','iv_htbr']]
 df_iv_stats = filtration(df_iv_stats,'average_iv')
 
 """ Volatility Strategy: Straddle """
