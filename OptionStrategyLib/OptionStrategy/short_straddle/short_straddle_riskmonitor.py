@@ -21,6 +21,24 @@ slippage = 0
 m = 1  # 期权notional倍数
 cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
 
+""" Risk Monitor """
+df_warning = pd.read_excel('../../../data/risk_monitor.xlsx')
+df_warning['date'] = df_warning['dt_date'].apply(lambda x: x.date())
+df_warning = df_warning[['date', 'risk warning']]
+df_warning['pre_warned'] = df_warning['risk warning'].shift()
+df_warning=df_warning.set_index('date')
+
+
+def risk_warning(df_warning, dt_date):
+    if dt_date not in df_warning.index:
+        return False
+    else:
+        if df_warning.loc[dt_date, 'pre_warned'] > 0:
+            return True
+        else:
+            return False
+
+
 """ 50ETF option """
 name_code = c.Util.STR_IH
 name_code_option = c.Util.STR_50ETF
@@ -69,24 +87,24 @@ while optionset.eval_date <= end_date:
         account.daily_accounting(optionset.eval_date)
 
         break
-
-    if not empty_position and (maturity1 - optionset.eval_date).days <= 8:
+    # 平仓
+    if not empty_position and ((maturity1 - optionset.eval_date).days <= 8 or risk_warning(df_warning,optionset.eval_date)):
         for option in account.dict_holding.values():
             order = account.create_close_order(option, cd_trade_price=cd_trade_price)
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
             # hedging.synthetic_unit = 0
         empty_position = True
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+
 
     # 开仓：距到期1M
-    # if empty_position and (maturity1 - optionset.eval_date).days <= 30:
-    if empty_position:
+    if empty_position and not risk_warning(df_warning,optionset.eval_date):
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                    maturity=maturity1)
+                                                                                        maturity=maturity1)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()
@@ -109,15 +127,12 @@ while optionset.eval_date <= end_date:
     # hedging.next()
 
 account.account.to_csv('../../accounts_data/short_straddle_account-no_hedge.csv')
+account.trade_records.to_csv('../../accounts_data/short_straddle_records-no_hedge.csv')
 res = account.analysis()
 res['期权平均持仓天数'] = len(account.account) / option_trade_times
 print(res)
 
 dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])
-pu.plot_line_chart(dates,[npv],['npv'])
+pu.plot_line_chart(dates, [npv], ['npv'])
 plt.show()
-
-
-
-

@@ -76,6 +76,13 @@ def get_50option_intraday(start_date, end_date):
     df_etf = df_etf[[c.Util.DT_DATETIME,c.Util.ID_INSTRUMENT, c.Util.AMT_CLOSE]]\
         .rename(columns={c.Util.AMT_CLOSE: c.Util.AMT_UNDERLYING_CLOSE,c.Util.ID_INSTRUMENT:c.Util.ID_UNDERLYING})
     df_option_metrics = df.join(df_etf.set_index(c.Util.DT_DATETIME), how='left', on=c.Util.DT_DATETIME)
+    options = dbt.Options
+    query_option = admin.session_mktdata().query(options.id_instrument, options.cd_option_type,
+                                                 options.amt_strike, options.name_contract_month,
+                                                 options.dt_maturity, options.nbr_multiplier) \
+        .filter(and_(options.dt_listed <= end_date, options.dt_maturity >= start_date))
+    df_contract = pd.read_sql(query_option.statement, query_option.session.bind)
+    df_option_metrics = df_option_metrics.join(df_contract.set_index(c.Util.ID_INSTRUMENT), how='left', on=c.Util.ID_INSTRUMENT)
     return df_option_metrics
 
 
