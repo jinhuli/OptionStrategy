@@ -110,7 +110,7 @@ while optionset.eval_date <= end_date:
 
 account.account.to_csv('../../accounts_data/short_straddle_account-no_hedge.csv')
 res = account.analysis()
-res['期权平均持仓天数'] = len(account.account) / option_trade_times
+res['option_average_holding_days'] = len(account.account) / option_trade_times
 print(res)
 
 dates = list(account.account.index)

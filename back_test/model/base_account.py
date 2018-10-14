@@ -528,14 +528,14 @@ class BaseAccount():
         # 盈亏比
         p_over_l = returns[returns > 0].mean() / np.abs(returns[returns < 0].mean())
         r = pd.Series()
-        r['累计收益率'] = totalreturn
-        r['年化收益率'] = return_yr
-        r['年化波动率'] = volatility_yr
-        r['最大回撤率'] = maxdrawdown
-        r['胜率(' + freq + ')'] = win_rate
-        r['盈亏比'] = p_over_l
-        r['夏普比率'] = sharpe
-        r['Calmar比'] = profit_risk_ratio
+        r['accumulate_yield'] = totalreturn
+        r['annual_yield'] = return_yr
+        r['annual_volatility'] = volatility_yr
+        r['max_drawdown'] = maxdrawdown
+        r['prob_of_win(' + freq + ')'] = win_rate
+        r['win_loss_ratio'] = p_over_l
+        r['sharpe'] = sharpe
+        r['Calmar'] = profit_risk_ratio
 
         return r
 
@@ -549,5 +549,5 @@ class BaseAccount():
 
     def analysis(self):
         res = self.get_netvalue_analysis(self.account[Util.PORTFOLIO_NPV])
-        res['平均换手率(月)'] = self.get_monthly_turnover(self.account)
+        res['turnover'] = self.get_monthly_turnover(self.account)
         return res

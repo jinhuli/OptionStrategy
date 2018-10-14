@@ -57,10 +57,10 @@ def filtration(df_iv_stats, name_column):
     return df_iv_stats
 
 pu = PlotUtil()
-start_date = datetime.date(2015, 2, 1)
+start_date = datetime.date(2016, 1, 1)
 end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 15 # 20 sharpe ratio较优
+min_holding = 20 # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1 # 期权notional倍数
@@ -113,7 +113,7 @@ unit_p = None
 unit_c = None
 atm_strike = None
 buy_write = c.BuyWrite.WRITE
-maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
 while optionset.eval_date <= end_date:
     if account.cash <= 0: break
     if maturity1 > end_date:  # Final close out all.
@@ -124,17 +124,17 @@ while optionset.eval_date <= end_date:
             account.add_record(execution_record, account.dict_holding[order.id_instrument])
         account.daily_accounting(optionset.eval_date)
         break
-
+    # 平仓
     if not empty_position and close_signal(optionset.eval_date,maturity1,df_iv_stats):
         for option in account.dict_holding.values():
             order = account.create_close_order(option, cd_trade_price=cd_trade_price)
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
         empty_position = True
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 
     # 开仓：距到期1M
     if empty_position and open_signal(optionset.eval_date,df_iv_stats):
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
@@ -161,7 +161,7 @@ while optionset.eval_date <= end_date:
 
 account.account.to_csv('../../accounts_data/short_straddle_account-no_hedge-timing.csv')
 res = account.analysis()
-res['期权平均持仓天数'] = len(account.account) / option_trade_times
+res['option_average_holding_days'] = len(account.account) / option_trade_times
 print(res)
 
 dates = list(account.account.index)

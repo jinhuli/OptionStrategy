@@ -66,10 +66,10 @@ def filtration(df_iv_stats, name_column):
 
 
 pu = PlotUtil()
-start_date = datetime.date(2015, 2, 1)
+start_date = datetime.date(2016, 1, 1)
 end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 15  # 20 sharpe ratio较优
+min_holding = 20  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
@@ -128,7 +128,7 @@ for h_open in [3, 5, 10, 15, 20]:
         unit_c = None
         atm_strike = None
         buy_write = c.BuyWrite.WRITE
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
         while optionset.eval_date <= end_date:
             if account.cash <= 0: break
             if maturity1 > end_date:  # Final close out all.
@@ -146,10 +146,11 @@ for h_open in [3, 5, 10, 15, 20]:
                     record = option.execute_order(order, slippage=slippage)
                     account.add_record(record, option)
                 empty_position = True
-                maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+
 
             # 开仓：距到期1M
             if empty_position and open_signal(optionset.eval_date, df_iv_stats,h_open):
+                maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
                 option_trade_times += 1
                 buy_write = c.BuyWrite.WRITE
                 long_short = c.LongShort.SHORT
@@ -177,11 +178,11 @@ for h_open in [3, 5, 10, 15, 20]:
 
         res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
         print(res)
-        sharpe = res['夏普比率']
-        r = res['年化收益率']
+        sharpe = res['sharpe']
+        r = res['annual_yield']
         sharpes.update({'close_horizen_' + str(h_close): sharpe})
         returns.update({'close_horizen_' + str(h_close): r})
-        drawdowns.update({'close_horizen_' + str(h_close): res['最大回撤率']})
+        drawdowns.update({'close_horizen_' + str(h_close): res['max_drawdown']})
     s_sharpe = pd.Series(sharpes)
     s_return = pd.Series(returns)
     s_drawdown = pd.Series(drawdowns)

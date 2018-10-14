@@ -5,6 +5,26 @@ import matplotlib.pyplot as plt
 import datetime
 
 pu = PlotUtil()
+
+df_mxef = pd.read_excel('../../data/global_option_data_copied.xlsx', sheetname='msci')
+df_mxef['dt_date'] = df_mxef['Dates'].apply(lambda x: x.date())
+df_mxef = df_mxef.dropna().sort_values(by='dt_date').reset_index(drop=True)
+df_mxef['msci_skew_p90'] = stats.percentile(df_mxef['msci_skew_10delta'], 252, 0.9)
+df_mxef['msci_skew_1std'] = stats.moving_average(df_mxef['msci_skew_10delta'], 252) + stats.standard_deviation(
+    df_mxef['msci_skew_10delta'].dropna(), 252)
+df_mxef['msci_skew_2std'] = stats.moving_average(df_mxef['msci_skew_10delta'], 252) + 2 * stats.standard_deviation(
+    df_mxef['msci_skew_10delta'].dropna(), 252)
+df_mxef['msci_iv_1std'] = stats.moving_average(df_mxef['msci_atm_iv'], 252) + stats.standard_deviation(
+    df_mxef['msci_atm_iv'].dropna(), 252)
+df_mxef['cboe_iv_2std'] = stats.moving_average(df_mxef['msci_atm_iv'], 252) + 2 * stats.standard_deviation(
+    df_mxef['msci_atm_iv'].dropna(), 252)
+
+df_mxef = df_mxef[df_mxef['dt_date'] > datetime.date(2015, 1, 1)]
+df_mxef['msci_vix_diff_1std'] = df_mxef['msci_atm_iv'] - df_mxef['msci_iv_1std']
+df_mxef['msci_vix_diff_2std'] = df_mxef['msci_atm_iv'] - df_mxef['cboe_iv_2std']
+df_mxef['msci_skew_diff_1std'] = df_mxef['msci_skew_10delta'] - df_mxef['msci_skew_1std']
+df_mxef['msci_skew_diff_2std'] = df_mxef['msci_skew_10delta'] - df_mxef['msci_skew_2std']
+
 df_spx = pd.read_excel('../../data/global_option_data_copied.xlsx', sheetname='spx')
 df_spx['dt_date'] = df_spx['Dates'].apply(lambda x: x.date())
 df_spx = df_spx.dropna().sort_values(by='dt_date').reset_index(drop=True)
@@ -23,6 +43,7 @@ df_spx['cboe_vix_diff_1std'] = df_spx['cboe_vix'] - df_spx['cboe_vix_1std']
 df_spx['cboe_vix_diff_2std'] = df_spx['cboe_vix'] - df_spx['cboe_vix_2std']
 df_spx['cboe_skew_diff_1std'] = df_spx['cboe_skew'] - df_spx['cboe_skew_1std']
 df_spx['cboe_skew_diff_2std'] = df_spx['cboe_skew'] - df_spx['cboe_skew_2std']
+
 pu.plot_line_chart(df_spx['dt_date'].tolist(), [df_spx['cboe_skew_2std'], df_spx['cboe_skew']],
                    ['cboe_skew_2std', 'cboe_skew'])
 pu.plot_line_chart(df_spx['dt_date'].tolist(), [df_spx['cboe_vix_2std'], df_spx['cboe_vix']],
@@ -60,6 +81,7 @@ df_50etf['ivix_diff_2std'] = df_50etf['vix'] - df_50etf['ivix_2std']
 df_monitor = pd.merge(df_spx[['dt_date', 'cboe_vix_diff_1std', 'cboe_vix_diff_2std', 'cboe_skew_diff_1std', 'cboe_skew_diff_2std']],
                       df_sse[['dt_date', 'sse_10d_skew_diff_1std', 'sse_10d_skew_diff_2std']], how='outer', on='dt_date')
 df_monitor = pd.merge(df_monitor,df_50etf[['dt_date','ivix_diff_1std','ivix_diff_2std','50ETF','iv_atm_avg']], how='outer', on='dt_date')
+df_monitor = pd.merge(df_monitor,df_mxef[['dt_date','msci_vix_diff_1std','msci_vix_diff_2std','msci_skew_diff_1std','msci_skew_diff_2std']], how='outer', on='dt_date')
 # plt.show()
 print(df_monitor)
 

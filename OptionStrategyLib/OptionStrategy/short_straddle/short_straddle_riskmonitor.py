@@ -12,10 +12,10 @@ from Utilities.timebase import LLKSR, KALMAN, LLT
 from back_test.model.trade import Order
 
 pu = PlotUtil()
-start_date = datetime.date(2015, 2, 1)
+start_date = datetime.date(2016, 1, 1)
 end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 15  # 20 sharpe ratio较优
+min_holding = 20  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
@@ -129,7 +129,7 @@ while optionset.eval_date <= end_date:
 account.account.to_csv('../../accounts_data/short_straddle_account-no_hedge.csv')
 account.trade_records.to_csv('../../accounts_data/short_straddle_records-no_hedge.csv')
 res = account.analysis()
-res['期权平均持仓天数'] = len(account.account) / option_trade_times
+res['option_average_holding_days'] = len(account.account) / option_trade_times
 print(res)
 
 dates = list(account.account.index)
