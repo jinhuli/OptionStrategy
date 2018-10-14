@@ -11,6 +11,18 @@ import pandas as pd
 from Utilities.timebase import LLKSR, KALMAN, LLT
 from back_test.model.trade import Order
 
+
+def stop_loss(call, put):
+    spot = call.underlying_last_close()
+    if spot is None:
+        return False
+    if call.strike() < spot or put.strike() > spot:
+        print(call.eval_date,' stop loss')
+        return True
+    else:
+        return False
+
+
 pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
 end_date = datetime.date(2018, 10, 8)
@@ -44,7 +56,6 @@ optionset = BaseOptionSet(df_metrics)
 optionset.init()
 d1 = optionset.eval_date
 
-
 account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
 
 option_trade_times = 0
@@ -52,6 +63,8 @@ empty_position = True
 unit_p = None
 unit_c = None
 atm_strike = None
+atm_call = None
+atm_put = None
 buy_write = c.BuyWrite.WRITE
 maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
 
@@ -68,17 +81,17 @@ while optionset.eval_date <= end_date:
         break
 
     # 平仓
-    if not empty_position and (maturity1 - optionset.eval_date).days <= 8:
+    if not empty_position and ((maturity1 - optionset.eval_date).days <= 8 or stop_loss(atm_call, atm_put)):
         for option in account.dict_holding.values():
             order = account.create_close_order(option, cd_trade_price=cd_trade_price)
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
         empty_position = True
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
 
     # 开仓：距到期1M
     # if empty_position and (maturity1 - optionset.eval_date).days <= 30:
     if empty_position:
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
@@ -107,16 +120,12 @@ while optionset.eval_date <= end_date:
     if not optionset.has_next(): break
     optionset.next()
 
-account.account.to_csv('../../accounts_data/short_strangle_account_'+str(moneyness_rank)+'-no_hedge.csv')
+account.account.to_csv('../../accounts_data/short_strangle_account_' + str(moneyness_rank) + '-no_hedge.csv')
 res = account.analysis()
 res['期权平均持仓天数'] = len(account.account) / option_trade_times
 print(res)
 
 dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])
-pu.plot_line_chart(dates,[npv],['npv'])
+pu.plot_line_chart(dates, [npv], ['npv'])
 plt.show()
-
-
-
-

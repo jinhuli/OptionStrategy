@@ -14,30 +14,30 @@ from back_test.model.trade import Order
 """ Open/Close Position Signal """
 
 
-def open_signal(dt_date, df_status,h):
-    return write_signal_tangent(dt_date, df_status,h)
+def open_signal(dt_date, df_status, h):
+    return write_signal_tangent(dt_date, df_status, h)
 
 
-def close_signal(dt_date, option_maturity, df_status,h):
+def close_signal(dt_date, option_maturity, df_status, h):
     if dt_date >= option_maturity - datetime.timedelta(days=8):
         print('3.到期', dt_date)
         return True
     else:
-        return close_signal_tangent(dt_date, df_status,h)
+        return close_signal_tangent(dt_date, df_status, h)
 
 
-def write_signal_tangent(dt_date, df_status,h):
+def write_signal_tangent(dt_date, df_status, h):
     # if df_status.loc[dt_date,'diff_5'] <= 0:
-    if df_status.loc[dt_date, 'last_diff_'+str(h)] <= 0:
+    if df_status.loc[dt_date, 'last_diff_' + str(h)] <= 0:
         print('1.open', dt_date)
         return True
     else:
         return False
 
 
-def close_signal_tangent(dt_date, df_status,h):
+def close_signal_tangent(dt_date, df_status, h):
     # if df_status.loc[dt_date,'diff_5'] > 0:
-    if df_status.loc[dt_date, 'last_diff_'+str(h)] > 0:
+    if df_status.loc[dt_date, 'last_diff_' + str(h)] > 0:
         print('2.close', dt_date)
         return True
     else:
@@ -110,86 +110,69 @@ df_metrics = df_metrics[df_metrics[c.Util.DT_DATE] >= d].reset_index(drop=True)
 df_c1 = df_future_c1_daily[df_future_c1_daily[c.Util.DT_DATE] >= d].reset_index(drop=True)
 df_c_all = df_futures_all_daily[df_futures_all_daily[c.Util.DT_DATE] >= d].reset_index(drop=True)
 
-df_sharpe = pd.DataFrame()
-df_return = pd.DataFrame()
-df_drawdown = pd.DataFrame()
-for h_open in [3, 5, 10, 15, 20]:
+df_res = pd.DataFrame()
+for h in [3, 5, 10, 15, 20,30,60]:
     sharpes = {}
     returns = {}
     drawdowns = {}
-    for h_close in [3, 5, 10, 15, 20]:
-        optionset = BaseOptionSet(df_metrics)
-        optionset.init()
-        d1 = optionset.eval_date
-        account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
-        option_trade_times = 0
-        empty_position = True
-        unit_p = None
-        unit_c = None
-        atm_strike = None
-        buy_write = c.BuyWrite.WRITE
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
-        while optionset.eval_date <= end_date:
-            if account.cash <= 0: break
-            if maturity1 > end_date:  # Final close out all.
-                close_out_orders = account.creat_close_out_order()
-                for order in close_out_orders:
-                    execution_record = account.dict_holding[order.id_instrument].execute_order(order, slippage=0,
-                                                                                               execute_type=c.ExecuteType.EXECUTE_ALL_UNITS)
-                    account.add_record(execution_record, account.dict_holding[order.id_instrument])
-                account.daily_accounting(optionset.eval_date)
-                break
-
-            if not empty_position and close_signal(optionset.eval_date, maturity1, df_iv_stats,h_close):
-                for option in account.dict_holding.values():
-                    order = account.create_close_order(option, cd_trade_price=cd_trade_price)
-                    record = option.execute_order(order, slippage=slippage)
-                    account.add_record(record, option)
-                empty_position = True
-
-
-            # 开仓：距到期1M
-            if empty_position and open_signal(optionset.eval_date, df_iv_stats,h_open):
-                maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
-                option_trade_times += 1
-                buy_write = c.BuyWrite.WRITE
-                long_short = c.LongShort.SHORT
-                list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                            maturity=maturity1)
-                atm_call = optionset.select_higher_volume(list_atm_call)
-                atm_put = optionset.select_higher_volume(list_atm_put)
-                atm_strike = atm_call.strike()
-                spot = atm_call.underlying_close()
-                unit_c = np.floor(
-                    np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier()) * m
-                unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier()) * m
-                order_c = account.create_trade_order(atm_call, long_short, unit_c, cd_trade_price=cd_trade_price)
-                order_p = account.create_trade_order(atm_put, long_short, unit_p, cd_trade_price=cd_trade_price)
-                record_call = atm_call.execute_order(order_c, slippage=slippage)
-                record_put = atm_put.execute_order(order_p, slippage=slippage)
-                account.add_record(record_call, atm_call)
-                account.add_record(record_put, atm_put)
-                empty_position = False
-
+    optionset = BaseOptionSet(df_metrics)
+    optionset.init()
+    d1 = optionset.eval_date
+    account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
+    option_trade_times = 0
+    empty_position = True
+    unit_p = None
+    unit_c = None
+    atm_strike = None
+    buy_write = c.BuyWrite.WRITE
+    maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+    while optionset.eval_date <= end_date:
+        if account.cash <= 0: break
+        if maturity1 > end_date:  # Final close out all.
+            close_out_orders = account.creat_close_out_order()
+            for order in close_out_orders:
+                execution_record = account.dict_holding[order.id_instrument].execute_order(order, slippage=0,
+                                                                                           execute_type=c.ExecuteType.EXECUTE_ALL_UNITS)
+                account.add_record(execution_record, account.dict_holding[order.id_instrument])
             account.daily_accounting(optionset.eval_date)
-            total_liquid_asset = account.cash + account.get_portfolio_margin_capital()
-            if not optionset.has_next(): break
-            optionset.next()
+            break
 
-        res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
-        print(res)
-        sharpe = res['sharpe']
-        r = res['annual_yield']
-        sharpes.update({'close_horizen_' + str(h_close): sharpe})
-        returns.update({'close_horizen_' + str(h_close): r})
-        drawdowns.update({'close_horizen_' + str(h_close): res['max_drawdown']})
-    s_sharpe = pd.Series(sharpes)
-    s_return = pd.Series(returns)
-    s_drawdown = pd.Series(drawdowns)
-    df_sharpe['open_horizen_' + str(h_open)] = s_sharpe
-    df_return['open_horizen_' + str(h_open)] = s_return
-    df_drawdown['open_horizen_' + str(h_open)] = s_drawdown
-print(df_sharpe)
-df_sharpe.to_csv('../../accounts_data/short_straddle_time_horizons-sharpe.csv')
-df_return.to_csv('../../accounts_data/short_straddle_time_horizons-return.csv')
-df_drawdown.to_csv('../../accounts_data/short_straddle_time_horizons-drawdown.csv')
+        if not empty_position and close_signal(optionset.eval_date, maturity1, df_iv_stats, h):
+            for option in account.dict_holding.values():
+                order = account.create_close_order(option, cd_trade_price=cd_trade_price)
+                record = option.execute_order(order, slippage=slippage)
+                account.add_record(record, option)
+            empty_position = True
+
+        # 开仓：距到期1M
+        if empty_position and open_signal(optionset.eval_date, df_iv_stats, h_open):
+            maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+            option_trade_times += 1
+            buy_write = c.BuyWrite.WRITE
+            long_short = c.LongShort.SHORT
+            list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
+                                                                                        maturity=maturity1)
+            atm_call = optionset.select_higher_volume(list_atm_call)
+            atm_put = optionset.select_higher_volume(list_atm_put)
+            atm_strike = atm_call.strike()
+            spot = atm_call.underlying_close()
+            unit_c = np.floor(
+                np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier()) * m
+            unit_p = np.floor(np.floor(account.portfolio_total_value / atm_put.strike()) / atm_put.multiplier()) * m
+            order_c = account.create_trade_order(atm_call, long_short, unit_c, cd_trade_price=cd_trade_price)
+            order_p = account.create_trade_order(atm_put, long_short, unit_p, cd_trade_price=cd_trade_price)
+            record_call = atm_call.execute_order(order_c, slippage=slippage)
+            record_put = atm_put.execute_order(order_p, slippage=slippage)
+            account.add_record(record_call, atm_call)
+            account.add_record(record_put, atm_put)
+            empty_position = False
+
+        account.daily_accounting(optionset.eval_date)
+        total_liquid_asset = account.cash + account.get_portfolio_margin_capital()
+        if not optionset.has_next(): break
+        optionset.next()
+
+    res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
+    res['option_holding_days'] = len(account.account) / option_trade_times
+    df_res['horizen_' + str(h)] = res
+df_res.to_csv('../../accounts_data/short_straddle_time_horizons.csv')
