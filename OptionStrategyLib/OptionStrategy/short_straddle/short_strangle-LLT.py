@@ -25,8 +25,8 @@ def close_signal(dt_date,option_maturity, df_status):
 def write_signal_tangent(dt_date, df_status):
     # if df_status.loc[dt_date,'diff_20'] <= 0 and df_status.loc[dt_date,'diff_10'] <= 0 and df_status.loc[dt_date,'diff_5'] <= 0:
     # if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
-    if df_status.loc[dt_date,'diff_5'] <= 0:
-    # if df_status.loc[dt_date,'last_diff_5'] <= 0:
+    # if df_status.loc[dt_date,'diff_5'] <= 0:
+    if df_status.loc[dt_date,'last_diff_5'] <= 0:
         print('1.open', dt_date)
         return True
     else:
@@ -34,8 +34,8 @@ def write_signal_tangent(dt_date, df_status):
 
 def close_signal_tangent(dt_date, df_status):
     # if df_status.loc[dt_date,'last_diff_5'] > 0:
-    if df_status.loc[dt_date,'diff_5'] > 0:
-    # if df_status.loc[dt_date,'last_diff_5'] > 0:
+    # if df_status.loc[dt_date,'diff_5'] > 0:
+    if df_status.loc[dt_date,'last_diff_5'] > 0:
         print('2.close', dt_date)
         return True
     else:
@@ -117,7 +117,7 @@ unit_p = None
 unit_c = None
 atm_strike = None
 buy_write = c.BuyWrite.WRITE
-maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
 while optionset.eval_date <= end_date:
     if account.cash <= 0: break
     if maturity1 > end_date:  # Final close out all.
@@ -135,10 +135,10 @@ while optionset.eval_date <= end_date:
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
         empty_position = True
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
 
     # 开仓：距到期1M
     if empty_position and open_signal(optionset.eval_date,df_iv_stats):
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT

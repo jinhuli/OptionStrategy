@@ -65,17 +65,14 @@ df_data = pd.merge(df_histvol,df_iv,on=c.Util.DT_DATE)
 
 
 df_data['iv_premium'] = df_data['ivix_shift_20d']-df_data['histvol_50sh']
+df_data['vix_premium'] = df_data['ivix_shift_20d']-df_data['histvol_50sh']
 df_data = df_data.dropna()
-vols = np.array(df_data['iv_premium'])
-# garman_klass_vols = np.array(df_data[c.Util.AMT_GARMAN_KLASS+'_20'])
-# parkinson_vols = np.array(df_data[c.Util.AMT_PARKINSON_NUMBER+'_20'])
-# logvols = np.log(histvols)
+vols = np.array(df_data['vix_premium'])
 
 x_grid = np.linspace(min(vols), max(vols), 1000)
 
-# plt.figure(1)
 pdf_cc = kde_sklearn(vols, x_grid, bandwidth=0.03)
-pu.plot_line_chart(x_grid,[pdf_cc],['Kernel Density of IV Premium'])
+pu.plot_line_chart(x_grid,[pdf_cc],['kernel density of vix premium'])
 plt.show()
 df_data.to_csv('../../accounts_data/implied_vol_premiums.csv')
 # f.save('../../accounts_data/implied_vol_premiums.csv')

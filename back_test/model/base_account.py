@@ -271,7 +271,10 @@ class BaseAccount():
         elif cd_trade_price == CdTradePrice.OPEN:
             return base_product.mktprice_open()
         elif cd_trade_price == CdTradePrice.VOLUME_WEIGHTED:
-            return base_product.mktprice_volume_weighted()
+            p = base_product.mktprice_volume_weighted()
+            if p is None:
+                p = base_product.mktprice_close()
+            return p
         else:
             return
 

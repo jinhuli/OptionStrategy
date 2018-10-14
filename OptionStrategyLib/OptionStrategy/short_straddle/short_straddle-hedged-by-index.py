@@ -61,7 +61,7 @@ unit_p = None
 unit_c = None
 atm_strike = None
 buy_write = c.BuyWrite.WRITE
-maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
 id_future = hedging.current_state[c.Util.ID_FUTURE]
 idx_hedge = 0
 flag_hedge = False
@@ -90,14 +90,13 @@ while optionset.eval_date <= end_date:
             order = account.create_close_order(option, cd_trade_price=cd_trade_price)
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
-            # hedging.synthetic_unit = 0
-            # last_delta = 0
         empty_position = True
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+
 
     # 开仓：距到期1M
     # if empty_position and (maturity1 - optionset.eval_date).days <= 30:
     if empty_position:
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
