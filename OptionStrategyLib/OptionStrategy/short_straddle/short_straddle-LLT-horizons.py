@@ -46,17 +46,23 @@ def close_signal_tangent(dt_date, df_status, h):
 
 def filtration(df_iv_stats, name_column):
     """ Filtration : LLT """
+    df_iv_stats['LLT_60'] = LLT(df_iv_stats[name_column], 60)
+    df_iv_stats['LLT_30'] = LLT(df_iv_stats[name_column], 30)
     df_iv_stats['LLT_20'] = LLT(df_iv_stats[name_column], 20)
     df_iv_stats['LLT_15'] = LLT(df_iv_stats[name_column], 15)
     df_iv_stats['LLT_10'] = LLT(df_iv_stats[name_column], 10)
     df_iv_stats['LLT_5'] = LLT(df_iv_stats[name_column], 5)
     df_iv_stats['LLT_3'] = LLT(df_iv_stats[name_column], 3)
+    df_iv_stats['diff_60'] = df_iv_stats['LLT_60'].diff()
+    df_iv_stats['diff_30'] = df_iv_stats['LLT_30'].diff()
     df_iv_stats['diff_20'] = df_iv_stats['LLT_20'].diff()
     df_iv_stats['diff_15'] = df_iv_stats['LLT_15'].diff()
     df_iv_stats['diff_10'] = df_iv_stats['LLT_10'].diff()
     df_iv_stats['diff_5'] = df_iv_stats['LLT_5'].diff()
     df_iv_stats['diff_3'] = df_iv_stats['LLT_3'].diff()
     df_iv_stats = df_iv_stats.set_index(c.Util.DT_DATE)
+    df_iv_stats['last_diff_60'] = df_iv_stats['diff_60'].shift()
+    df_iv_stats['last_diff_30'] = df_iv_stats['diff_30'].shift()
     df_iv_stats['last_diff_20'] = df_iv_stats['diff_20'].shift()
     df_iv_stats['last_diff_15'] = df_iv_stats['diff_15'].shift()
     df_iv_stats['last_diff_10'] = df_iv_stats['diff_10'].shift()
@@ -145,7 +151,7 @@ for h in [3, 5, 10, 15, 20,30,60]:
             empty_position = True
 
         # 开仓：距到期1M
-        if empty_position and open_signal(optionset.eval_date, df_iv_stats, h_open):
+        if empty_position and open_signal(optionset.eval_date, df_iv_stats, h):
             maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
             option_trade_times += 1
             buy_write = c.BuyWrite.WRITE
@@ -172,7 +178,7 @@ for h in [3, 5, 10, 15, 20,30,60]:
         if not optionset.has_next(): break
         optionset.next()
 
-    res = account.get_netvalue_analysis(account.account[c.Util.PORTFOLIO_NPV])
+    res = account.analysis()
     res['option_holding_days'] = len(account.account) / option_trade_times
     df_res['horizen_' + str(h)] = res
 df_res.to_csv('../../accounts_data/short_straddle_time_horizons.csv')

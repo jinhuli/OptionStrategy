@@ -21,20 +21,37 @@ optionset.init()
 while optionset.has_next():
     for nbr_maturity in nbr_maturitys:
         dt_maturity = optionset.get_maturities_list()[nbr_maturity]
-        dict_m_options = optionset.get_dict_moneyness_and_options(dt_maturity,c.OptionType.PUT)
+        dict_m_options_put = optionset.get_dict_moneyness_and_options(dt_maturity,c.OptionType.PUT)
+        dict_m_options_call = optionset.get_dict_moneyness_and_options(dt_maturity,c.OptionType.CALL)
         otm_put = 0 #[-inf, -1]
         atm_put = 0 #[0]
         itm_put = 0 #[1, inf]
-        for m in dict_m_options.keys():
+        otm = 0  # [-inf, -1]
+        atm = 0  # [0]
+        itm = 0  # [1, inf]
+        for m in dict_m_options_put.keys():
             if m <= -1:
-                for option in dict_m_options[m]:
+                for option in dict_m_options_put[m]:
                     otm_put += option.trading_volume()
+                    otm += option.trading_volume()
             elif m >= 1:
-                for option in dict_m_options[m]:
+                for option in dict_m_options_put[m]:
                     itm_put += option.trading_volume()
+                    itm += option.trading_volume()
             else:
-                for option in dict_m_options[m]:
+                for option in dict_m_options_put[m]:
                     atm_put += option.trading_volume()
+                    atm += option.trading_volume()
+        for m in dict_m_options_call.keys():
+            if m <= -1:
+                for option in dict_m_options_call[m]:
+                    otm += option.trading_volume()
+            elif m >= 1:
+                for option in dict_m_options_call[m]:
+                    itm += option.trading_volume()
+            else:
+                for option in dict_m_options_call[m]:
+                    atm += option.trading_volume()
         total_put = otm_put+itm_put+atm_put
         total_call = 0
         dict_m_options_c = optionset.get_dict_moneyness_and_options(dt_maturity,c.OptionType.CALL)
@@ -47,8 +64,11 @@ while optionset.has_next():
             '3-otm_put':otm_put,
             '4-itm_put':itm_put,
             '5-atm_put':atm_put,
-            '6-total_put':total_put,
-            '7-total_option':total_call+total_put,
+            '6-otm': otm,
+            '7-itm': itm,
+            '8-atm': atm,
+            '9-total_put':total_put,
+            '91-total_option':total_call+total_put,
         })
         # print(optionset.eval_date,nbr_maturity,total_put,total_call)
     optionset.next()
@@ -60,22 +80,26 @@ df_m1 = df_capacity[df_capacity['2-nbr_maturity']==1].reset_index(drop=True)
 df_m2 = df_capacity[df_capacity['2-nbr_maturity']==2].reset_index(drop=True)
 df_m3 = df_capacity[df_capacity['2-nbr_maturity']==3].reset_index(drop=True)
 
-df_m0['8-otm_put_capacity'] = c.Statistics.moving_average(df_m0['3-otm_put'],20)/100.0
-df_m0['9-put_capacity'] = c.Statistics.moving_average(df_m0['6-total_put'],20)/100.0
-df_m0['10-total_capacity'] = c.Statistics.moving_average(df_m0['7-total_option'],20)/100.0
+df_m0['92-otm_capacity'] = c.Statistics.moving_average(df_m0['6-otm'],20)/100.0
+df_m0['93-itm_capacity'] = c.Statistics.moving_average(df_m0['7-itm'],20)/100.0
+df_m0['94-atm_capacity'] = c.Statistics.moving_average(df_m0['8-atm'],20)/100.0
+df_m0['95-total_capacity'] = c.Statistics.moving_average(df_m0['91-total_option'],20)/100.0
 df_m0.to_csv('../accounts_data/df_m0.csv')
 
-df_m1['8-otm_put_capacity'] = c.Statistics.moving_average(df_m1['3-otm_put'],20)/100.0
-df_m1['9-put_capacity'] = c.Statistics.moving_average(df_m1['6-total_put'],20)/100.0
-df_m1['10-total_capacity'] = c.Statistics.moving_average(df_m1['7-total_option'],20)/100.0
+df_m1['92-otm_capacity'] = c.Statistics.moving_average(df_m1['6-otm'],20)/100.0
+df_m1['93-itm_capacity'] = c.Statistics.moving_average(df_m1['7-itm'],20)/100.0
+df_m1['94-atm_capacity'] = c.Statistics.moving_average(df_m1['8-atm'],20)/100.0
+df_m1['95-total_capacity'] = c.Statistics.moving_average(df_m1['91-total_option'],20)/100.0
 df_m1.to_csv('../accounts_data/df_m1.csv')
 
-df_m2['8-otm_put_capacity'] = c.Statistics.moving_average(df_m2['3-otm_put'],20)/100.0
-df_m2['9-put_capacity'] = c.Statistics.moving_average(df_m2['6-total_put'],20)/100.0
-df_m2['10-total_capacity'] = c.Statistics.moving_average(df_m2['7-total_option'],20)/100.0
-df_m2.to_csv('../accounts_data/df_m2.csv')
 
-df_m3['8-otm_put_capacity'] = c.Statistics.moving_average(df_m3['3-otm_put'],20)/100.0
-df_m3['9-put_capacity'] = c.Statistics.moving_average(df_m3['6-total_put'],20)/100.0
-df_m3['10-total_capacity'] = c.Statistics.moving_average(df_m3['7-total_option'],20)/100.0
-df_m3.to_csv('../accounts_data/df_m3.csv')
+
+# df_m2['8-otm_put_capacity'] = c.Statistics.moving_average(df_m2['3-otm_put'],20)/100.0
+# df_m2['9-put_capacity'] = c.Statistics.moving_average(df_m2['6-total_put'],20)/100.0
+# df_m2['10-total_capacity'] = c.Statistics.moving_average(df_m2['7-total_option'],20)/100.0
+# df_m2.to_csv('../accounts_data/df_m2.csv')
+#
+# df_m3['8-otm_put_capacity'] = c.Statistics.moving_average(df_m3['3-otm_put'],20)/100.0
+# df_m3['9-put_capacity'] = c.Statistics.moving_average(df_m3['6-total_put'],20)/100.0
+# df_m3['10-total_capacity'] = c.Statistics.moving_average(df_m3['7-total_option'],20)/100.0
+# df_m3.to_csv('../accounts_data/df_m3.csv')

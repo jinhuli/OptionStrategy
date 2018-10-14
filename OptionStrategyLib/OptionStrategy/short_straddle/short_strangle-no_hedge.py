@@ -31,7 +31,7 @@ min_holding = 20  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-moneyness_rank = -1
+moneyness_rank = -2
 cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
 
 """ 50ETF option """

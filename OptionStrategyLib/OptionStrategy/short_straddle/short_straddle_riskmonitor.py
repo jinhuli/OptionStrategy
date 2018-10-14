@@ -126,8 +126,8 @@ while optionset.eval_date <= end_date:
     optionset.next()
     # hedging.next()
 
-account.account.to_csv('../../accounts_data/short_straddle_account-no_hedge.csv')
-account.trade_records.to_csv('../../accounts_data/short_straddle_records-no_hedge.csv')
+account.account.to_csv('../../accounts_data/short_straddle_account-riskmonitor.csv')
+account.trade_records.to_csv('../../accounts_data/short_straddle_records-riskmonitor.csv')
 res = account.analysis()
 res['option_average_holding_days'] = len(account.account) / option_trade_times
 print(res)
