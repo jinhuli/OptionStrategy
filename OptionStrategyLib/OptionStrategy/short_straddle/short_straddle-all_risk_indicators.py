@@ -138,7 +138,7 @@ unit_p = None
 unit_c = None
 atm_strike = None
 buy_write = c.BuyWrite.WRITE
-maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
 while optionset.eval_date <= end_date:
     if account.cash <= 0: break
     if maturity1 > end_date:  # Final close out all.
@@ -185,7 +185,7 @@ while optionset.eval_date <= end_date:
     if not optionset.has_next(): break
     optionset.next()
 
-account.account.to_csv('../../accounts_data/short_straddle_account-no_hedge-timing.csv')
+account.account.to_csv('../../accounts_data/short_straddle_account-all-risk-indicators.csv')
 res = account.analysis()
 res['option_average_holding_days'] = len(account.account) / option_trade_times
 print(res)
