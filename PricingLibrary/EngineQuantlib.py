@@ -310,3 +310,14 @@ class QlBlackFormula(AbstractOptionPricingEngine):
             else:
                 r = m
         return m
+
+
+# mdt = datetime.date.today() + datetime.timedelta(days=30)
+# p = QlBlackFormula(datetime.date.today(),mdt,constant.OptionType.PUT,
+#                    spot=2.5,strike=2.5)
+# implied_vol=p.estimate_vol(price=0.1)
+# p.reset_vol(implied_vol)
+# print(implied_vol)
+# print(p.NPV())
+# print(p.Delta(implied_vol))
+# print(p.Gamma(implied_vol))
