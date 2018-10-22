@@ -27,14 +27,16 @@ def commodity_option_market_overview(start_date,end_date,name_code):
         .filter(futureMkt.c.name_code == name_code) \
         .group_by(futureMkt.c.dt_date, futureMkt.c.name_code)
     df_future_trading = pd.read_sql(query_future.statement, query_future.session.bind)
-    query_option_holding = admin.session_mktdata().query(optionMkt.c.dt_date, optionMkt.c.name_code,func.sum(optionMkt.c.amt_holding_volume).label('option_holding_volume')) \
+    query_option_holding = admin.session_mktdata().query(optionMkt.c.dt_date, optionMkt.c.name_code,
+                                                         func.sum(optionMkt.c.amt_holding_volume).label('option_holding_volume')) \
         .filter(optionMkt.c.dt_date >= start_date) \
         .filter(optionMkt.c.dt_date <= end_date) \
         .filter(optionMkt.c.name_code == name_code) \
         .filter(or_(optionMkt.c.flag_night == 0,optionMkt.c.flag_night==-1)) \
         .group_by(optionMkt.c.dt_date, optionMkt.c.name_code)#每日日盘收盘持仓数据
     df_option_holding = pd.read_sql(query_option_holding.statement, query_option_holding.session.bind)
-    query_future_holding = admin.session_mktdata().query(futureMkt.c.dt_date,futureMkt.c.name_code,func.sum(futureMkt.c.amt_holding_volume).label('future_holding_volume')) \
+    query_future_holding = admin.session_mktdata().query(futureMkt.c.dt_date,futureMkt.c.name_code,
+                                                         func.sum(futureMkt.c.amt_holding_volume).label('future_holding_volume')) \
         .filter(futureMkt.c.dt_date >= start_date) \
         .filter(futureMkt.c.dt_date <= end_date) \
         .filter(futureMkt.c.name_code == name_code) \
