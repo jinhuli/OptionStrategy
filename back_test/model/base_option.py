@@ -4,7 +4,7 @@ import numpy as np
 import math
 from typing import Union
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, \
-    Option50ETF, ExecuteType, LongShort, OptionExerciseType, PricingUtil
+    Option50ETF, ExecuteType, LongShort, OptionExerciseType, PricingUtil,CdPriceType
 from back_test.model.base_product import BaseProduct
 from PricingLibrary.BlackCalculator import BlackCalculator
 from PricingLibrary.BlackFormular import BlackFormula
@@ -199,9 +199,15 @@ class BaseOption(BaseProduct):
         else:
             return Util.DICT_CONTRACT_MULTIPLIER[self._name_code]
 
-    """
-    black calculator related calculations.
-    """
+    def get_underlying_price(self,cd_price:CdPriceType) -> Union[float, None]:
+        if cd_price == CdPriceType.OPEN:
+            return self.underlying_open_price()
+        elif cd_price == CdPriceType.CLOSE:
+            return self.underlying_close()
+        elif cd_price == CdPriceType.LAST_CLOSE:
+            return self.underlying_last_close()
+        else:
+            return
 
     def update_implied_vol(self) -> None:
         if self.flag_calculate_iv:

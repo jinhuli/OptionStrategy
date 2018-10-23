@@ -33,9 +33,10 @@ class MoneynessMethod(Enum):
     METHOD2 = 1
 
 
-class UnderlyingPriceType(Enum):
+class CdPriceType(Enum):
     CLOSE = 1
     OPEN = 2
+    LAST_CLOSE = -1
 
 
 class OptionType(Enum):

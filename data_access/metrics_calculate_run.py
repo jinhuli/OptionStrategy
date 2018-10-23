@@ -1,9 +1,10 @@
 import datetime
-import QuantLib as ql
-from back_test.deprecated.BktOptionSet import BktOptionSet
 
-from OptionStrategyLib.OptionStrategy.bkt_strategy_ivbymoneyness import BktStrategyMoneynessVol
+import QuantLib as ql
+
+from OptionStrategyLib.OptionStrategy.deprecated.bkt_strategy_ivbymoneyness import BktStrategyMoneynessVol
 from Utilities import admin_write_util as admin
+from back_test.deprecated.BktOptionSet import BktOptionSet
 from back_test.deprecated.BktUtil import BktUtil
 from data_access.get_data import get_50option_mktdata, get_comoption_mktdata
 

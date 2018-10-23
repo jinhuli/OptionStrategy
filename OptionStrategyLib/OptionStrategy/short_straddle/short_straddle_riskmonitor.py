@@ -104,7 +104,7 @@ while optionset.eval_date <= end_date:
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                        maturity=maturity1)
+                                                                                        maturity=maturity1,cd_price=c.CdPriceType.OPEN)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()

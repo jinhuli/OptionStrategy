@@ -82,7 +82,7 @@ for moneyness_rank in moneyness_ranks:
             buy_write = c.BuyWrite.WRITE
             long_short = c.LongShort.SHORT
             list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=moneyness_rank,
-                                                                                        maturity=maturity1)
+                                                                                        maturity=maturity1,cd_price=c.CdPriceType.LAST_CLOSE)
             atm_call = optionset.select_higher_volume(list_atm_call)
             atm_put = optionset.select_higher_volume(list_atm_put)
             if atm_call is None or atm_put is None:
@@ -112,6 +112,7 @@ for moneyness_rank in moneyness_ranks:
     df_res['short_moneyness=' + str(moneyness_rank)] = res
     print(res)
 df_res.to_csv('../../accounts_data/short_aggregation_res-no_hedge.csv')
+print(df_res)
 # dates = list(account.account.index)
 # npv = list(account.account[c.Util.PORTFOLIO_NPV])
 # pu.plot_line_chart(dates,[npv],['npv'])

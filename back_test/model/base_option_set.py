@@ -7,7 +7,7 @@ import math
 from back_test.model.abstract_base_product_set import AbstractBaseProductSet
 from back_test.model.base_option import BaseOption
 from back_test.model.constant import FrequentType, Util, OptionFilter, OptionType, OptionUtil, Option50ETF, \
-    OptionExerciseType
+    OptionExerciseType,CdPriceType
 from PricingLibrary.EngineQuantlib import QlBinomial, QlBlackFormula, QlBAW
 from PricingLibrary.BinomialModel import BinomialTree
 
@@ -594,20 +594,20 @@ class BaseOptionSet(AbstractBaseProductSet):
         Get option maturity dictionary from all maturities by given moneyness rank. """
 
     def get_options_dict_by_mdt_moneyness_mthd1(
-            self, moneyness_rank: int) -> List[Dict[datetime.date, List[BaseOption]]]:
+            self, moneyness_rank: int,cd_price=CdPriceType.CLOSE) -> List[Dict[datetime.date, List[BaseOption]]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         call_mdt_dict = {}
         put_mdt_dict = {}
         for mdt in mdt_calls.keys():
             mdt_options_dict = mdt_calls.get(mdt)
-            spot = list(mdt_options_dict.values())[0][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].get_underlying_price(cd_price)
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                                   list(mdt_options_dict.keys()),
                                                                                   OptionType.CALL)
             call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         for mdt in mdt_puts.keys():
             mdt_options_dict = mdt_puts.get(mdt)
-            spot = list(mdt_options_dict.values())[0][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].get_underlying_price(cd_price)
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                                   list(mdt_options_dict.keys()),
                                                                                   OptionType.PUT)
@@ -619,11 +619,11 @@ class BaseOptionSet(AbstractBaseProductSet):
 
     # 返回的option放在list里，是因为50ETF option可能有相近行权价的期权同时处于一个nearest strike
     def get_options_list_by_moneyness_mthd1(
-            self, moneyness_rank: int, maturity: datetime.date) \
+            self, moneyness_rank: int, maturity: datetime.date,cd_price=CdPriceType.CLOSE) \
             -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
-        spot = list(mdt_options_dict.values())[0][0].underlying_close()
+        spot = list(mdt_options_dict.values())[0][0].get_underlying_price(cd_price)
         k_call = self.OptionUtilClass.get_strike_by_monenyes_rank_nearest_strike(spot, moneyness_rank,
                                                                                  list(mdt_options_dict.keys()),
                                                                                  OptionType.CALL)
@@ -643,20 +643,20 @@ class BaseOptionSet(AbstractBaseProductSet):
         # 1: 实值level1： 平值新全价往实值方向移一档 """
 
     def get_options_dict_by_mdt_moneyness_mthd2(
-            self, moneyness_rank: int) -> List[Dict[datetime.date, List[BaseOption]]]:
+            self, moneyness_rank: int,cd_price=CdPriceType.CLOSE) -> List[Dict[datetime.date, List[BaseOption]]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         call_mdt_dict = {}
         put_mdt_dict = {}
         for mdt in mdt_calls.keys():
             mdt_options_dict = mdt_calls.get(mdt)
-            spot = list(mdt_options_dict.values())[0][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].get_underlying_price(cd_price)
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                               list(mdt_options_dict.keys()),
                                                                               OptionType.CALL)
             call_mdt_dict.update({mdt: mdt_options_dict.get(idx)})
         for mdt in mdt_puts.keys():
             mdt_options_dict = mdt_puts.get(mdt)
-            spot = list(mdt_options_dict.values())[0][0].underlying_close()
+            spot = list(mdt_options_dict.values())[0][0].get_underlying_price(cd_price)
             idx = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                               list(mdt_options_dict.keys()),
                                                                               OptionType.PUT)
@@ -670,11 +670,11 @@ class BaseOptionSet(AbstractBaseProductSet):
         # -1：虚值level1：平值行权价往虚值方向移一档
         # 1: 实值level1： 平值新全价往实值方向移一档 """
 
-    def get_options_list_by_moneyness_mthd2(self, moneyness_rank: int, maturity: datetime.date) \
+    def get_options_list_by_moneyness_mthd2(self, moneyness_rank: int, maturity: datetime.date, cd_price=CdPriceType.CLOSE) \
             -> List[List[BaseOption]]:
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
         mdt_options_dict = mdt_calls.get(maturity)
-        spot = list(mdt_options_dict.values())[0][0].underlying_close()
+        spot = list(mdt_options_dict.values())[0][0].get_underlying_price(cd_price)
         idx_call = self.OptionUtilClass.get_strike_by_monenyes_rank_otm_strike(spot, moneyness_rank,
                                                                                list(mdt_options_dict.keys()),
                                                                                OptionType.CALL)
