@@ -19,7 +19,7 @@ min_holding = 15  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_trade_price = c.CdTradePrice.CLOSE
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -87,7 +87,7 @@ while optionset.eval_date <= end_date:
         long_short = c.LongShort.SHORT
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
                                                                                     maturity=maturity1,
-                                                                                    cd_price=c.CdPriceType.LAST_CLOSE)
+                                                                                    cd_price=c.CdPriceType.CLOSE)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()

@@ -19,7 +19,7 @@ min_holding = 20  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_trade_price = c.CdTradePrice.CLOSE
 
 """ Risk Monitor """
 df_warning = pd.read_excel('../../../data/risk_monitor.xlsx')
@@ -104,7 +104,8 @@ while optionset.eval_date <= end_date:
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                        maturity=maturity1,cd_price=c.CdPriceType.OPEN)
+                                                                                        maturity=maturity1,
+                                                                                    cd_price=c.CdPriceType.CLOSE)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()
