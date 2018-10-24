@@ -11,43 +11,8 @@ import pandas as pd
 from Utilities.timebase import LLKSR, KALMAN, LLT
 from back_test.model.trade import Order
 
-""" Open/Close Position Signal """
-
-
-def open_signal(dt_date, df_status):
-    return open_signal_tangent(dt_date, df_status)
-
-
-def close_signal(dt_date, option_maturity, df_status):
-    if dt_date >= option_maturity - datetime.timedelta(days=5):
-        print('3.到期', dt_date)
-        return True
-    else:
-        return close_signal_tangent(dt_date, df_status)
-
-
-def open_signal_tangent(dt_date, df_status):
-    if df_status.loc[dt_date, 'diff_20'] <= 0 and df_status.loc[dt_date, 'diff_10'] <= 0 and df_status.loc[
-        dt_date, 'diff_5'] <= 0:
-        # if df_status.loc[dt_date,'last_diff_20'] <= 0 and df_status.loc[dt_date,'last_diff_10'] <= 0 and df_status.loc[dt_date,'last_diff_5'] <= 0:
-        # if df_status.loc[dt_date,'diff_5'] <= 0:
-        print('1.open', dt_date)
-        return True
-    else:
-        return False
-
-
-def close_signal_tangent(dt_date, df_status):
-    # if df_status.loc[dt_date,'last_diff_5'] > 0:
-    if df_status.loc[dt_date, 'diff_5'] > 0:
-        print('2.close', dt_date)
-        return True
-    else:
-        return False
-
-
 pu = PlotUtil()
-start_date = datetime.date(2015, 2, 1)
+start_date = datetime.date(2016, 2, 1)
 end_date = datetime.date(2018, 8, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 20  # 20 sharpe ratio较优
@@ -55,10 +20,10 @@ init_fund = c.Util.BILLION
 slippage = 0
 
 """ 50ETF option """
-name_code = c.Util.STR_IH
-name_code_option = c.Util.STR_50ETF
-df_metrics = get_data.get_50option_mktdata(start_date, end_date)
-
+# name_code = c.Util.STR_IH
+# name_code_option = c.Util.STR_50ETF
+# df_metrics = get_data.get_50option_mktdata(start_date, end_date)
+df_metrics = get_data.get_comoption_mktdata(start_date,end_date,c.Util.STR_M)
 optionset = BaseOptionSet(df_metrics)
 optionset.init()
 account = BaseAccount(init_fund=10000000, leverage=1.0, rf=0.03)

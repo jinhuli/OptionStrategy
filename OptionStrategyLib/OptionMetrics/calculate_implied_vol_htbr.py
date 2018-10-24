@@ -5,7 +5,7 @@ import datetime
 from PricingLibrary.EngineQuantlib import QlBlackFormula, QlBinomial
 import Utilities.admin_write_util as admin
 
-start_date = datetime.date(2015, 2, 1)
+start_date = datetime.date(2018, 10, 1)
 end_date = datetime.date.today()
 
 init_vol = 0.2

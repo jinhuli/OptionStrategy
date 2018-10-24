@@ -19,8 +19,7 @@ min_holding = 15  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-# moneyness_rank = -2
-cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_trade_price = c.CdTradePrice.CLOSE
 
 """ 50ETF option """
 name_code = c.Util.STR_IH
@@ -44,18 +43,22 @@ optionset = BaseOptionSet(df_metrics)
 optionset.init()
 d1 = optionset.eval_date
 
+# hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY, df_c1_daily=df_c1, df_futures_all_daily=df_c_all)
+# hedging.init()
+# print(optionset.eval_date, hedging.eval_date)
 
 account = BaseAccount(init_fund=c.Util.BILLION, leverage=1.0, rf=0.03)
 
 option_trade_times = 0
 empty_position = True
-unit = None
+unit_p = None
+unit_c = None
 atm_strike = None
 buy_write = c.BuyWrite.WRITE
-maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
-
+maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=15)
+# id_future = hedging.current_state[c.Util.ID_FUTURE]
+# print(id_future)
 while optionset.eval_date <= end_date:
-    # print(optionset.eval_date)
     if account.cash <= 0: break
     if maturity1 > end_date:  # Final close out all.
         close_out_orders = account.creat_close_out_order()
@@ -64,56 +67,56 @@ while optionset.eval_date <= end_date:
                                                                                        execute_type=c.ExecuteType.EXECUTE_ALL_UNITS)
             account.add_record(execution_record, account.dict_holding[order.id_instrument])
         account.daily_accounting(optionset.eval_date)
+
         break
 
-    # 平仓
     if not empty_position and (maturity1 - optionset.eval_date).days <= 8:
         for option in account.dict_holding.values():
             order = account.create_close_order(option, cd_trade_price=cd_trade_price)
             record = option.execute_order(order, slippage=slippage)
             account.add_record(record, option)
+            # hedging.synthetic_unit = 0
         empty_position = True
-        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+
 
     # 开仓：距到期1M
-    if empty_position and (maturity1 - optionset.eval_date).days <= 30:
+    # if empty_position and (maturity1 - optionset.eval_date).days <= 30:
+    if empty_position:
+        maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
+        maturity2 = optionset.select_maturity_date(nbr_maturity=1, min_holding=min_holding)
         option_trade_times += 1
-        # buy_write = c.BuyWrite.WRITE
-        list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                    maturity=maturity1)
-        atm_call = optionset.select_higher_volume(list_atm_call)
-        list_itm_call, list_itm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=2,
-                                                                                    maturity=maturity1)
-        itm_call = optionset.select_higher_volume(list_itm_call)
-        list_otm_call, list_otm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=-2,
-                                                                                    maturity=maturity1)
-        otm_call = optionset.select_higher_volume(list_otm_call)
-        if itm_call is None or otm_call is None:
-            if not optionset.has_next(): break
-            optionset.next()
-            continue
-        atm_strike = atm_call.strike()
-        spot = atm_call.underlying_close()
-        unit = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier()) * m
-        order_1 = account.create_trade_order(atm_call, c.LongShort.SHORT, unit*2, cd_trade_price=cd_trade_price)
-        order_2 = account.create_trade_order(itm_call, c.LongShort.LONG, unit, cd_trade_price=cd_trade_price)
-        order_3 = account.create_trade_order(otm_call, c.LongShort.LONG, unit, cd_trade_price=cd_trade_price)
-        record_1 = atm_call.execute_order(order_1, slippage=slippage)
-        record_2 = atm_call.execute_order(order_2, slippage=slippage)
-        record_3 = atm_call.execute_order(order_3, slippage=slippage)
-        account.add_record(record_1, atm_call)
-        account.add_record(record_2, itm_call)
-        account.add_record(record_3, otm_call)
+        buy_write = c.BuyWrite.WRITE
+        # long_short = c.LongShort.SHORT
+        list_atm_call1, list_atm_put1 = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
+                                                                                    maturity=maturity1,
+                                                                                    cd_price=c.CdPriceType.CLOSE)
+        atm_call1 = optionset.select_higher_volume(list_atm_call1)
+        list_atm_call2, list_atm_put2 = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
+                                                                                    maturity=maturity2,
+                                                                                    cd_price=c.CdPriceType.CLOSE)
+        atm_call2 = optionset.select_higher_volume(list_atm_call2)
+        atm_strike = atm_call1.strike()
+        spot = atm_call1.underlying_close()
+        # hedging.amt_option = 1 / 1000  # 50ETF与IH点数之比
+        unit_c = np.floor(np.floor(account.portfolio_total_value / atm_call1.strike()) / atm_call1.multiplier()) * m
+        unit_p = np.floor(np.floor(account.portfolio_total_value / atm_call2.strike()) / atm_call2.multiplier()) * m
+        order_c = account.create_trade_order(atm_call1, c.LongShort.SHORT, unit_c, cd_trade_price=cd_trade_price)
+        order_p = account.create_trade_order(atm_call2, c.LongShort.LONG, unit_p, cd_trade_price=cd_trade_price)
+        record_call = atm_call1.execute_order(order_c, slippage=slippage)
+        record_put = atm_call2.execute_order(order_p, slippage=slippage)
+        account.add_record(record_call, atm_call1)
+        account.add_record(record_put, atm_call2)
         empty_position = False
 
     account.daily_accounting(optionset.eval_date)
     total_liquid_asset = account.cash + account.get_portfolio_margin_capital()
     if not optionset.has_next(): break
     optionset.next()
+    # hedging.next()
 
-account.account.to_csv('../../accounts_data/butterfly_account.csv')
+account.account.to_csv('../../accounts_data/calendar_spread.csv')
 res = account.analysis()
-res['期权平均持仓天数'] = len(account.account) / option_trade_times
+res['option_average_holding_days'] = len(account.account) / option_trade_times
 print(res)
 
 dates = list(account.account.index)

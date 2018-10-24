@@ -17,22 +17,25 @@ class HistoricalVolatilityModels:
 
     @staticmethod
     def parkinson_number(df,n=20):
-        df_vol = df[[Util.DT_DATE]]
+        # df_vol = df[[Util.DT_DATE]]
         squred_log_h_l = df.apply(HistoricalVolatilityModels.fun_squred_log_high_low, axis=1)
         sum_squred_log_h_l = squred_log_h_l.rolling(window=n).sum()
-        df_vol[Util.AMT_PARKINSON_NUMBER+'_'+str(n)] = sum_squred_log_h_l.apply(
+        res_series = sum_squred_log_h_l.apply(
             lambda x: math.sqrt(252 * x / (n * 4 * math.log(2))))
-        df_vol = df_vol.dropna().set_index(Util.DT_DATE)
-        return df_vol
+        # df_vol[Util.AMT_PARKINSON_NUMBER+'_'+str(n)] = sum_squred_log_h_l.apply(
+        #     lambda x: math.sqrt(252 * x / (n * 4 * math.log(2))))
+        # df_vol = df_vol.dropna().set_index(Util.DT_DATE)
+        return res_series
 
     @staticmethod
     def garman_klass(df, n=20):
-        df_vol = df[[Util.DT_DATE]]
+        # df_vol = df[[Util.DT_DATE]]
         tmp = df.apply(HistoricalVolatilityModels.fun_garman_klass, axis=1)
         sum_tmp = tmp.rolling(window=n).sum()
-        df_vol[Util.AMT_GARMAN_KLASS+'_'+str(n)] = sum_tmp.apply(lambda x:math.sqrt(x*252/n))
-        df_vol = df_vol.dropna().set_index(Util.DT_DATE)
-        return df_vol
+        res_resies = sum_tmp.apply(lambda x: math.sqrt(x * 252 / n))
+        # df_vol[Util.AMT_GARMAN_KLASS+'_'+str(n)] = sum_tmp.apply(lambda x:math.sqrt(x*252/n))
+        # df_vol = df_vol.dropna().set_index(Util.DT_DATE)
+        return res_resies
 
     @staticmethod
     def fun_squred_log_high_low(df: pd.Series) -> float:
