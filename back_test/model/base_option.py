@@ -57,6 +57,7 @@ class BaseOption(BaseProduct):
         if self.pricing_engine is None:
             dt_maturity = self.maturitydt()
             strike = self.applicable_strike()
+            if strike is None: strike = self.strike()
             option_type = self.option_type()
             spot = self.underlying_close()
             if self.exercise_type == OptionExerciseType.EUROPEAN:

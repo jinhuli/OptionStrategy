@@ -15,17 +15,17 @@ pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
 end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
-min_holding = 15  # 20 sharpe ratio较优
+min_holding = 20
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_trade_price = c.CdTradePrice.CLOSE
 cd_hedge_price = c.CdTradePrice.CLOSE
-d_critirian = 0.03
+d_critirian = 0.0
 
-""" 50ETF option """
-name_code = c.Util.STR_IH
-name_code_option = c.Util.STR_50ETF
+""" get data option """
+name_code = c.Util.STR_SR
+name_code_option = c.Util.STR_SR
 df_metrics = get_data.get_50option_mktdata(start_date, end_date)
 df_future_c1_daily = get_data.get_mktdata_future_c1_daily(dt_histvol, end_date, name_code)
 df_futures_all_daily = get_data.get_mktdata_future_daily(start_date, end_date,
@@ -48,6 +48,7 @@ d1 = optionset.eval_date
 hedging = SytheticOption(df_c1, frequency=c.FrequentType.DAILY, df_c1_daily=df_c1, df_futures_all_daily=df_c_all)
 hedging.init()
 hedging.amt_option = 1 / 1000  # 50ETF与IH点数之比
+hedging.amt_option = 1
 
 print(optionset.eval_date, hedging.eval_date)
 

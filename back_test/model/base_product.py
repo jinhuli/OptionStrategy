@@ -142,6 +142,9 @@ class BaseProduct(AbstractBaseProduct):
     def has_next(self) -> bool:
         return self.current_index < self.nbr_index - 1
 
+    def is_last(self) -> bool:
+        return self.current_index == self.nbr_index -1
+
     def update_current_state(self) -> None:
         self.current_index += 1
         self.current_state = self.df_data.loc[self.current_index]
