@@ -942,6 +942,7 @@ class Util:
     DICT_CONTRACT_MULTIPLIER = {  # 合约乘数
         'm': 10,
         'sr':10,
+        'cu':5,
         'if': 300,
         'ih': 300,
         'ic': 200,

@@ -16,16 +16,16 @@ end_date = datetime.date.today()
 # print(df)
 # df.to_csv('../data/market_overview'+str(name_code)+'.csv')
 #
-name_code = 'm'
-df =get_data.commodity_option_market_overview(start_date,end_date,name_code)
-df['pct_trading'] = df['option_trading_volume']/df['future_trading_volume']
-df['pct_holding'] = df['option_holding_volume']/df['future_holding_volume']
-print(df)
-df.to_csv('../data/market_overview'+str(name_code)+'.csv')
-
-# name_code = 'cu'
+# name_code = 'm'
 # df =get_data.commodity_option_market_overview(start_date,end_date,name_code)
 # df['pct_trading'] = df['option_trading_volume']/df['future_trading_volume']
 # df['pct_holding'] = df['option_holding_volume']/df['future_holding_volume']
 # print(df)
 # df.to_csv('../data/market_overview'+str(name_code)+'.csv')
+
+name_code = 'cu'
+df =get_data.commodity_option_market_overview(start_date,end_date,name_code)
+df['pct_trading'] = df['option_trading_volume']/df['future_trading_volume']
+df['pct_holding'] = df['option_holding_volume']/df['future_holding_volume']
+print(df)
+df.to_csv('../data/market_overview_'+str(name_code)+'.csv')

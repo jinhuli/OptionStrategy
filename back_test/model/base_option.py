@@ -17,7 +17,7 @@ class BaseOption(BaseProduct):
 
     def __init__(self, df_data: pd.DataFrame, df_daily_data: pd.DataFrame = None,
                  frequency: FrequentType = FrequentType.DAILY,
-                 flag_calculate_iv: bool = False, rf: float = 0.03):
+                 flag_calculate_iv: bool = True, rf: float = 0.03):
         super().__init__(df_data, df_daily_data, rf, frequency)
         self.flag_calculate_iv = flag_calculate_iv
         # self.black_calculater: BlackCalculator = None
@@ -52,6 +52,48 @@ class BaseOption(BaseProduct):
         for column in required_column_list:
             if column not in columns:
                 self.df_data[column] = None
+
+    def _reprocess_if_genenate_single_option(self) -> None:
+        required_column_list = Util.OPTION_COLUMN_LIST
+        columns = self.df_data.columns
+        for column in required_column_list:
+            if column not in columns:
+                self.df_data[column] = None
+        # DT_MATURITY -> datetime.date : 通过contract month查找
+        if self.df_data.loc[0, Util.DT_MATURITY] is None or pd.isnull(self.df_data.loc[0, Util.DT_MATURITY]):
+            # self.df_data[Util.DT_MATURITY] = self.df_data.apply(OptionFilter.fun_option_maturity, axis=1)
+            self.df_data[Util.DT_MATURITY] = self.df_data.apply(
+                lambda x: OptionFilter.dict_maturities[x[Util.ID_UNDERLYING]] if pd.isnull(x[Util.DT_MATURITY]) else x[
+                    Util.DT_MATURITY], axis=1)
+        # STRIKE -> float
+        if self.df_data.loc[0, Util.AMT_STRIKE] is None or pd.isnull(self.df_data.loc[0, Util.AMT_STRIKE]):
+            self.df_data[Util.AMT_STRIKE] = self.df_data.apply(
+                lambda x: float(x[Util.ID_INSTRUMENT].split('_')[3]) if pd.isnull(x[Util.AMT_STRIKE]) else x[
+                    Util.AMT_STRIKE], axis=1)
+        # NAME_CONTRACT_MONTH -> String
+        if self.df_data.loc[0, Util.NAME_CONTRACT_MONTH] is None or pd.isnull(
+                self.df_data.loc[0, Util.NAME_CONTRACT_MONTH]):
+            self.df_data[Util.NAME_CONTRACT_MONTH] = self.df_data.apply(
+                lambda x: float(x[Util.ID_INSTRUMENT].split('_')[1]) if pd.isnull(x[Util.NAME_CONTRACT_MONTH]) else x[
+                    Util.NAME_CONTRACT_MONTH], axis=1)
+        # OPTION_TYPE -> String
+        if self.df_data.loc[0, Util.CD_OPTION_TYPE] is None or pd.isnull(self.df_data.loc[0, Util.CD_OPTION_TYPE]):
+            self.df_data[Util.CD_OPTION_TYPE] = self.df_data.apply(OptionFilter.fun_option_type_split, axis=1)
+        # MULTIPLIER -> int: 50etf期权的multiplier跟id_instrument有关，需补充该列实际值。（商品期权multiplier是固定的）
+        if self._name_code == Util.STR_50ETF:
+            if self.df_data.loc[0, Util.NBR_MULTIPLIER] is None or np.isnan(self.df_data.loc[0, Util.NBR_MULTIPLIER]):
+                self.df_data = self.df_data.drop(Util.NBR_MULTIPLIER, axis=1).join(
+                    self.get_id_multiplier_table().set_index(Util.ID_INSTRUMENT),
+                    how='left', on=Util.ID_INSTRUMENT
+                )
+        # ID_UNDERLYING : 通过name code 与 contract month补充
+        if self.df_data.loc[0, Util.ID_UNDERLYING] is None or pd.isnull(self.df_data.loc[0, Util.ID_UNDERLYING]):
+            if self._name_code == Util.STR_50ETF:
+                self.df_data.loc[:, Util.ID_UNDERLYING] = Util.STR_INDEX_50ETF
+            else:
+                self.df_data.loc[:, Util.ID_UNDERLYING] = self._name_code + self.df_data.loc[:,
+                                                                            Util.NAME_CONTRACT_MONTH]
+
 
     def _set_pricing_engine(self):
         if self.pricing_engine is None:
@@ -221,6 +263,7 @@ class BaseOption(BaseProduct):
         else:
             implied_vol = self.implied_vol_given() / 100.0
         self.implied_vol = implied_vol
+
 
     def get_implied_vol(self) -> Union[float, None]:
         if self.implied_vol is None: self.update_implied_vol()

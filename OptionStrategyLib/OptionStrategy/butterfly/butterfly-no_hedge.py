@@ -12,7 +12,7 @@ from Utilities.timebase import LLKSR, KALMAN, LLT
 from back_test.model.trade import Order
 
 pu = PlotUtil()
-start_date = datetime.date(2018, 9, 21)
+start_date = datetime.date(2015, 1, 21)
 end_date = datetime.date.today()
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15  # 20 sharpe ratio较优
@@ -25,8 +25,8 @@ cd_trade_price = c.CdTradePrice.CLOSE
 """ 50ETF option """
 # name_code = c.Util.STR_IH
 # name_code_option = c.Util.STR_50ETF
-# df_metrics = get_data.get_50option_mktdata(start_date, end_date)
-df_metrics = get_data.get_comoption_mktdata(start_date, end_date,c.Util.STR_CU)
+df_metrics = get_data.get_50option_mktdata(start_date, end_date)
+# df_metrics = get_data.get_comoption_mktdata(start_date, end_date,c.Util.STR_M)
 
 df_holding_period = pd.DataFrame()
 
@@ -73,16 +73,19 @@ while optionset.eval_date <= end_date:
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
                                                                                     maturity=maturity1)
         atm_call = optionset.select_higher_volume(list_atm_call)
-        list_itm_call, list_itm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=2,
+        list_itm_call, list_itm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=1,
                                                                                     maturity=maturity1)
         itm_call = optionset.select_higher_volume(list_itm_call)
-        list_otm_call, list_otm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=-2,
+        list_otm_call, list_otm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=-1,
                                                                                     maturity=maturity1)
         otm_call = optionset.select_higher_volume(list_otm_call)
         if itm_call is None or otm_call is None:
             if not optionset.has_next(): break
             optionset.next()
             continue
+        x = 2 * atm_call.mktprice_close() - itm_call.mktprice_close() - otm_call.mktprice_close()
+        if x >= -0.01:
+            print(optionset.eval_date, x, atm_call.id_instrument(), itm_call.id_instrument(), otm_call.id_instrument())
         atm_strike = atm_call.strike()
         spot = atm_call.underlying_close()
         unit = np.floor(np.floor(account.portfolio_total_value / atm_call.strike()) / atm_call.multiplier()) * m
@@ -110,7 +113,7 @@ print(res)
 dates = list(account.account.index)
 npv = list(account.account[c.Util.PORTFOLIO_NPV])
 pu.plot_line_chart(dates,[npv],['npv'])
-plt.show()
+# plt.show()
 
 
 
