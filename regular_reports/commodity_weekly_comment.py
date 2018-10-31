@@ -187,8 +187,8 @@ def fun_report_namecode(namecode):
 
 
 # Eval Settings and Data
-dt_date = datetime.date(2018, 9, 21)  # Set as Friday
-dt_yesterday = datetime.date(2018, 9, 14) # last friday
+dt_date = datetime.date(2018, 9, 28)  # Set as Friday
+dt_yesterday = datetime.date(2018, 9, 21) # last friday
 
 # Eval Settings and Data
 
