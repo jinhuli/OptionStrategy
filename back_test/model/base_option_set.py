@@ -515,6 +515,17 @@ class BaseOptionSet(AbstractBaseProductSet):
             iv = pricing_engine.estimate_vol(P)
         return iv
 
+    def get_option_by_strike(self,option_type:OptionType, strike:float, maturity: datetime.date):
+        mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
+        if option_type ==OptionType.CALL:
+            mdt_options_dict = mdt_calls.get(maturity)
+        else:
+            mdt_options_dict = mdt_puts.get(maturity)
+        if strike not in mdt_options_dict.keys():
+            return
+        else:
+            return mdt_options_dict[strike]
+
     def get_option_moneyness(self, base_option: BaseOption):
         maturity = base_option.maturitydt()
         mdt_calls, mdt_puts = self.get_orgnized_option_dict_for_moneyness_ranking()
