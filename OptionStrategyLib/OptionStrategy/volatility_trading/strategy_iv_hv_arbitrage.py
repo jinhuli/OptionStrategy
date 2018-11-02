@@ -11,45 +11,60 @@ import pandas as pd
 from back_test.model.trade import Order
 from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVolatilityModels as histvol
 
+
 def risk_warning(df_warning, dt_date):
     if dt_date not in df_warning.index:
         return False
     else:
-        if df_warning.loc[dt_date, 'pre_warned'] >= 2:
+        if df_warning.loc[dt_date, 'pre_warned'] > 0:
             return True
         else:
             return False
 
-def open_position(df_warning, df_vol, dt_date):
-    if dt_date in df_warning.index:
-        if risk_warning(df_warning, optionset.eval_date):
-            print(optionset.eval_date, 'risk warning, NOT OPEN')
-            return False
-    if dt_date not in df_vol.index:
+
+def open_write_signal_bollinger(df_vol, dt_date):
+    if df_vol.loc[dt_date, 'amt_premium'] < 0:  # 波动率溢价为负，不开卖期权仓
         return False
-    amt_premium = df_vol.loc[dt_date, 'amt_premium']
-    amt_1std = df_vol.loc[dt_date, 'amt_1std']
-    # iv_percentile = df_vol.loc[dt_date,'iv_percentile']
-    # if iv_percentile > 90:
-    #     return False
-    if amt_premium > amt_1std:
+    series_close = df_vol['amt_premium']
+    bollinger_upperline = df_vol['bollinger_upperline']
+    bollinger_lowerline = df_vol['bollinger_lowerline']
+    idx = list(df_vol.index).index(dt_date)
+    status = c.Timing.bollinger_status(idx, series_close, bollinger_upperline=bollinger_upperline,
+                                       bollinger_lowerline=bollinger_lowerline)
+    # tangt = c.Timing.tangent(idx, series_close)
+    # if signal == c.CdTimingStatus.BREAK_TO_MID and tangt < 0:
+    #     print(dt_date, ' break into mid from higher, open position')
+    #     return True
+    if status == c.CdTimingStatus.STAY_UPPER:
+        print(dt_date, ' stay higher, open position')
         return True
     else:
         return False
 
-def close_position(df_warning,df_vol, dt_maturity, optionset):
-    if risk_warning(df_warning,optionset.eval_date):
-        print(optionset.eval_date,'risk warning, CLOSE')
+
+def open_write_position(df_warning, df_vol, dt_date):
+    if dt_date in df_warning.index:
+        if risk_warning(df_warning, optionset.eval_date):  # 波动率风险预警，不开卖期权仓
+            return False
+    if dt_date not in df_vol.index:
+        return False
+    if df_vol.loc[dt_date, 'iv_percentile'] > 90:  # 隐含波动率极端风险，不开卖期权仓
+        return False
+    return open_write_signal_bollinger(df_vol, dt_date)
+
+
+def close_write_position(df_warning, df_vol, dt_maturity, optionset):
+    if risk_warning(df_warning, optionset.eval_date):  # 波动率风险预警，平开卖期权仓
+        print(optionset.eval_date, 'risk warning, close position')
         return True
-    if (dt_maturity - optionset.eval_date).days <= 5:
+    if (dt_maturity - optionset.eval_date).days <= 5:  # 到期平仓
         return True
     dt_date = optionset.eval_date
-    amt_premium = df_vol.loc[dt_date, 'amt_premium']
-    # iv_percentile = df_vol.loc[dt_date,'iv_percentile']
-    # if iv_percentile > 90:
-    #     print(optionset.eval_date,'iv warning')
-    #     return True
-    if amt_premium < 0:
+    if df_vol.loc[dt_date, 'iv_percentile'] > 90:
+        print(optionset.eval_date, 'iv warning, close position')
+        return True
+    if df_vol.loc[dt_date, 'amt_premium'] < 0:
+        print(optionset.eval_date, ' premium less than 0, close position ')
         return True
     else:
         return False
@@ -57,13 +72,14 @@ def close_position(df_warning,df_vol, dt_maturity, optionset):
 
 pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
+# start_date = datetime.date(2018, 2, 1)
 end_date = datetime.date(2018, 10, 8)
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_trade_price = c.CdTradePrice.CLOSE
 
 name_code = c.Util.STR_IH
 name_code_option = c.Util.STR_50ETF
@@ -80,39 +96,36 @@ df_c_all = df_futures_all_daily[df_futures_all_daily[c.Util.DT_DATE] >= d].reset
 df_future_c1_daily['amt_hv'] = histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE])
 
 df_iv = get_data.get_iv_by_moneyness(dt_histvol, end_date, c.Util.STR_50ETF)
-# df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'call']
-# df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'put']
-df_iv_htbr = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put_call_htbr']
-# df_data = df_iv_call[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_call'})
-# df_data = df_data.join(df_iv_put[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE), on=c.Util.DT_DATE,
-#                        how='outer') \
-#     .rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_put'})
-# df_data = df_data.dropna().reset_index(drop=True)
-df_data = df_iv_htbr.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'amt_iv'})
-# df_data.loc[:, 'amt_iv'] = (df_data.loc[:, 'iv_call'] + df_data.loc[:, 'iv_put']) / 2
+df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'call']
+df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'put']
+df_data = df_iv_call[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_call'})
+df_data = df_data.join(df_iv_put[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE), on=c.Util.DT_DATE,
+                       how='outer') \
+    .rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_put'})
+df_data = df_data.dropna().reset_index(drop=True)
+df_data.loc[:, 'amt_iv'] = (df_data.loc[:, 'iv_call'] + df_data.loc[:, 'iv_put']) / 2
 df_vol = pd.merge(df_data[[c.Util.DT_DATE, 'amt_iv']], df_future_c1_daily[[c.Util.DT_DATE, 'amt_hv']],
                   on=c.Util.DT_DATE)
 df_vol['amt_premium'] = df_vol['amt_iv'] - df_vol['amt_hv']
 df_vol['amt_1std'] = c.Statistics.standard_deviation(df_vol['amt_premium'], n=60)
-df_vol['amt_2std'] = 2*c.Statistics.standard_deviation(df_vol['amt_premium'], n=60)
-df_vol = df_vol.set_index(c.Util.DT_DATE)
-df_vol['iv_percentile'] = c.Statistics.standard_deviation(df_vol['amt_iv'],n=252)
+df_vol['iv_percentile'] = c.Statistics.standard_deviation(df_vol['amt_iv'], n=252)
+df_vol['bollinger_upperline'] = c.Statistics.bollinger_upperline(df_vol['amt_premium'], n=100,nbr_std=2)
+# df_vol['bollinger_upperline_2'] = c.Statistics.bollinger_upperline(df_vol['amt_premium'], n=60,nbr_std=2)
+df_vol['bollinger_lowerline'] = c.Statistics.bollinger_lowerline(df_vol['amt_premium'], n=100,nbr_std=2)
 
-print('premium mean : ',df_vol['amt_premium'].sum()/len(df_vol['amt_premium']))
+df_vol = df_vol.set_index(c.Util.DT_DATE)
+
 dates = list(df_vol.index)
-pu.plot_line_chart(dates, [list(df_vol['amt_premium']), list(df_vol['amt_1std']),list(df_vol['amt_2std'])], ['隐含波动率溢价','1倍标准差','2倍标准差'])
+pu.plot_line_chart(dates, [list(df_vol['amt_premium']), list(df_vol['bollinger_upperline']),
+                           list(df_vol['bollinger_lowerline']),list(df_vol['amt_1std'])], ['premium','upper','lower','1std'])
 
 plt.show()
 
 """ Risk Monitor """
-# df_warning = pd.read_excel('../../../data/risk_monitor.xlsx')
-# df_warning['date'] = df_warning['dt_date'].apply(lambda x: x.date())
-# df_warning = df_warning[['date', 'risk warning']]
-# df_warning['pre_warned'] = df_warning['risk warning'].shift()
-# df_warning = df_warning.set_index('date')
-
-df_warning = pd.read_excel('../../../data/volatility_risk_monitor.xlsx')
-df_warning['date'] = df_warning['DT_DATE'].apply(lambda x: x.date())
+df_warning = pd.read_excel('../../../data/risk_monitor.xlsx')
+df_warning['date'] = df_warning['dt_date'].apply(lambda x: x.date())
+df_warning = df_warning[['date', 'risk warning']]
+df_warning['pre_warned'] = df_warning['risk warning'].shift()
 df_warning = df_warning.set_index('date')
 
 df_holding_period = pd.DataFrame()
@@ -177,7 +190,7 @@ while optionset.eval_date <= end_date:
 
     # 平仓：距到期8日
     if not empty_position:
-        if close_position(df_warning,df_vol, maturity1, optionset):
+        if close_write_position(df_warning, df_vol, maturity1, optionset):
             for option in account.dict_holding.values():
                 order = account.create_close_order(option, cd_trade_price=cd_trade_price)
                 record = option.execute_order(order, slippage=slippage)
@@ -186,14 +199,13 @@ while optionset.eval_date <= end_date:
             empty_position = True
 
     # 开仓：距到期1M
-    if empty_position and open_position(df_warning,df_vol, optionset.eval_date):
+    if empty_position and open_write_position(df_warning, df_vol, optionset.eval_date):
         maturity1 = optionset.select_maturity_date(nbr_maturity=0, min_holding=min_holding)
         option_trade_times += 1
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                    maturity=maturity1,
-                                                                                    cd_price=c.CdPriceType.OPEN)
+                                                                                    maturity=maturity1)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()

@@ -11,45 +11,46 @@ import pandas as pd
 from back_test.model.trade import Order
 from OptionStrategyLib.VolatilityModel.historical_volatility import HistoricalVolatilityModels as histvol
 
-def risk_warning(df_warning, dt_date):
-    if dt_date not in df_warning.index:
-        return False
-    else:
-        if df_warning.loc[dt_date, 'pre_warned'] >= 2:
-            return True
-        else:
-            return False
+# def risk_warning(df_warning, dt_date):
+#     if dt_date not in df_warning.index:
+#         return False
+#     else:
+#         if df_warning.loc[dt_date, 'pre_warned'] > 0:
+#             return True
+#         else:
+#             return False
 
 def open_position(df_warning, df_vol, dt_date):
-    if dt_date in df_warning.index:
-        if risk_warning(df_warning, optionset.eval_date):
-            print(optionset.eval_date, 'risk warning, NOT OPEN')
-            return False
+    # if dt_date in df_warning.index:
+    #     if risk_warning(df_warning, optionset.eval_date):
+    #         return False
     if dt_date not in df_vol.index:
         return False
     amt_premium = df_vol.loc[dt_date, 'amt_premium']
-    amt_1std = df_vol.loc[dt_date, 'amt_1std']
+    amt_2nd_lower = df_vol.loc[dt_date, 'amt_2nd_lower']
+    amt_1st_lower = df_vol.loc[dt_date, 'amt_1st_lower']
     # iv_percentile = df_vol.loc[dt_date,'iv_percentile']
     # if iv_percentile > 90:
     #     return False
-    if amt_premium > amt_1std:
+    if amt_premium < amt_1st_lower:
         return True
     else:
         return False
 
 def close_position(df_warning,df_vol, dt_maturity, optionset):
-    if risk_warning(df_warning,optionset.eval_date):
-        print(optionset.eval_date,'risk warning, CLOSE')
-        return True
+    # if risk_warning(df_warning,optionset.eval_date):
+    #     print(optionset.eval_date,'risk warning')
+    #     return True
     if (dt_maturity - optionset.eval_date).days <= 5:
         return True
     dt_date = optionset.eval_date
     amt_premium = df_vol.loc[dt_date, 'amt_premium']
+    # amt_1std = df_vol.loc[dt_date, 'amt_1std']
     # iv_percentile = df_vol.loc[dt_date,'iv_percentile']
     # if iv_percentile > 90:
     #     print(optionset.eval_date,'iv warning')
     #     return True
-    if amt_premium < 0:
+    if amt_premium > 0:
         return True
     else:
         return False
@@ -63,7 +64,7 @@ min_holding = 15  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
-cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_trade_price = c.CdTradePrice.CLOSE
 
 name_code = c.Util.STR_IH
 name_code_option = c.Util.STR_50ETF
@@ -80,39 +81,35 @@ df_c_all = df_futures_all_daily[df_futures_all_daily[c.Util.DT_DATE] >= d].reset
 df_future_c1_daily['amt_hv'] = histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE])
 
 df_iv = get_data.get_iv_by_moneyness(dt_histvol, end_date, c.Util.STR_50ETF)
-# df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'call']
-# df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'put']
-df_iv_htbr = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='put_call_htbr']
-# df_data = df_iv_call[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_call'})
-# df_data = df_data.join(df_iv_put[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE), on=c.Util.DT_DATE,
-#                        how='outer') \
-#     .rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_put'})
-# df_data = df_data.dropna().reset_index(drop=True)
-df_data = df_iv_htbr.reset_index(drop=True).rename(columns={c.Util.PCT_IMPLIED_VOL:'amt_iv'})
-# df_data.loc[:, 'amt_iv'] = (df_data.loc[:, 'iv_call'] + df_data.loc[:, 'iv_put']) / 2
+df_iv_call = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'call']
+df_iv_put = df_iv[df_iv[c.Util.CD_OPTION_TYPE] == 'put']
+df_data = df_iv_call[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_call'})
+df_data = df_data.join(df_iv_put[[c.Util.DT_DATE, c.Util.PCT_IMPLIED_VOL]].set_index(c.Util.DT_DATE), on=c.Util.DT_DATE,
+                       how='outer') \
+    .rename(columns={c.Util.PCT_IMPLIED_VOL: 'iv_put'})
+df_data = df_data.dropna().reset_index(drop=True)
+df_data.loc[:, 'amt_iv'] = (df_data.loc[:, 'iv_call'] + df_data.loc[:, 'iv_put']) / 2
 df_vol = pd.merge(df_data[[c.Util.DT_DATE, 'amt_iv']], df_future_c1_daily[[c.Util.DT_DATE, 'amt_hv']],
                   on=c.Util.DT_DATE)
 df_vol['amt_premium'] = df_vol['amt_iv'] - df_vol['amt_hv']
 df_vol['amt_1std'] = c.Statistics.standard_deviation(df_vol['amt_premium'], n=60)
-df_vol['amt_2std'] = 2*c.Statistics.standard_deviation(df_vol['amt_premium'], n=60)
+df_vol['amt_2nd_lower'] = -2*c.Statistics.standard_deviation(df_vol['amt_premium'], n=60)
+df_vol['amt_1st_lower'] = -c.Statistics.standard_deviation(df_vol['amt_premium'], n=60)
 df_vol = df_vol.set_index(c.Util.DT_DATE)
 df_vol['iv_percentile'] = c.Statistics.standard_deviation(df_vol['amt_iv'],n=252)
 
 print('premium mean : ',df_vol['amt_premium'].sum()/len(df_vol['amt_premium']))
-dates = list(df_vol.index)
-pu.plot_line_chart(dates, [list(df_vol['amt_premium']), list(df_vol['amt_1std']),list(df_vol['amt_2std'])], ['隐含波动率溢价','1倍标准差','2倍标准差'])
-
-plt.show()
+# dates = list(df_vol.index)
+# pu.plot_line_chart(dates, [list(df_vol['amt_premium']), list(df_vol['amt_1st_lower']),
+#                            list(df_vol['amt_2nd_lower'])], ['premium','1std','2nd'])
+#
+# plt.show()
 
 """ Risk Monitor """
-# df_warning = pd.read_excel('../../../data/risk_monitor.xlsx')
-# df_warning['date'] = df_warning['dt_date'].apply(lambda x: x.date())
-# df_warning = df_warning[['date', 'risk warning']]
-# df_warning['pre_warned'] = df_warning['risk warning'].shift()
-# df_warning = df_warning.set_index('date')
-
-df_warning = pd.read_excel('../../../data/volatility_risk_monitor.xlsx')
-df_warning['date'] = df_warning['DT_DATE'].apply(lambda x: x.date())
+df_warning = pd.read_excel('../../../data/risk_monitor.xlsx')
+df_warning['date'] = df_warning['dt_date'].apply(lambda x: x.date())
+df_warning = df_warning[['date', 'risk warning']]
+df_warning['pre_warned'] = df_warning['risk warning'].shift()
 df_warning = df_warning.set_index('date')
 
 df_holding_period = pd.DataFrame()
@@ -192,8 +189,7 @@ while optionset.eval_date <= end_date:
         buy_write = c.BuyWrite.WRITE
         long_short = c.LongShort.SHORT
         list_atm_call, list_atm_put = optionset.get_options_list_by_moneyness_mthd1(moneyness_rank=0,
-                                                                                    maturity=maturity1,
-                                                                                    cd_price=c.CdPriceType.OPEN)
+                                                                                    maturity=maturity1)
         atm_call = optionset.select_higher_volume(list_atm_call)
         atm_put = optionset.select_higher_volume(list_atm_put)
         atm_strike = atm_call.strike()

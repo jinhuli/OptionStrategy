@@ -29,7 +29,7 @@ def filtration(df_iv_stats, name_column):
 pu = PlotUtil()
 
 start_date = datetime.date(2015, 2, 1)
-end_date = datetime.date(2018, 10, 8)
+end_date = datetime.date.today()
 dt_histvol = start_date - datetime.timedelta(days=90)
 
 """ 50ETF option """
@@ -41,9 +41,9 @@ name_code_index = c.Util.STR_INDEX_50SH
 df_index = get_data.get_index_mktdata(dt_histvol,end_date,name_code_index)
 
 """历史波动率"""
-df_histvol = pd.DataFrame(df_index[c.Util.DT_DATE])
-df_histvol['histvol_50sh'] = Histvol.hist_vol(df_index[c.Util.AMT_CLOSE])
-
+df_histvol = pd.DataFrame(df_future_c1_daily[c.Util.DT_DATE])
+df_histvol['histvol_50sh'] = Histvol.hist_vol(df_future_c1_daily[c.Util.AMT_CLOSE])
+df_histvol.to_csv('../../accounts_data/ih_histvol_20d.csv')
 """ 隐含波动率 """
 df_iv = get_data.get_iv_by_moneyness(dt_histvol,end_date,name_code_option)
 df_ivix = df_iv[df_iv[c.Util.CD_OPTION_TYPE]=='ivix']
@@ -67,12 +67,14 @@ df_data = pd.merge(df_histvol,df_iv,on=c.Util.DT_DATE)
 df_data['iv_premium'] = df_data['ivix_shift_20d']-df_data['histvol_50sh']
 df_data['vix_premium'] = df_data['ivix_shift_20d']-df_data['histvol_50sh']
 df_data = df_data.dropna()
-vols = np.array(df_data['vix_premium'])
+vols = np.array(df_data['iv_premium'])
 
 x_grid = np.linspace(min(vols), max(vols), 1000)
 
 pdf_cc = kde_sklearn(vols, x_grid, bandwidth=0.03)
-pu.plot_line_chart(x_grid,[pdf_cc],['kernel density of vix premium'])
+pu.plot_line_chart(x_grid,[pdf_cc],['kernel density'])
+plt.hist(vols, bins=100, normed=True, facecolor="#8C8C8C", label='平值隐含波动率溢价分布')
+plt.legend()
 plt.show()
 df_data.to_csv('../../accounts_data/implied_vol_premiums.csv')
 # f.save('../../accounts_data/implied_vol_premiums.csv')
