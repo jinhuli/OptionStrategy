@@ -57,13 +57,14 @@ def close_position(df_warning,df_vol, dt_maturity, optionset):
 
 pu = PlotUtil()
 start_date = datetime.date(2015, 2, 1)
-end_date = datetime.date(2018, 10, 8)
+end_date = datetime.date.today()
 dt_histvol = start_date - datetime.timedelta(days=90)
 min_holding = 15  # 20 sharpe ratio较优
 init_fund = c.Util.BILLION
 slippage = 0
 m = 1  # 期权notional倍数
 cd_trade_price = c.CdTradePrice.VOLUME_WEIGHTED
+cd_hedge_price = c.CdTradePrice.CLOSE
 
 name_code = c.Util.STR_IH
 name_code_option = c.Util.STR_50ETF
@@ -220,7 +221,7 @@ while optionset.eval_date <= end_date:
             long_short = c.LongShort.LONG
         else:
             long_short = c.LongShort.SHORT
-        order_u = account.create_trade_order(hedging, long_short, hedge_unit, cd_trade_price=cd_trade_price)
+        order_u = account.create_trade_order(hedging, long_short, hedge_unit, cd_trade_price=cd_hedge_price)
         record_u = hedging.execute_order(order_u, slippage=slippage)
         account.add_record(record_u, hedging)
         flag_hedge = False

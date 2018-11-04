@@ -5,7 +5,7 @@ import datetime
 from PricingLibrary.EngineQuantlib import QlBlackFormula, QlBinomial
 import Utilities.admin_write_util as admin
 
-start_date = datetime.date(2018, 10, 1)
+start_date = datetime.date(2016, 10, 1)
 end_date = datetime.date.today()
 
 init_vol = 0.2
@@ -19,16 +19,16 @@ cd_mdt_selection = 'hp_8_1st'
 # nbr_maturity = 2
 # cd_mdt_selection = 'hp_8_3rd'
 
-# """ namecode : M/SR """
+""" namecode : M/SR """
 # name_code = c.Util.STR_SR
-# # name_code = c.Util.STR_M
-# df_metrics = get_comoption_mktdata(start_date, end_date,name_code)
-# exercise_type = c.OptionExerciseType.AMERICAN
+name_code = c.Util.STR_M
+df_metrics = get_comoption_mktdata(start_date, end_date,name_code)
+exercise_type = c.OptionExerciseType.AMERICAN
 
-""" namecode : 50ETF """
-name_code = c.Util.STR_50ETF
-df_metrics = get_50option_mktdata(start_date, end_date)
-exercise_type = c.OptionExerciseType.EUROPEAN
+# """ namecode : 50ETF """
+# name_code = c.Util.STR_50ETF
+# df_metrics = get_50option_mktdata(start_date, end_date)
+# exercise_type = c.OptionExerciseType.EUROPEAN
 
 table_iv = admin.table_implied_volatilities()
 optionset = BaseOptionSet(df_metrics)

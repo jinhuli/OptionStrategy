@@ -55,7 +55,7 @@ def session_gc():
     return Session()
 
 def table_options_mktdata():
-    return Table('options_mktdata', metadata, autoload=True)
+    return Table('option_mktdata', metadata_gc, autoload=True)
 
 def table_futures_mktdata():
     return Table('futures_mktdata', metadata, autoload=True)
