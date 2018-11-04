@@ -10,8 +10,8 @@ from Utilities import admin_write_util as admin
 
 w.start()
 
-date = datetime.date.today()
-# date = datetime.date(2018,10,13)
+# date = datetime.date.today()
+date = datetime.date(2018,11,2)
 
 dt_date = date.strftime("%Y-%m-%d")
 print(dt_date)
@@ -374,6 +374,7 @@ try:
     print('wind CU option -- inserted into data base succefully')
 except Exception as e:
     print(e)
+
 # wind 50ETF option
 res = options_mktdata_daily.select((options_mktdata_daily.c.dt_date == dt_date)
                                    & (options_mktdata_daily.c.name_code == '50etf')).execute()

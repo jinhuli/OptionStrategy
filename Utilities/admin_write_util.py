@@ -34,6 +34,9 @@ def conn_intraday():
 def conn_metrics():
     return engine_metrics.connect()
 
+def conn_gc():
+    return engine_gc.connect()
+
 def session_dzqh():
     Session = sessionmaker(bind=engine_dzqh)
     return Session()

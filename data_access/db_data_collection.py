@@ -14,7 +14,7 @@ import Utilities.admin_write_util as admin_write
 class DataCollection():
     class table_options():
 
-        def get_option_contracts(self, datestr, id_underlying='index_50etf'):
+        def get_option_contracts(self, date, id_underlying='index_50etf'):
             option_contracts = admin_read.table_option_contracts()
             sess = admin_read.session_mktdata()
             query = sess.query(option_contracts.c.dt_listed,
@@ -24,8 +24,8 @@ class DataCollection():
                                option_contracts.c.amt_strike,
                                option_contracts.c.cd_option_type
                                ) \
-                .filter(option_contracts.c.dt_listed <= datestr) \
-                .filter(option_contracts.c.dt_maturity >= datestr) \
+                .filter(option_contracts.c.dt_listed <= date) \
+                .filter(option_contracts.c.dt_maturity >= date) \
                 .filter(option_contracts.c.id_underlying == id_underlying)
             df_optionchain = pd.read_sql(query.statement, query.session.bind)
             return df_optionchain
@@ -369,6 +369,152 @@ class DataCollection():
                           }
                 db_data.append(db_row)
             return db_data
+
+        def wind_data_m_option(self, start_dates_tr,end_date_str,wind_contract='all'):
+
+            db_data = []
+            id_underlying = wind_contract[0].lower() + '_' + wind_contract[1:5]
+            name_code = 'm'
+            datasource = 'wind'
+            cd_exchange = 'dce'
+            flag_night = -1
+
+            data = w.wset("optionfuturesdailyquotation",
+                   "exchange=DCE;productcode=M;contract="+wind_contract+";startdate="+start_dates_tr+";enddate="+end_date_str)
+            print(data.ErrorCode)
+            df_mktdatas = pd.DataFrame()
+            for i1, f1 in enumerate(data.Fields):
+                df_mktdatas[f1] = data.Data[i1]
+            df_mktdatas = df_mktdatas.fillna(-999.0)
+            for (i2, df_mktdata) in df_mktdatas.iterrows():
+                dt_date = df_mktdata['date'].date()
+                option_code = df_mktdata['option_code']
+                id_instrument = option_code[0].lower()+'_'+option_code[1:5]+'_'+option_code[6].lower() +'_'+option_code[-4:]
+                windcode = option_code[0:5]+option_code[6]+option_code[-4:]+'.DCE'
+                amt_strike = option_code[-4:]
+                if option_code[6].lower()=='c':
+                    cd_option_type = 'call'
+                elif option_code[6].lower()=='p':
+                    cd_option_type = 'put'
+                else:
+                    cd_option_type = None
+
+                amt_last_settlement = df_mktdata['pre_settle']
+                amt_open = df_mktdata['open']
+                amt_high = df_mktdata['highest']
+                amt_low = df_mktdata['lowest']
+                amt_close = df_mktdata['close']
+                amt_settlement = df_mktdata['settle']
+                amt_delta = df_mktdata['delta']
+                # amt_gamma = df_mktdata['gamma']
+                # amt_vega = df_mktdata['vega']
+                # amt_theta = df_mktdata['theta']
+                # amt_rho = df_mktdata['rho']
+                amt_trading_volume = df_mktdata['volume']
+                amt_trading_value = df_mktdata['amount']
+                amt_holding_volume = df_mktdata['position']
+                db_row = {'dt_date': dt_date,
+                          'id_instrument': id_instrument,
+                          'flag_night': flag_night,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'name_code': name_code,
+                          'id_underlying': id_underlying,
+                          'amt_strike': float(amt_strike),
+                          'cd_option_type': cd_option_type,
+                          'amt_last_settlement': float(amt_last_settlement),
+                          'amt_open': float(amt_open),
+                          'amt_high': float(amt_high),
+                          'amt_low': float(amt_low),
+                          'amt_close': float(amt_close),
+                          'amt_settlement': float(amt_settlement),
+                          'amt_delta': float(amt_delta),
+                          'amt_gamma': None,
+                          'amt_vega': None,
+                          'amt_theta': None,
+                          'amt_rho': None,
+                          'amt_trading_volume': float(amt_trading_volume),
+                          'amt_trading_value': float(amt_trading_value),
+                          'amt_holding_volume': float(amt_holding_volume),
+                          'cd_exchange': cd_exchange,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
+        def wind_data_sr_option(self, start_dates_tr,end_date_str,wind_contract='all'):
+
+            db_data = []
+            id_underlying = wind_contract[0:2].lower() + '_1' + wind_contract[2:5]
+            name_code = 'sr'
+            datasource = 'wind'
+            cd_exchange = 'czce'
+            flag_night = -1
+
+            data = w.wset("optionfuturesdailyquotation",
+                   "exchange=CZCE;productcode=SR;contract="+wind_contract+";startdate="+start_dates_tr+";enddate="+end_date_str)
+            print(data.ErrorCode)
+            df_mktdatas = pd.DataFrame()
+            for i1, f1 in enumerate(data.Fields):
+                df_mktdatas[f1] = data.Data[i1]
+            df_mktdatas = df_mktdatas.fillna(-999.0)
+            for (i2, df_mktdata) in df_mktdatas.iterrows():
+                dt_date = df_mktdata['date'].date()
+                option_code = df_mktdata['option_code']
+                # TODO
+                id_instrument = option_code[0:2].lower()+'_1'+option_code[2:5]+'_'+option_code[5].lower() +'_'+option_code[-4:]
+                windcode = option_code+'.CZC'
+                amt_strike = option_code[-4:]
+                if option_code[5].lower()=='c':
+                    cd_option_type = 'call'
+                elif option_code[5].lower()=='p':
+                    cd_option_type = 'put'
+                else:
+                    cd_option_type = None
+
+                amt_last_settlement = df_mktdata['pre_settle']
+                amt_open = df_mktdata['open']
+                amt_high = df_mktdata['highest']
+                amt_low = df_mktdata['lowest']
+                amt_close = df_mktdata['close']
+                amt_settlement = df_mktdata['settle']
+                amt_delta = df_mktdata['delta']
+                # amt_gamma = df_mktdata['gamma']
+                # amt_vega = df_mktdata['vega']
+                # amt_theta = df_mktdata['theta']
+                # amt_rho = df_mktdata['rho']
+                amt_trading_volume = df_mktdata['volume']
+                amt_trading_value = df_mktdata['amount']
+                amt_holding_volume = df_mktdata['position']
+                db_row = {'dt_date': dt_date,
+                          'id_instrument': id_instrument,
+                          'flag_night': flag_night,
+                          'datasource': datasource,
+                          'code_instrument': windcode,
+                          'name_code': name_code,
+                          'id_underlying': id_underlying,
+                          'amt_strike': float(amt_strike),
+                          'cd_option_type': cd_option_type,
+                          'amt_last_settlement': float(amt_last_settlement),
+                          'amt_open': float(amt_open),
+                          'amt_high': float(amt_high),
+                          'amt_low': float(amt_low),
+                          'amt_close': float(amt_close),
+                          'amt_settlement': float(amt_settlement),
+                          'amt_delta': float(amt_delta),
+                          'amt_gamma': None,
+                          'amt_vega': None,
+                          'amt_theta': None,
+                          'amt_rho': None,
+                          'amt_trading_volume': float(amt_trading_volume),
+                          'amt_trading_value': float(amt_trading_value),
+                          'amt_holding_volume': float(amt_holding_volume),
+                          'cd_exchange': cd_exchange,
+                          'timestamp': datetime.datetime.today()
+                          }
+                db_data.append(db_row)
+            return db_data
+
 
     class table_futures():
 
