@@ -19,7 +19,7 @@ w.start()
 conn = admin.conn_gc()
 conn_intraday = admin.conn_intraday()
 
-options_mktdata_daily = admin.table_options_mktdata()
+options_mktdata_daily = admin.table_options_mktdata_gc()
 option_contracts = admin.table_option_contracts()
 
 dc = DataCollection()

@@ -316,7 +316,7 @@ for (idx, name_code) in enumerate(name_codes):
     df_res.to_excel(writer, name_code)
     dt_end = df_metrics[c.Util.DT_DATE].unique()[-1]
     dt_yesterday = df_metrics[c.Util.DT_DATE].unique()[-2]
-    print(dt_end,dt_yesterday)
+    print('Finished ',name_code,dt_end,dt_yesterday)
     df_holdings = trade_volume(dt_end, dt_yesterday, df_metrics, name_code, core_id,df_res)
     df_holdings.to_excel(writer, 'holdings_'+name_code)
 writer.save()
